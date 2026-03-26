@@ -284,7 +284,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                   componentData.type === "library") ||
                  (componentData.type === "vc_model" && componentData.fileLinks?.fbx)
                   ? "3D 프리뷰"
-                  : "컴포넌트 이미지"}
+                  : "썸네일"}
               </h2>
             <div
               className="relative bg-gray-900 h-[360px] w-[360px] rounded-md shadow-lg overflow-hidden
@@ -313,48 +313,24 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
             </div>
           </div>
 
-          {/* 설명 영역 */}
+          {/* 주요 기능 영역 */}
           <div className="flex flex-col flex-1">
             <div className="flex flex-col h-full">
               <div className="flex-1">
-                <h2 className="text-[18px] font-semibold mb-4 text-white">
-                  설명
-                </h2>
-                {user?.role === "admin" && isEditing ? (
-                  <textarea
-                    className="w-full h-[120px] bg-[#A7A7A7] resize-none px-[12px] py-[8px] rounded-md mb-4 text-white"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                ) : (
-                  <div className="w-full h-[120px] px-[12px] py-[8px] rounded-md mb-4 text-white overflow-y-auto border-gray-700 border-[1px] bg-gray-800">
-                    {description}
-                  </div>
-                )}
-
                 <h2 className="text-[18px] font-semibold mb-4 text-white">
                   주요 기능 목록
                 </h2>
                 {user?.role === "admin" && isEditing ? (
                   <textarea
-                    className="w-full h-[100px] bg-[#A7A7A7] resize-none px-[12px] py-[8px] rounded-md mb-4 text-white"
+                    className="w-full h-[360px] bg-[#A7A7A7] resize-none px-[12px] py-[8px] rounded-md mb-4 text-white"
                     value={features}
                     onChange={(e) => setFeatures(e.target.value)}
                   />
                 ) : (
-                  <div className="w-full h-[100px] px-[12px] py-[8px] rounded-md mb-4 text-white overflow-y-auto border-gray-700 border-[1px] bg-gray-800">
+                  <div className="w-full h-[360px] px-[12px] py-[8px] rounded-md mb-4 text-white overflow-y-auto border-gray-700 border-[1px] bg-gray-800">
                     {features}
                   </div>
                 )}
-
-                <div className="mb-2">
-                  <h2 className="text-[18px] font-semibold mb-2 text-white">
-                    권장 사용 환경
-                  </h2>
-                  <p className="text-[16px] font-medium text-white">
-                    {componentData.recommendedEnvironment}
-                  </p>
-                </div>
               </div>
             </div>
           </div>

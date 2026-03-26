@@ -315,22 +315,6 @@ const VersionUpdateModal = ({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              설명
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-              className="w-full px-3 py-2 bg-gray-700 rounded-md text-white h-24 resize-none"
-              placeholder="버전에 대한 설명을 입력하세요"
-            />
-          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -349,23 +333,6 @@ const VersionUpdateModal = ({
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              권장 사용 환경
-            </label>
-            <input
-              type="text"
-              value={formData.recommendedEnvironment}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  recommendedEnvironment: e.target.value,
-                }))
-              }
-              className="w-full px-3 py-2 bg-gray-700 rounded-md text-white"
-              placeholder="권장 사용 환경을 입력하세요"
-            />
-          </div>
 
           {/* 기존 썸네일 미리보기 섹션 - 기존 소스 파일 사용 시 */}
           {useExistingSource && initialData?.thumbnailImage && (

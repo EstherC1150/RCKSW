@@ -369,15 +369,6 @@ const ComponentModal = ({
             )}
           </div>
 
-          <div className="mb-4">
-            <label className="block text-white mb-2">설명</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              className="w-full bg-input text-foreground p-2 rounded border border-input-border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all h-24"
-            />
-          </div>
 
           <div className="mb-4">
             <label className="block text-white mb-2">주요 기능 목록</label>
@@ -409,16 +400,6 @@ const ComponentModal = ({
             </button>
           </div>
 
-          <div className="mb-4">
-            <label className="block text-white mb-2">권장 사용 환경</label>
-            <input
-              type="text"
-              name="environment"
-              value={formData.environment}
-              onChange={handleInputChange}
-              className="w-full bg-input text-foreground p-2 rounded border border-input-border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all"
-            />
-          </div>
 
           {/* 파일 업로드 섹션 */}
           <div className="mb-6 bg-card rounded-xl border border-border p-6 shadow-sm">
