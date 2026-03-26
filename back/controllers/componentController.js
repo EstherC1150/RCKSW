@@ -615,9 +615,9 @@ const getFileDetail = async (req, res) => {
         id: relatedFile.id,
         fileName: relatedFile.file_name,
         version: relatedFile.version,
-        thumbnailImage: `/uploads/thumbnails/${path.basename(
-          relatedFile.thumbnail_image
-        )}`,
+        thumbnailImage: relatedFile.thumbnail_image 
+          ? `/uploads/thumbnails/${path.basename(relatedFile.thumbnail_image)}`
+          : "/images/thumbnail.png",
         downloadCount: relatedFile.download_count,
         createdAt: relatedFile.created_at,
         updatedAt: relatedFile.updated_at, // 업데이트 날짜 추가
