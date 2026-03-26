@@ -1,0 +1,37 @@
+export type TComponentFormData = {
+  thumbnail: File | null;
+  componentName: string;
+  version: string;
+  description: string;
+  features: string[];
+  environment: string;
+  sourceFile: File | null;
+  iconFile: File | null;
+  fbxFile: File | null;
+  categoryId: string;
+  subCategoryId: string;
+  type: "library" | "object" | "vc_model" | "ns_model" | "etc";
+};
+
+export type TLibrary = {
+  id: number;
+  selected: boolean;
+  file_name: string;
+  version: string;
+  created_at: string;
+  updated_at: string;
+  download_count: number;
+  source_file_link: string;
+  icon_file_link?: string;
+  fbx_file_link?: string;
+  thumbnail_image: string;
+  uploader: string;
+  category_id: number;
+  sub_category_id?: number;
+  component_id?: number | null;
+  type: string;
+  description: string;
+  main_features: string[];
+  recommended_environment: string;
+  category_name: string;
+};
