@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
       uploadPath = path.join(uploadBasePath, "fbx");
     } else if (file.fieldname === "vcmx_file") {
       // 요청에서 type 파라미터 확인
-      const type = req.body.type || "library";
+      const type = req.body.type || "vc_plugin";
       uploadPath = path.join(uploadBasePath, "vcmx", type);
     }
 

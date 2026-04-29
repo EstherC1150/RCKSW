@@ -179,7 +179,7 @@ const migrateCategoryFiles = async (
         if (!subCategoryResult.recordset[0]) continue;
 
         const subCategoryName = subCategoryResult.recordset[0].name;
-        const typePath = file.type === "object" ? "오브젝트" : "라이브러리";
+        const typePath = file.type === "ns_plugin" ? "오브젝트" : "라이브러리";
 
         // 기존 경로와 새 경로
         const oldBasePath = path.join(

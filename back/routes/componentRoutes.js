@@ -11,6 +11,9 @@ router.get("/", componentController.getFiles);
 // 모든 파일 정보 조회 (외부 API용 - 인증 없음)
 router.get("/all", componentController.getAllFiles);
 
+// 모든 파일 최신 버전 정보 조회 (외부 API용 - 인증 없음)
+router.get("/all_update", componentController.getAllLatestFiles);
+
 // VCMX 파일 일괄 다운로드 (구체적인 라우트를 먼저 배치)
 router.get("/download/bulk/vcmx", componentController.downloadAllVcmxFiles);
 
@@ -65,6 +68,7 @@ router.post(
     { name: "thumbnail", maxCount: 1 }, // 선택사항
     { name: "sourceFile", maxCount: 1 }, // 필수 (경우에 따라 썸네일 자동 생성)
     { name: "iconFile", maxCount: 1 }, // 선택사항
+    { name: "fbxFile", maxCount: 1 }, // FBX 파일 (VC Model 등)
   ]),
   handleMulterError,
   (req, res, next) => {
@@ -94,6 +98,7 @@ router.patch(
     { name: "thumbnail", maxCount: 1 }, // 선택사항
     { name: "sourceFile", maxCount: 1 }, // 선택사항
     { name: "iconFile", maxCount: 1 }, // 선택사항
+    { name: "fbxFile", maxCount: 1 }, // FBX 파일 추가
   ]),
   handleMulterError,
   componentController.updateComponentVersion

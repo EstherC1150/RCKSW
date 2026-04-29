@@ -12,7 +12,6 @@ import React, {
 import ComponentModal from "@/app/(Header)/manage/ComponentModal";
 import { TComponentFormData } from "@/app/_types/manage/manage.types";
 import useUserStore from "@/app/stores/UserStore";
-import CategoryEditModal from "@/app/(Header)/manage/CategoryEditModal";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // 카테고리 타입 정의
@@ -28,7 +27,7 @@ interface SubCategory {
 }
 
 interface ComponentPageLayoutProps {
-  type: "library" | "object" | "vc_model" | "ns_model" | "etc";
+  type: "vc_plugin" | "ns_plugin" | "vc_model" | "ns_model" | "etc";
   initialPage?: number;
 }
 
@@ -45,15 +44,6 @@ const ComponentPageLayout = ({
     | "name";
   const page = parseInt(searchParams.get("page") || "1", 10);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isCategoryEditModalOpen, setIsCategoryEditModalOpen] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
-    null
-  );
-  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState<
-    string | null
-  >(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [inputValue, setInputValue] = useState(search);
   const [activeSort, setActiveSort] = useState<"latest" | "downloads" | "name">(
@@ -65,53 +55,11 @@ const ComponentPageLayout = ({
   const libraryListRef = useRef<any>(null);
 
   // 타입별 기본 경로
-  const basePath = type === "vc_model" ? "/manage/vc-model" : type === "ns_model" ? "/manage/ns-model" : type === "etc" ? "/manage/etc" : type === "object" ? "/manage/ns-plugin" : "/manage/vc-plugin";
+  const basePath = type === "vc_model" ? "/manage/vc-model" : type === "ns_model" ? "/manage/ns-model" : type === "etc" ? "/manage/etc" : type === "ns_plugin" ? "/manage/ns-plugin" : "/manage/vc-plugin";
 
   // 타입별 표시 텍스트
-  const typeName = type === "library" ? "VC PlugIn" : type === "object" ? "NS PlugIn" : type === "vc_model" ? "VC Model" : type === "ns_model" ? "NS Model" : "etc";
+  const typeName = type === "vc_plugin" ? "VC PlugIn" : type === "ns_plugin" ? "NS PlugIn" : type === "vc_model" ? "VC Model" : type === "ns_model" ? "NS Model" : "etc";
 
-  const handleCategoryChange = async (categoryId: string) => {
-    setSelectedCategoryId(categoryId === "all" ? null : categoryId);
-    setSelectedSubCategoryId(null);
-
-    // 검색어 초기화 및 URL에서 제거, 페이지 1로 이동
-    setInputValue("");
-    const params = new URLSearchParams(searchParams);
-    params.delete("search");
-    params.set("page", "1");
-    params.set("sortBy", activeSort);
-    router.push(`${basePath}?${params.toString()}`);
-
-    if (categoryId !== "all") {
-      try {
-        const apiUrl =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
-        const response = await fetch(
-          `${apiUrl}/api/categories/subCategories/${categoryId}`
-        );
-        const result = await response.json();
-        if (result.success) {
-          setSubCategories(result.data);
-        }
-      } catch (err) {
-        console.error("서브 카테고리 데이터를 불러오는 중 오류 발생:", err);
-      }
-    } else {
-      setSubCategories([]);
-    }
-  };
-
-  const handleSubCategoryChange = (subCategoryId: string) => {
-    setSelectedSubCategoryId(subCategoryId === "all" ? null : subCategoryId);
-
-    // 검색어 초기화 및 URL에서 제거, 페이지 1로 이동
-    setInputValue("");
-    const params = new URLSearchParams(searchParams);
-    params.delete("search");
-    params.set("page", "1");
-    params.set("sortBy", activeSort);
-    router.push(`${basePath}?${params.toString()}`);
-  };
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -121,13 +69,6 @@ const ComponentPageLayout = ({
     setIsModalOpen(false);
   };
 
-  const handleOpenCategoryEditModal = () => {
-    setIsCategoryEditModalOpen(true);
-  };
-
-  const handleCloseCategoryEditModal = () => {
-    setIsCategoryEditModalOpen(false);
-  };
 
   const refreshList = useCallback(() => {
     setRefreshKey((prev) => prev + 1);
@@ -151,16 +92,12 @@ const ComponentPageLayout = ({
     formDataToSend.append("environment", formData.environment || "null");
     formDataToSend.append("type", formData.type || type);
 
-    // 카테고리 ID 추가 (없으면 "null" 텍스트 전송)
-    formDataToSend.append("categoryId", formData.categoryId || "null");
+    // 카테고리 정보는 null로 전송
+    formDataToSend.append("categoryId", "null");
+    formDataToSend.append("subCategoryId", "null");
 
-    // 서브카테고리 ID 추가 (없으면 "null" 텍스트 전송)
-    formDataToSend.append("subCategoryId", formData.subCategoryId || "null");
-
-    // 배열 데이터 추가 (features)
-    formData.features.forEach((feature, index) => {
-      formDataToSend.append(`features[${index}]`, feature);
-    });
+    // features 추가 (한 블록으로 전송)
+    formDataToSend.append("features", formData.features);
 
     // 파일 추가 (null이 아닌 경우에만)
     if (formData.thumbnail) {
@@ -245,48 +182,14 @@ const ComponentPageLayout = ({
     router.push(`${basePath}?${params.toString()}`);
   };
 
-  // 카테고리 데이터 가져오기
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const apiUrl =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
-        const response = await fetch(`${apiUrl}/api/categories`);
-        const data = await response.json();
-        setCategories(data);
-      } catch (err) {
-        console.error("카테고리 데이터를 불러오는 중 오류 발생:", err);
-      }
-    };
-
-    fetchCategories();
-  }, []);
-
-  // 카테고리 옵션 생성
-  const categoryOptions = [
-    { label: "전체", value: "all" },
-    ...categories.map((category) => ({
-      label: category.name,
-      value: category.id.toString(),
-    })),
-  ];
-
-  // 서브 카테고리 옵션 생성
-  const subCategoryOptions = [
-    { label: "전체", value: "all" },
-    ...subCategories.map((subCategory) => ({
-      label: subCategory.name,
-      value: subCategory.id.toString(),
-    })),
-  ];
 
   const handleTabChange = (tab: string) => {
-    if (tab === "library" && type !== "library") {
+    if (tab === "vc_plugin" && type !== "vc_plugin") {
       // 검색어 초기화
       setInputValue("");
       setActiveSort("latest");
       router.push("/manage/vc-plugin");
-    } else if (tab === "object" && type !== "object") {
+    } else if (tab === "ns_plugin" && type !== "ns_plugin") {
       // 검색어 초기화
       setInputValue("");
       setActiveSort("latest");
@@ -332,16 +235,16 @@ const ComponentPageLayout = ({
       label: "Visual Components", 
       icon: "/images/ic-vc.png",
       subItems: [
-        { id: "library", label: "PlugIn" },
+        { id: "vc_plugin", label: "PlugIn" },
         { id: "vc_model", label: "Model" },
       ]
     },
     { 
       id: "ns", 
       label: "Nextspace", 
-      icon: "/images/ic-ns.png",
+      icon: "/images/ic-ns.png", 
       subItems: [
-        { id: "object", label: "PlugIn" },
+        { id: "ns_plugin", label: "PlugIn" },
         { id: "ns_model", label: "Model" },
       ]
     },
@@ -424,31 +327,6 @@ const ComponentPageLayout = ({
 
       <div className="flex items-center justify-between bg-card p-5 mb-6 z-10 rounded-xl border border-border">
         <div className="flex items-center gap-6">
-          {/* 카테고리 섹션 */}
-          <div className="hidden">
-            <p className="text-white text-[14px]">카테고리</p>
-            <div className="w-[140px]">
-              <SelectBox
-                options={categoryOptions}
-                defaultValue="all"
-                onChange={handleCategoryChange}
-              />
-            </div>
-          </div>
-
-          {/* 서브 카테고리 섹션 */}
-          <div className="hidden">
-            <p className="text-white text-[14px]">서브 카테고리</p>
-            <div className="w-[140px]">
-              <SelectBox
-                options={subCategoryOptions}
-                defaultValue="all"
-                onChange={handleSubCategoryChange}
-                disabled={!selectedCategoryId}
-                key={`subcat-${selectedCategoryId ?? "all"}`}
-              />
-            </div>
-          </div>
 
           {/* 검색 섹션 */}
           <div className="flex items-center gap-2">
@@ -471,14 +349,6 @@ const ComponentPageLayout = ({
             >
               검색
             </button>
-            {user?.role === "admin" && (
-              <button
-                className="hidden"
-                onClick={handleOpenCategoryEditModal}
-              >
-                카테고리 관리
-              </button>
-            )}
           </div>
         </div>
 
@@ -556,10 +426,8 @@ const ComponentPageLayout = ({
       >
         <LibraryList
           ref={libraryListRef}
-          categoryId={selectedCategoryId}
-          subCategoryId={
-            selectedSubCategoryId === null ? "0" : selectedSubCategoryId
-          }
+          categoryId={null}
+          subCategoryId={"0"}
           type={type}
           key={refreshKey}
           curPage={page}
@@ -572,17 +440,10 @@ const ComponentPageLayout = ({
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSubmit={handleSubmitComponent}
-        categories={categories}
+        categories={[]}
         type={type as any}
       />
 
-      {/* 카테고리 편집 모달 */}
-      <CategoryEditModal
-        isOpen={isCategoryEditModalOpen}
-        onClose={handleCloseCategoryEditModal}
-        categories={categories}
-        setCategories={setCategories}
-      />
     </div>
   );
 };

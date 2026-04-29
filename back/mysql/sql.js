@@ -309,19 +309,22 @@ module.exports = {
   // @type: 컴포넌트 타입
   // @component_id: 컴포넌트 ID
   componentCreate: `
-  INSERT INTO files (
-    file_name, version, description, main_features, recommended_environment,
-    thumbnail_image, source_file_link, icon_file_link, fbx_file_link, category_id, sub_category_id,
-    uploader, type, component_id, created_at, updated_at, is_active, download_count
-  )
-  VALUES (
-    @file_name, @version, @description, @main_features, @recommended_environment,
-    @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @category_id, @sub_category_id,
-    @uploader, @type, @component_id, GETDATE(), GETDATE(), 1, 0
-  );
-
-  SELECT SCOPE_IDENTITY() AS id;
-`,
+    EXEC [dbo].[usp_CreateComponent] 
+      @file_name = @file_name,
+      @version = @version,
+      @description = @description,
+      @main_features = @main_features,
+      @recommended_environment = @recommended_environment,
+      @thumbnail_image = @thumbnail_image,
+      @source_file_link = @source_file_link,
+      @icon_file_link = @icon_file_link,
+      @fbx_file_link = @fbx_file_link,
+      @vcmx_file_link = @vcmx_file_link,
+      @category_id = @category_id,
+      @sub_category_id = @sub_category_id,
+      @uploader = @uploader,
+      @type = @type
+  `,
 
   // 파일 목록을 검색하고 정렬하여 페이지네이션된 결과를 반환
   // @category_id: 카테고리 ID (0인 경우 모든 카테고리)
@@ -332,7 +335,16 @@ module.exports = {
   // @offset: 페이지네이션 시작 위치
   // @limit: 페이지당 표시할 항목 수
   fileList: `
-    WITH RankedFiles AS (
+    WITH ComponentStats AS (
+      SELECT 
+        component_id,
+        MIN(created_at) as registration_date,
+        SUM(download_count) as total_download_count
+      FROM files
+      WHERE is_active = 1
+      GROUP BY component_id
+    ),
+    RankedFiles AS (
       SELECT 
         f.*,
         c.name as category_name,
@@ -350,24 +362,17 @@ module.exports = {
         (@search = '' OR f.file_name LIKE '%' + @search + '%') AND
         (@type = '' OR f.type = @type) AND
         f.is_active = 1
-    ),
-    TotalDownloads AS (
-      SELECT
-        component_id,
-        SUM(download_count) as total_download_count
-      FROM files
-      WHERE is_active = 1
-      GROUP BY component_id
     )
     SELECT 
       rf.*,
-      td.total_download_count
+      cs.registration_date,
+      cs.total_download_count
     FROM RankedFiles rf
-    LEFT JOIN TotalDownloads td ON rf.component_id = td.component_id
+    LEFT JOIN ComponentStats cs ON rf.component_id = cs.component_id
     WHERE rf.rn = 1
     ORDER BY
       CASE WHEN @sortBy = 'name' THEN rf.file_name END ASC,
-      CASE WHEN @sortBy = 'downloads' THEN ISNULL(td.total_download_count, 0) END DESC,
+      CASE WHEN @sortBy = 'downloads' THEN ISNULL(cs.total_download_count, 0) END DESC,
       CASE WHEN @sortBy = 'latest' THEN rf.updated_at END DESC,
       CASE WHEN @sortBy NOT IN ('name', 'downloads', 'latest') THEN rf.updated_at END DESC
     OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
@@ -431,6 +436,7 @@ module.exports = {
       f.source_file_link,
       f.icon_file_link,
       f.fbx_file_link,
+      f.vcmx_file_link,
       f.category_id,
       f.sub_category_id,
       f.uploader,
@@ -486,6 +492,8 @@ module.exports = {
       f.thumbnail_image,
       f.source_file_link,
       f.icon_file_link,
+      f.fbx_file_link,
+      f.vcmx_file_link,
       f.category_id,
       f.sub_category_id,
       f.uploader,
@@ -500,7 +508,7 @@ module.exports = {
     FROM files f
     LEFT JOIN categories c ON f.category_id = c.id
     LEFT JOIN sub_categories sc ON f.sub_category_id = sc.id
-    WHERE f.component_id = @component_id 
+    WHERE (f.component_id = @component_id OR f.id = @component_id)
     AND f.is_active = 1
     ORDER BY f.updated_at DESC
   `,
@@ -519,19 +527,23 @@ module.exports = {
   // @component_id: 컴포넌트 ID
   // @type: 컴포넌트 타입
   componentVersionCreate: `
-  INSERT INTO files (
-    file_name, version, description, main_features, recommended_environment,
-    thumbnail_image, source_file_link, icon_file_link, fbx_file_link, category_id, sub_category_id,
-    uploader, component_id, type, created_at, updated_at, is_active, download_count
-  )
-  VALUES (
-    @file_name, @version, @description, @main_features, @recommended_environment,
-    @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @category_id, @sub_category_id,
-    @uploader, @component_id, @type, @created_at, GETDATE(), 1, 0
-  );
-
-  SELECT SCOPE_IDENTITY() AS id;
-`,
+    EXEC [dbo].[usp_CreateComponentVersion]
+      @file_name = @file_name,
+      @version = @version,
+      @description = @description,
+      @main_features = @main_features,
+      @recommended_environment = @recommended_environment,
+      @thumbnail_image = @thumbnail_image,
+      @source_file_link = @source_file_link,
+      @icon_file_link = @icon_file_link,
+      @fbx_file_link = @fbx_file_link,
+      @vcmx_file_link = @vcmx_file_link,
+      @category_id = @category_id,
+      @sub_category_id = @sub_category_id,
+      @uploader = @uploader,
+      @component_id = @component_id,
+      @type = @type
+  `,
 
   // 카테고리별 통계 정보 조회
   // 반환: 카테고리 ID, 이름, 총 다운로드 수, 파일 수
@@ -664,7 +676,8 @@ module.exports = {
       sub_category_id,
       type,
       is_active,
-      created_at
+      created_at,
+      component_id
     FROM files 
     ORDER BY id
   `,
@@ -693,5 +706,62 @@ module.exports = {
     FROM files 
     WHERE is_active = 1
     ORDER BY created_at DESC
+  `,
+  // 모든 파일의 최신 버전 정보 조회 (외부 API용)
+  getAllLatestFiles: `
+    WITH RankedFiles AS (
+      SELECT 
+        f.*,
+        ROW_NUMBER() OVER (
+            PARTITION BY f.component_id 
+            ORDER BY f.updated_at DESC, f.id DESC
+        ) as rn
+      FROM files f
+      WHERE f.is_active = 1
+    )
+    SELECT 
+      id,
+      file_name,
+      version,
+      created_at,
+      updated_at,
+      download_count,
+      source_file_link,
+      thumbnail_image,
+      uploader,
+      category_id,
+      component_id,
+      type,
+      description,
+      main_features,
+      recommended_environment,
+      icon_file_link,
+      sub_category_id,
+      is_active
+    FROM RankedFiles 
+    WHERE rn = 1
+    ORDER BY created_at DESC
+  `,
+
+  // 컴포넌트 전체 그룹의 이름을 업데이트 (동기화)
+  // @component_id: 컴포넌트 그룹 ID
+  // @file_name: 새로운 파일 이름
+  updateComponentNameByGroupId: `
+    UPDATE files 
+    SET file_name = @file_name 
+    WHERE component_id = @component_id
+  `,
+
+  // 파일 경로 업데이트 및 카테고리 정보 초기화 (마이그레이션용)
+  updateFilePathsAndNullCategories: `
+    UPDATE files 
+    SET 
+      source_file_link = @source_file_link,
+      icon_file_link = @icon_file_link,
+      fbx_file_link = @fbx_file_link,
+      vcmx_file_link = @vcmx_file_link,
+      category_id = NULL,
+      sub_category_id = NULL
+    WHERE id = @id
   `,
 };

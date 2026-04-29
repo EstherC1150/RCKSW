@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import useSearchStore from "@/app/stores/SearchStore";
 import { TLibrary } from "@/app/_types/manage/manage.types";
+import ThumbnailPlaceholder from "../ThumbnailPlaceholder";
 import { DownloadIconButton } from "./DownloadButton";
 import useUserStore from "@/app/stores/UserStore";
 
@@ -19,13 +20,13 @@ type ApiResponse = {
   sortBy: string;
   totalPages: number;
   currentPage: number;
-  type: "library" | "object" | "vc_model" | "ns_model" | "etc";
+  type: "vc_plugin" | "ns_plugin" | "vc_model" | "ns_model" | "etc";
 };
 
 type LibraryListProps = {
   categoryId: string | null;
   subCategoryId: string;
-  type?: "library" | "object" | "vc_model" | "ns_model" | "etc";
+  type?: "vc_plugin" | "ns_plugin" | "vc_model" | "ns_model" | "etc";
   curPage: number;
   goToPage: (page: number) => void;
 };
@@ -34,7 +35,7 @@ const LibraryList = forwardRef(function LibraryList(
   {
     categoryId,
     subCategoryId,
-    type = "library",
+    type = "vc_plugin",
     curPage,
     goToPage,
   }: LibraryListProps,
@@ -123,35 +124,18 @@ const LibraryList = forwardRef(function LibraryList(
     const fromPage = curPage;
     const fromSortBy = sortBy;
     const fromSearch = search;
-    const fromCategory = categoryId ?? "all";
-    const fromSubCategory = subCategoryId;
 
     const params = new URLSearchParams({
       fromType,
       fromPage: String(fromPage),
       fromSortBy,
       ...(fromSearch ? { fromSearch } : {}),
-      ...(fromCategory ? { fromCategory: String(fromCategory) } : {}),
-      ...(fromSubCategory ? { fromSubCategory: String(fromSubCategory) } : {}),
     });
 
     router.push(`/manage/${itemId}?${params.toString()}`);
   };
 
-  // 카테고리 또는 서브카테고리 변경 시 1페이지로 초기화
-  useEffect(() => {
-    if (
-      prevCategoryId.current !== undefined &&
-      prevSubCategoryId.current !== undefined &&
-      (categoryId !== prevCategoryId.current ||
-        subCategoryId !== prevSubCategoryId.current)
-    ) {
-      goToPage(1);
-    }
-    prevCategoryId.current = categoryId;
-    prevSubCategoryId.current = subCategoryId;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryId, subCategoryId]);
+  // 카테고리/서브카테고리 감시 로직 제거됨
 
   // 선택된 항목 id 배열
   const selectedIds = libraryList
@@ -202,8 +186,8 @@ const LibraryList = forwardRef(function LibraryList(
           page: (curPage ?? 1).toString(),
           limit: itemsPerPage.toString(),
           type: type,
-          ...(categoryId && { categoryId }),
-          ...(subCategoryId !== "0" && { subCategoryId }),
+          categoryId: "0",
+          subCategoryId: "0",
           ...(search && { search }),
           ...(sortBy && { sortBy }),
         });
@@ -241,7 +225,7 @@ const LibraryList = forwardRef(function LibraryList(
     };
 
     fetchLibraries();
-  }, [curPage, categoryId, subCategoryId, search, sortBy, type, itemsPerPage]);
+  }, [curPage, search, sortBy, type, itemsPerPage]);
 
   useImperativeHandle(ref, () => ({
     handleDeleteSelected,
@@ -316,20 +300,26 @@ const LibraryList = forwardRef(function LibraryList(
                 className="flex items-center justify-center flex-[2] relative aspect-square w-[100px] overflow-hidden"
               >
                 <div className="relative w-full h-full flex items-center justify-center">
-                  <Image
-                    src={
-                      item.thumbnail_image
-                        ? `${
-                            process.env.NEXT_PUBLIC_API_URL ||
-                            "http://localhost:8081"
-                          }${item.thumbnail_image}`
-                        : "/images/thumbnail.png"
-                    }
-                    alt="thumbnail"
-                    width={100}
-                    height={100}
-                    className="object-cover w-full h-full max-h-full"
-                  />
+                  {(item.thumbnail_image === "/images/ic-vc.png" || 
+                    item.thumbnail_image === "/images/ic-ns.png" || 
+                    item.thumbnail_image === "/images/ic-etc.png" ||
+                    item.thumbnail_image === "/uploads/thumbnails/ic-vc.png" || 
+                    item.thumbnail_image === "/uploads/thumbnails/ic-ns.png" || 
+                    item.thumbnail_image === "/uploads/thumbnails/ic-etc.png") ? (
+                    <ThumbnailPlaceholder type={type} name={item.file_name} />
+                  ) : (
+                    <Image
+                      src={
+                        item.thumbnail_image
+                          ? `${process.env.NEXT_PUBLIC_API_URL}${item.thumbnail_image}`
+                          : "/images/thumbnail.png"
+                      }
+                      alt="thumbnail"
+                      width={100}
+                      height={100}
+                      className="object-cover w-full h-full max-h-full"
+                    />
+                  )}
                 </div>
               </div>
               <p
@@ -345,7 +335,7 @@ const LibraryList = forwardRef(function LibraryList(
               <p
                 className="flex font-[600] items-center justify-center flex-[4] text-white h-full"
               >
-                {formatDate(item.created_at)}
+                {formatDate(item.registration_date)}
               </p>
               <p
                 className="flex font-[600] items-center justify-center flex-[4] text-white h-full"
@@ -361,6 +351,7 @@ const LibraryList = forwardRef(function LibraryList(
                 <DownloadIconButton
                   item={{
                     id: item.id,
+                    type: type, // 컴포넌트 타입 전달
                     fileLinks: {
                       source: item.source_file_link,
                       icon: item.icon_file_link,

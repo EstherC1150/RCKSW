@@ -7,6 +7,8 @@ import useUserStore from "@/app/stores/UserStore";
 interface FileLinks {
   source: string | null;
   icon: string | null;
+  fbx?: string | null;
+  vcmx?: string | null;
 }
 
 interface RelatedFile {
@@ -245,7 +247,7 @@ const ComponentList = ({
                               e,
                               file.id,
                               "source",
-                              `${file.fileName}_${file.version}_source`
+                              `${file.fileName}_${file.version}${file.fileLinks.source ? "." + file.fileLinks.source.split(".").pop() : ""}`
                             )
                           }
                           className="px-3 py-1 text-sm rounded-md
@@ -254,17 +256,24 @@ const ComponentList = ({
                             transition-all duration-200 ease-in-out
                             shadow-sm shadow-blue-500/20"
                         >
-                          소스 다운로드
+                          {/* 컴포넌트 타입별 다운로드 문구 분기 */}
+                          {componentData.type === "vc_model" ? (
+                            "VCMX 다운로드"
+                          ) : componentData.type === "vc_plugin" ? (
+                            "dll 파일 다운로드"
+                          ) : (
+                            "파일 다운로드"
+                          )}
                         </button>
                       )}
-                      {file.fileLinks.icon && (
+                      {file.fileLinks.icon && componentData.type === "vc_plugin" && (
                         <button
                           onClick={(e) =>
                             handleFileDownload(
                               e,
                               file.id,
                               "icon",
-                              `${file.fileName}_${file.version}_icon`
+                              `${file.fileName}_${file.version}_icon${file.fileLinks.icon ? "." + file.fileLinks.icon.split(".").pop() : ""}`
                             )
                           }
                           className="px-3 py-1 text-sm rounded-md
@@ -274,6 +283,25 @@ const ComponentList = ({
                             shadow-sm shadow-purple-500/20"
                         >
                           아이콘 다운로드
+                        </button>
+                      )}
+                      {file.fileLinks.fbx && componentData.type === "vc_model" && (
+                        <button
+                          onClick={(e) =>
+                            handleFileDownload(
+                              e,
+                              file.id,
+                              "fbx",
+                              `${file.fileName}_${file.version}${file.fileLinks.fbx ? "." + file.fileLinks.fbx.split(".").pop() : ""}`
+                            )
+                          }
+                          className="px-3 py-1 text-sm rounded-md
+                            bg-gradient-to-r from-cyan-600 to-cyan-700
+                            hover:from-cyan-700 hover:to-cyan-800
+                            transition-all duration-200 ease-in-out
+                            shadow-sm shadow-cyan-500/20"
+                        >
+                          FBX 다운로드
                         </button>
                       )}
                     </div>
@@ -297,9 +325,12 @@ const ComponentList = ({
           mainFeatures: componentData.mainFeatures,
           recommendedEnvironment: componentData.recommendedEnvironment,
           thumbnailImage: componentData.thumbnailImage, // 현재 버전의 썸네일 사용
+          fileName: componentData.fileName,
           fileLinks: {
             source: componentData.fileLinks.source || undefined,
             icon: componentData.fileLinks.icon || undefined,
+            fbx: componentData.fileLinks.fbx || undefined,
+            vcmx: componentData.fileLinks.vcmx || undefined,
           },
         }}
       />

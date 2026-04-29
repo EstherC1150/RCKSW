@@ -7,9 +7,11 @@ import React, { useState, useEffect, useRef } from "react";
 export const FileDownloadButton = ({
   fileId,
   fileType,
+  componentType,
 }: {
   fileId: number;
   fileType: "icon" | "source" | "fbx";
+  componentType?: string;
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -58,7 +60,22 @@ export const FileDownloadButton = ({
       className={`px-2 py-1 text-sm rounded cursor-pointer
         ${isLoading ? "bg-gray-500" : "bg-gray-700 hover:bg-gray-600"}`}
     >
-      {isLoading ? "다운로드 중..." : fileType.toUpperCase()}
+      {isLoading ? (
+        "다운로드 중..."
+      ) : (
+        <>
+          {fileType === "source" ? (
+            componentType === "vc_model" ? "VCMX" :
+            componentType === "vc_plugin" ? "dll 파일" : "파일"
+          ) : fileType === "fbx" ? (
+            "FBX"
+          ) : fileType === "icon" ? (
+            "아이콘"
+          ) : (
+            (fileType as string).toUpperCase()
+          )}
+        </>
+      )}
     </div>
   );
 };
@@ -68,10 +85,12 @@ export const DownloadOptions = ({
   fileLinks,
   fileId,
   onClose,
+  componentType,
 }: {
   fileLinks: { source?: string; icon?: string; fbx?: string };
   fileId: number;
   onClose: () => void;
+  componentType?: string;
 }) => {
   const optionsRef = useRef<HTMLDivElement>(null);
 
@@ -97,13 +116,16 @@ export const DownloadOptions = ({
       className="absolute bottom-1/2 left-1/2 transform -translate-x-1/2 translate-y-1/2 mb-2 right-0 bg-gray-800 rounded-md shadow-lg p-2 min-w-[100px] z-[10]"
     >
       <div className="flex flex-col gap-2">
-        {fileLinks.icon && (
-          <FileDownloadButton fileId={fileId} fileType="icon" />
+        {/* 타입별로 노출할 버튼 필터링 */}
+        {fileLinks.icon && componentType === "vc_plugin" && (
+          <FileDownloadButton fileId={fileId} fileType="icon" componentType={componentType} />
         )}
-        {fileLinks.fbx && (
-          <FileDownloadButton fileId={fileId} fileType="fbx" />
+        {fileLinks.fbx && componentType === "vc_model" && (
+          <FileDownloadButton fileId={fileId} fileType="fbx" componentType={componentType} />
         )}
-        {fileLinks.source && <FileDownloadButton fileId={fileId} fileType="source" />}
+        {fileLinks.source && (
+          <FileDownloadButton fileId={fileId} fileType="source" componentType={componentType} />
+        )}
       </div>
     </div>
   );
@@ -116,7 +138,7 @@ export const DownloadIconButton = ({
   onClick,
   onClose,
 }: {
-  item: { id: number; fileLinks: { source?: string; icon?: string; fbx?: string } };
+  item: { id: number; type?: string; fileLinks: { source?: string; icon?: string; fbx?: string } };
   isActive: boolean;
   onClick: (e: React.MouseEvent) => void;
   onClose: () => void;
@@ -136,6 +158,7 @@ export const DownloadIconButton = ({
             fileLinks={item.fileLinks}
             fileId={item.id}
             onClose={onClose}
+            componentType={(item as any).type}
           />
         )}
       </div>

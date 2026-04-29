@@ -16,7 +16,7 @@ const ClientLayout = ({ children }: Props) => {
     <div className="flex flex-col h-screen overflow-hidden bg-background text-foreground">
       <Header />
       <div className="flex flex-1 overflow-hidden">
-        {user?.role === "admin" && <Sidebar />}
+        {user && <Sidebar />}
         <main className="flex-1 overflow-y-auto w-full">{children}</main>
       </div>
     </div>

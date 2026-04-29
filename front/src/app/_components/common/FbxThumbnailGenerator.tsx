@@ -13,7 +13,8 @@ import { Suspense } from "react";
 import * as THREE from "three";
 
 interface FbxThumbnailGeneratorProps {
-  fbxFile: File | null;
+  fbxFile?: File | null;
+  fbxUrl?: string | null;
   onThumbnailGenerated: (thumbnailBase64: string) => void;
 }
 
@@ -132,8 +133,8 @@ function LoadingFallback() {
 const FbxThumbnailGenerator = forwardRef<
   FbxThumbnailGeneratorRef,
   FbxThumbnailGeneratorProps
->(({ fbxFile, onThumbnailGenerated }, ref) => {
-  const [fbxUrl, setFbxUrl] = useState<string | null>(null);
+>(({ fbxFile, fbxUrl: initialFbxUrl, onThumbnailGenerated }, ref) => {
+  const [fbxUrl, setFbxUrl] = useState<string | null>(initialFbxUrl || null);
   const [isGenerating, setIsGenerating] = useState(false);
   useImperativeHandle(ref, () => ({
     generateThumbnail: () => {
@@ -160,12 +161,15 @@ const FbxThumbnailGenerator = forwardRef<
     if (fbxFile) {
       const url = URL.createObjectURL(fbxFile);
       setFbxUrl(url);
-
       return () => {
         URL.revokeObjectURL(url);
       };
+    } else if (initialFbxUrl) {
+      setFbxUrl(initialFbxUrl);
+    } else {
+      setFbxUrl(null);
     }
-  }, [fbxFile]);
+  }, [fbxFile, initialFbxUrl]);
 
   const handleCapture = (dataUrl: string) => {
     console.log(
@@ -185,13 +189,13 @@ const FbxThumbnailGenerator = forwardRef<
   }
 
   return (
-    <div className="relative w-full h-64 bg-gray-700 rounded-lg overflow-hidden">
-      {/* 사용자 안내 메시지 */}
-      <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white p-2 rounded text-xs z-20">
-        <div>🖱️ 마우스로 각도 조정 후 캡처하세요</div>
-        <div>• 드래그: 회전</div>
-        <div>• 휠: 확대/축소</div>
-        <div>• 우클릭 드래그: 이동</div>
+    <div className="relative w-full h-full bg-gray-700 overflow-hidden group">
+      {/* 사용자 안내 메시지 - 더 작고 세련되게, 호버 시에만 강조 */}
+      <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm text-white/80 p-2 rounded text-[10px] z-20 pointer-events-none transition-opacity group-hover:bg-black/70">
+        <div className="font-semibold mb-1 border-b border-white/20 pb-0.5">💡 조작 안내</div>
+        <div>• 회전: 좌클릭 드래그</div>
+        <div>• 이동: 우클릭 드래그</div>
+        <div>• 확대: 휠 스크롤</div>
       </div>
 
       {isGenerating && (

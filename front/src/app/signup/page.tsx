@@ -189,24 +189,24 @@ const SignupPage = () => {
           </div>
           {errors.confirmPassword && <p className="text-red-400 text-xs pl-2">{errors.confirmPassword.message}</p>}
 
-          <div className="flex gap-2">
+          <div className="flex gap-1.5 sm:gap-2">
             <div className="relative flex-1">
-              <IoPhonePortrait className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted" size={18} />
+              <IoPhonePortrait className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted" size={16} />
               <input
-                className="w-full h-[52px] text-white pl-[36px] pr-[10px] outline-none text-[15px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center"
+                className="w-full h-[52px] text-white pl-[32px] pr-[5px] outline-none text-[14px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center"
                 type="text" placeholder="010" maxLength={3}
                 {...register("phone1", { required: "필수", pattern: { value: /^\d{3}$/, message: "숫자만" } })}
               />
             </div>
-            <span className="self-center text-muted">-</span>
+            <span className="self-center text-muted font-bold">-</span>
             <input
-              className="flex-[1.2] h-[52px] text-white outline-none text-[15px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center"
+              className="flex-1 h-[52px] text-white outline-none text-[14px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center"
               type="text" placeholder="0000" maxLength={4}
               {...register("phone2", { required: "필수", pattern: { value: /^\d{3,4}$/, message: "숫자만" } })}
             />
-            <span className="self-center text-muted">-</span>
+            <span className="self-center text-muted font-bold">-</span>
             <input
-              className="flex-[1.2] h-[52px] text-white outline-none text-[15px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center"
+              className="flex-1 h-[52px] text-white outline-none text-[14px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center"
               type="text" placeholder="0000" maxLength={4}
               {...register("phone3", { required: "필수", pattern: { value: /^\d{4}$/, message: "숫자만" } })}
             />

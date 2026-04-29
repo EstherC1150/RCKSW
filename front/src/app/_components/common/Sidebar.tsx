@@ -81,7 +81,9 @@ const Sidebar = () => {
     <div className="flex flex-col w-[280px] h-full bg-[#0b1121] text-foreground py-[40px] px-[20px] border-r border-white/5 flex-shrink-0 z-40 transition-all duration-300 overflow-y-auto shadow-[4px_0_24px_rgba(0,0,0,0.3)]">
       {/* 사이드바 상단 여백 또는 로고 추가 가능 */}
       
-      {menuGroups.map((group, groupIdx) => (
+      {menuGroups
+        .filter(group => group.title !== "Management" || user?.role === "admin")
+        .map((group, groupIdx) => (
         <div key={group.title} className={groupIdx > 0 ? "mt-10" : ""}>
           <div className="flex items-center gap-3 px-2 mb-4 group/header cursor-default">
             {group.icon ? (

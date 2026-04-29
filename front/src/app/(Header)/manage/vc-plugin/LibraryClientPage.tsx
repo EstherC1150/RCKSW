@@ -17,7 +17,7 @@ const LibraryClientPage = () => {
 
   return (
     <ComponentPageLayout
-      type="library"
+      type="vc_plugin"
       initialPage={!pageParam || isNaN(page) || page < 1 ? 1 : page}
     />
   );

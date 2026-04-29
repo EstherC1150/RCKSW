@@ -11,6 +11,31 @@ const {
   sendComponentCreate,
 } = require("../controllers/sseController");
 
+// 파일 타입과 확장자에 따라 저장 경로(카테고리)를 결정하는 헬퍼 함수
+const getPathByCategory = (type, originalName, fieldName) => {
+  const ext = path.extname(originalName).toLowerCase();
+  let category = 'etc';
+  
+  // fieldName에 따른 기본 카테고리 분류
+  if (fieldName === 'iconFile') {
+    category = 'icon';
+  } else if (fieldName === 'fbxFile') {
+    category = 'fbx';
+  } else if (fieldName === 'sourceFile') {
+    // 소스 파일의 경우 확장자에 따라 세분화
+    if (ext === '.dll') category = 'dll';
+    else if (ext === '.vcmx' || ext === '.vcl') category = 'vcmx';
+    else if (ext === '.fbx') category = 'fbx';
+    else if (['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'].includes(ext)) category = 'icon';
+  }
+  
+  const typeFolder = type || 'etc';
+  const relativeDir = path.join('uploads', 'source', typeFolder, category);
+  const absoluteDir = path.join(__dirname, '..', relativeDir);
+  
+  return { relativeDir, absoluteDir, category };
+};
+
 // FBX 파일에서 자동 썸네일 생성 (Sharp + Jimp 사용)
 const generateThumbnailFromFBX = async (fbxFilePath, outputPath) => {
   try {
@@ -159,6 +184,9 @@ exports.createComponent = async (req, res) => {
       type,
     } = req.body;
 
+    // features가 배열이면 Join하고, 문자열이면 그대로 사용
+    let finalFeatures = Array.isArray(features) ? features : (features || "");
+
     // 파일은 선택사항 (단독 생성되는 경우도 고려)
     // 필수값이 누락된 경우 "null" 문자열로 대체 (프론트엔드에서 처리하지만 백엔드에서도 안전장치 마련)
     const finalComponentName = componentName || "null";
@@ -167,52 +195,26 @@ exports.createComponent = async (req, res) => {
     const finalSubCategoryIdStr = subCategoryId || "null";
 
 
-    // 카테고리/서브카테고리 조회
-    let categoryName = "null";
-    let subCategoryName = "null";
-    let finalCategoryId = 1; // 기본 "null" 카테고리 ID
-    let finalSubCategoryId = 1; // 기본 "null" 서브카테고리 ID
-
-    if (finalCategoryIdStr !== "null") {
-      const categoryResult = await mysql.query("getCategoryById", {
-        id: parseInt(finalCategoryIdStr),
-      });
-      if (categoryResult.recordset[0]) {
-        categoryName = categoryResult.recordset[0].name;
-        finalCategoryId = parseInt(finalCategoryIdStr);
-      }
-    }
-
-    if (finalSubCategoryIdStr !== "null") {
-      const subCategoryResult = await mysql.query("getSubCategoryById", {
-        id: parseInt(finalSubCategoryIdStr),
-      });
-      if (subCategoryResult.recordset[0]) {
-        subCategoryName = subCategoryResult.recordset[0].name;
-        finalSubCategoryId = parseInt(finalSubCategoryIdStr);
-      }
-    }
+    // 카테고리 정보는 더 이상 경로에 사용하지 않음 (null 처리 예정)
+    const categoryName = "deleted"; 
+    const subCategoryName = "deleted";
+    const finalCategoryId = null; 
+    const finalSubCategoryId = null;
 
 
     // 아이콘 파일 저장
     let iconUrl = null;
     if (req.files.iconFile?.length) {
-      const iconBasePath = path.join(__dirname, "..", "uploads", "icon");
-      const typePath = type === "object" ? "오브젝트" : "라이브러리";
-      const iconDir = path.join(
-        iconBasePath,
-        typePath,
-        categoryName,
-        subCategoryName
-      );
-      await fs.mkdir(iconDir, { recursive: true });
-
       const uploadedFile = req.files.iconFile[0];
+      const { relativeDir, absoluteDir } = getPathByCategory(type, uploadedFile.originalname || uploadedFile.filename, 'iconFile');
+      
+      await fs.mkdir(absoluteDir, { recursive: true });
+
       const sourcePath = uploadedFile.path;
-      const targetPath = path.join(iconDir, uploadedFile.filename);
+      const targetPath = path.join(absoluteDir, uploadedFile.filename);
       await fs.rename(sourcePath, targetPath);
 
-      iconUrl = `/uploads/icon/${typePath}/${categoryName}/${subCategoryName}/${uploadedFile.filename}`;
+      iconUrl = `/${relativeDir}/${uploadedFile.filename}`.replace(/\\/g, "/");
     }
 
     // 소스 파일 저장
@@ -221,10 +223,20 @@ exports.createComponent = async (req, res) => {
     let sourceFilePath = null;
     
     if (req.files?.sourceFile?.length) {
-      const ext = path.extname(req.files.sourceFile[0].originalname || req.files.sourceFile[0].filename).toLowerCase();
+      const sourceFile = req.files.sourceFile[0];
+      const { relativeDir, absoluteDir } = getPathByCategory(type, sourceFile.originalname || sourceFile.filename, 'sourceFile');
+      
+      await fs.mkdir(absoluteDir, { recursive: true });
+
+      const ext = path.extname(sourceFile.originalname || sourceFile.filename).toLowerCase();
       isFbxFile = ext === '.fbx';
-      sourceFilePath = req.files.sourceFile[0].path;
-      sourceUrl = `/uploads/source/${req.files.sourceFile[0].filename}`;
+      
+      const sourcePath = sourceFile.path;
+      const targetPath = path.join(absoluteDir, sourceFile.filename);
+      await fs.rename(sourcePath, targetPath);
+      
+      sourceFilePath = targetPath; // 썸네일 생성 시 사용할 절대 경로
+      sourceUrl = `/${relativeDir}/${sourceFile.filename}`.replace(/\\/g, "/");
     }
 
     // FBX 파일 저장 (VC Model 등에서 사용)
@@ -232,8 +244,16 @@ exports.createComponent = async (req, res) => {
     let fbxFilePath = null;
     if (req.files?.fbxFile?.length) {
       const fbxFile = req.files.fbxFile[0];
-      fbxFilePath = fbxFile.path;
-      fbxUrl = `/uploads/source/${fbxFile.filename}`;
+      const { relativeDir, absoluteDir } = getPathByCategory(type, fbxFile.originalname || fbxFile.filename, 'fbxFile');
+      
+      await fs.mkdir(absoluteDir, { recursive: true });
+
+      const srcPath = fbxFile.path;
+      const targetPath = path.join(absoluteDir, fbxFile.filename);
+      await fs.rename(srcPath, targetPath);
+
+      fbxFilePath = targetPath;
+      fbxUrl = `/${relativeDir}/${fbxFile.filename}`.replace(/\\/g, "/");
       isFbxFile = true; // FBX 파일이 직접 업로드된 경우
     }
 
@@ -243,7 +263,7 @@ exports.createComponent = async (req, res) => {
     if (req.files.thumbnail && req.files.thumbnail.length > 0) {
       // 1. 프론트엔드에서 직접 업로드한 썸네일이 있는 경우 최우선 사용
       const thumbnailFile = req.files.thumbnail[0];
-      thumbnailUrl = `/uploads/thumbnails/${thumbnailFile.filename}`;
+      thumbnailUrl = `/uploads/thumbnails/${thumbnailFile.filename}`.replace(/\\/g, "/");
       console.log("프론트엔드 업로드 썸네일 사용:", thumbnailUrl);
     } else if (isFbxFile && (fbxFilePath || sourceFilePath)) {
       // 2. FBX 파일이 있는 경우 (직접 업로드된 fbxFile 또는 fbx 확장자의 sourceFile)
@@ -285,17 +305,13 @@ exports.createComponent = async (req, res) => {
       }
     }
 
-    // 3. FBX 로 생성이 안되었거나 없는 경우, 업로드된 아이콘 파일이 있다면 그것을 썸네일로 사용
-    if (!thumbnailUrl && iconUrl) {
-      console.log("아이콘 파일을 썸네일로 자동 할당");
-      thumbnailUrl = iconUrl;
-    }
 
-    // 4. 최종적으로 썸네일이 없는 경우 기본 타입별 전용 아이콘 할당
+
+    // 4. 최종적으로 썸네일이 없는 경우 기본 타입별 전용 아이콘 할당 (프론트엔드 로컬 asset 사용)
     if (!thumbnailUrl) {
-      if (type === "library" || type === "vc_model") {
+      if (type === "vc_plugin" || type === "vc_model") {
         thumbnailUrl = "/images/ic-vc.png";
-      } else if (type === "object" || type === "ns_model") {
+      } else if (type === "ns_plugin" || type === "ns_model") {
         thumbnailUrl = "/images/ic-ns.png";
       } else {
         thumbnailUrl = "/images/ic-etc.png";
@@ -309,7 +325,7 @@ exports.createComponent = async (req, res) => {
       file_name: finalComponentName,
       version: finalVersion,
       description: description || "null",
-      main_features: JSON.stringify(features || {}),
+      main_features: typeof finalFeatures === 'string' ? JSON.stringify([finalFeatures]) : JSON.stringify(finalFeatures || []),
       recommended_environment: environment || "null",
       thumbnail_image: thumbnailUrl,
       source_file_link: sourceUrl,
@@ -318,8 +334,8 @@ exports.createComponent = async (req, res) => {
       sub_category_id: finalSubCategoryId,
       uploader: userEmail,
       type,
-      component_id: null,
       fbx_file_link: fbxUrl,
+      vcmx_file_link: sourceUrl && sourceUrl.toLowerCase().endsWith('.vcmx') ? sourceUrl : null,
     };
 
     const result = await mysql.query("componentCreate", insertData);
@@ -395,11 +411,26 @@ const getFiles = async (req, res) => {
       currentPage: page,
       sortBy: sortBy,
       type: type,
-      files: result.recordset.map((file) => ({
-        ...file,
-        main_features: JSON.parse(file.main_features || "[]"),
-        download_count: file.total_download_count || file.download_count || 0, // 총 다운로드 수 사용, NULL 처리
-      })),
+      files: result.recordset.map((file) => {
+        // 썸네일 경로가 없으면 타입에 따른 기본 이미지 설정
+        let thumbnailPath = file.thumbnail_image 
+          ? `/uploads/thumbnails/${path.basename(file.thumbnail_image)}`
+          : null;
+          
+        if (!thumbnailPath) {
+          // 썸네일 파일 경로 설정
+          if (file.type === "vc_plugin" || file.type === "vc_model") thumbnailPath = "/uploads/thumbnails/ic-vc.png";
+          else if (file.type === "ns_plugin" || file.type === "ns_model") thumbnailPath = "/uploads/thumbnails/ic-ns.png";
+          else thumbnailPath = "/uploads/thumbnails/ic-etc.png";
+        }
+
+        return {
+          ...file,
+          thumbnail_image: thumbnailPath,
+          main_features: JSON.parse(file.main_features || "[]"),
+          download_count: file.total_download_count || file.download_count || 0,
+        };
+      }),
     });
   } catch (error) {
     console.error("파일 조회 에러:", error);
@@ -431,7 +462,8 @@ const downloadFile = async (req, res) => {
       if (!file.source_file_link) {
         return res.status(404).json({ success: false, message: "소스 파일이 존재하지 않습니다." });
       }
-      filePath = path.join(__dirname, "..", file.source_file_link);
+      const sourceLink = file.source_file_link.startsWith('/') ? file.source_file_link.substring(1) : file.source_file_link;
+      filePath = path.join(__dirname, "..", sourceLink);
       // 파일명을 파일명_버전 형식으로 변경
       const originalFileName = path.basename(file.source_file_link);
       const fileExtension = path.extname(originalFileName);
@@ -441,7 +473,8 @@ const downloadFile = async (req, res) => {
       if (!file.fbx_file_link) {
         return res.status(404).json({ success: false, message: "FBX 파일이 존재하지 않습니다." });
       }
-      filePath = path.join(__dirname, "..", file.fbx_file_link);
+      const fbxLink = file.fbx_file_link.startsWith('/') ? file.fbx_file_link.substring(1) : file.fbx_file_link;
+      filePath = path.join(__dirname, "..", fbxLink);
       const originalFileName = path.basename(file.fbx_file_link);
       const fileExtension = path.extname(originalFileName);
       fileName = `${file.file_name}_${file.version}${fileExtension}`;
@@ -449,46 +482,17 @@ const downloadFile = async (req, res) => {
       if (!file.icon_file_link) {
         return res.status(404).json({ success: false, message: "아이콘 파일이 존재하지 않습니다." });
       }
-      // 카테고리와 서브카테고리 정보 조회
-      const categoryResult = await mysql.query("getCategoryById", {
-        id: file.category_id,
-      });
-      const subCategoryResult = await mysql.query("getSubCategoryById", {
-        id: file.sub_category_id,
-      });
-
-      if (!categoryResult.recordset[0] || !subCategoryResult.recordset[0]) {
-        return res.status(404).json({
-          success: false,
-          message: "카테고리 또는 서브카테고리 정보를 찾을 수 없습니다.",
-        });
-      }
-
-      const categoryName = categoryResult.recordset[0].name;
-      const subCategoryName = subCategoryResult.recordset[0].name;
-      const typePath = file.type === "object" ? "오브젝트" : "라이브러리";
-      const basePath = path.join(
-        __dirname,
-        "..",
-        "uploads",
-        "icon",
-        typePath,
-        categoryName,
-        subCategoryName
-      );
-      const filename = path.basename(file.icon_file_link);
-      filePath = path.join(basePath, filename);
-      // 파일명을 파일명_버전 형식으로 변경
-      const fileExtension = path.extname(filename);
+      // leading slash 제거하여 path.join이 올바르게 동작하도록 함
+      const iconLink = file.icon_file_link.startsWith('/') ? file.icon_file_link.substring(1) : file.icon_file_link;
+      filePath = path.join(__dirname, "..", iconLink);
+      
+      const iconFileName = path.basename(iconLink);
+      const fileExtension = path.extname(iconFileName);
       fileName = `${file.file_name}_${file.version}${fileExtension}`;
 
-      console.log("아이콘 파일 정보:", {
-        type: file.type,
-        typePath,
-        categoryName,
-        subCategoryName,
-        basePath,
-        filename,
+      console.log("아이콘 파일 다운로드 시도:", {
+        fileId,
+        fileName,
         filePath,
         iconLink: file.icon_file_link,
       });
@@ -573,15 +577,23 @@ const getFileDetail = async (req, res) => {
 
     const file = fileResult.recordset[0];
 
-    // 타입에 따른 파일 경로 설정
-    const typePath = file.type === "object" ? "오브젝트" : "라이브러리";
+    // DB에 저장된 경로를 그대로 사용 (이미 마이그레이션 및 새 로직으로 경로가 잘 저장되어 있음)
     const iconPath = file.icon_file_link || null;
-    const sourcePath = file.source_file_link
-      ? `/uploads/source/${path.basename(file.source_file_link)}`
-      : null;
-    const thumbnailPath = file.thumbnail_image
-      ? `/uploads/thumbnails/${path.basename(file.thumbnail_image)}`
-      : null;
+    const sourcePath = file.source_file_link || null;
+    const fbxPath = file.fbx_file_link || null;
+    const vcmxPath = file.vcmx_file_link || null;
+
+    let thumbnailPath = file.thumbnail_image || null;
+
+    // 만약 썸네일이 없으면 타입에 따른 기본 이미지 설정 (프론트엔드 public/images 로컬 에셋 사용)
+    if (!thumbnailPath || 
+        thumbnailPath === "/uploads/thumbnails/ic-vc.png" || 
+        thumbnailPath === "/uploads/thumbnails/ic-ns.png" || 
+        thumbnailPath === "/uploads/thumbnails/ic-etc.png") {
+      if (file.type === "vc_plugin" || file.type === "vc_model") thumbnailPath = "/images/ic-vc.png";
+      else if (file.type === "ns_plugin" || file.type === "ns_model") thumbnailPath = "/images/ic-ns.png";
+      else thumbnailPath = "/images/ic-etc.png";
+    }
 
     let mainFeatures = [];
     try {
@@ -633,6 +645,8 @@ const getFileDetail = async (req, res) => {
         fileLinks: {
           source: relatedFile.source_file_link ? `/uploads/source/${path.basename(relatedFile.source_file_link)}` : null,
           icon: relatedFile.icon_file_link || null,
+          fbx: relatedFile.fbx_file_link ? `/uploads/fbx/${path.basename(relatedFile.fbx_file_link)}` : null,
+          vcmx: relatedFile.vcmx_file_link || null,
         },
       })
     );
@@ -656,6 +670,8 @@ const getFileDetail = async (req, res) => {
       fileLinks: {
         source: sourcePath,
         icon: iconPath,
+        fbx: fbxPath,
+        vcmx: vcmxPath,
       },
       relatedFiles: formattedRelatedFiles,
       type: file.type,
@@ -730,6 +746,7 @@ const updateComponentVersion = async (req, res) => {
     const userEmail = req.user.email;
 
     const {
+      componentName,
       version,
       description,
       features,
@@ -737,27 +754,9 @@ const updateComponentVersion = async (req, res) => {
       useOriginalThumbnail,
     } = req.body;
 
-    // 카테고리와 서브카테고리 정보 조회 추가
-    const categoryResult = await mysql.query("getCategoryById", {
-      id: originalFile.category_id,
-    });
-    const subCategoryResult = await mysql.query("getSubCategoryById", {
-      id: originalFile.sub_category_id,
-    });
-
-    console.log("originalFile:", originalFile);
-    console.log("categoryResult:", categoryResult);
-    console.log("subCategoryResult:", subCategoryResult);
-
-    if (!categoryResult.recordset[0] || !subCategoryResult.recordset[0]) {
-      return res.status(404).json({
-        success: false,
-        message: "카테고리 또는 서브카테고리 정보를 찾을 수 없습니다.",
-      });
-    }
-
-    const categoryName = categoryResult.recordset[0].name;
-    const subCategoryName = subCategoryResult.recordset[0].name;
+    // 카테고리 정보는 더 이상 경로에 사용하지 않음 (null 처리 예정)
+    const categoryName = "deleted"; 
+    const subCategoryName = "deleted";
 
     // 아이콘 파일 처리 (선택사항)
     let iconUrl;
@@ -767,34 +766,16 @@ const updateComponentVersion = async (req, res) => {
     } else if (req.files.iconFile && req.files.iconFile[0]) {
       // 새 아이콘 파일 업로드
       const iconFile = req.files.iconFile[0];
-      const iconTypePath =
-        originalFile.type === "object" ? "오브젝트" : "라이브러리";
-      iconUrl = `/uploads/icon/${iconTypePath}/${categoryName}/${subCategoryName}/${iconFile.filename}`;
-
-      // icon 디렉토리 생성 및 파일 이동
-      const iconDir = path.join(
-        __dirname,
-        "..",
-        "uploads",
-        "icon",
-        iconTypePath,
-        categoryName,
-        subCategoryName
-      );
+      const iconType = originalFile.type || "etc";
+      const { relativeDir, absoluteDir } = getPathByCategory(iconType, iconFile.originalname || iconFile.filename, 'iconFile');
 
       try {
-        await fs.mkdir(iconDir, { recursive: true });
-        console.log("Icon 디렉토리 생성됨:", iconDir);
-
-        // 파일을 새 디렉토리로 이동
+        await fs.mkdir(absoluteDir, { recursive: true });
         const srcPath = iconFile.path;
-        const targetPath = path.join(iconDir, iconFile.filename);
+        const targetPath = path.join(absoluteDir, iconFile.filename);
 
         await fs.rename(srcPath, targetPath);
-        console.log("Icon 파일 이동 완료:", {
-          from: srcPath,
-          to: targetPath,
-        });
+        iconUrl = `/${relativeDir}/${iconFile.filename}`.replace(/\\/g, "/");
       } catch (error) {
         console.error("Icon 파일 처리 실패:", error);
         throw new Error("Icon 파일 저장에 실패했습니다.");
@@ -815,8 +796,17 @@ const updateComponentVersion = async (req, res) => {
     } else if (req.files.sourceFile && req.files.sourceFile[0]) {
       // 새 소스 파일 업로드
       const sourceFile = req.files.sourceFile[0];
-      sourceUrl = `/uploads/source/${sourceFile.filename}`;
-      sourceFilePath = sourceFile.path; // 소스 파일 경로 저장
+      const sourceType = originalFile.type || "etc";
+      const { relativeDir, absoluteDir } = getPathByCategory(sourceType, sourceFile.originalname || sourceFile.filename, 'sourceFile');
+      
+      await fs.mkdir(absoluteDir, { recursive: true });
+      const srcPath = sourceFile.path;
+      const targetPath = path.join(absoluteDir, sourceFile.filename);
+      await fs.rename(srcPath, targetPath);
+
+      sourceUrl = `/${relativeDir}/${sourceFile.filename}`.replace(/\\/g, "/");
+      sourceFilePath = targetPath; // 서버 내 절대 경로 저장 (썸네일 생성용)
+
       const ext = path.extname(sourceFile.originalname || sourceFile.filename).toLowerCase();
       isFbxFile = ext === '.fbx';
     } else {
@@ -833,7 +823,15 @@ const updateComponentVersion = async (req, res) => {
       fbxUrl = req.body.existingFbxPath;
     } else if (req.files.fbxFile && req.files.fbxFile[0]) {
       const fbxFile = req.files.fbxFile[0];
-      fbxUrl = `/uploads/source/${fbxFile.filename}`;
+      const fbxType = originalFile.type || "etc";
+      const { relativeDir, absoluteDir } = getPathByCategory(fbxType, fbxFile.originalname || fbxFile.filename, 'fbxFile');
+
+      await fs.mkdir(absoluteDir, { recursive: true });
+      const srcPath = fbxFile.path;
+      const targetPath = path.join(absoluteDir, fbxFile.filename);
+      await fs.rename(srcPath, targetPath);
+
+      fbxUrl = `/${relativeDir}/${fbxFile.filename}`.replace(/\\/g, "/");
       isFbxFile = true;
     } else {
       fbxUrl = originalFile.fbx_file_link || null;
@@ -851,7 +849,7 @@ const updateComponentVersion = async (req, res) => {
     if (req.files.thumbnail && req.files.thumbnail[0]) {
       // 새 썸네일 업로드 (최우선)
       console.log("새 썸네일 파일 사용");
-      thumbnailUrl = `/uploads/thumbnails/${req.files.thumbnail[0].filename}`;
+      thumbnailUrl = `/uploads/thumbnails/${req.files.thumbnail[0].filename}`.replace(/\\/g, "/");
     } else if (req.body.useExistingSource === "true") {
       // 기존 소스 파일 사용 시 기존 썸네일 사용
       console.log("기존 소스 사용 - 기존 썸네일 유지");
@@ -927,7 +925,7 @@ const updateComponentVersion = async (req, res) => {
     }
 
     const insertData = {
-      file_name: originalFile.file_name,
+      file_name: componentName || originalFile.file_name,
       version: version,
       description: description || "",
       main_features: featuresString,
@@ -936,18 +934,38 @@ const updateComponentVersion = async (req, res) => {
       source_file_link: sourceUrl,
       icon_file_link: iconUrl,
       fbx_file_link: fbxUrl,
-      category_id: originalFile.category_id,
-      sub_category_id: originalFile.sub_category_id,
+      category_id: null,
+      sub_category_id: null,
       uploader: userEmail,
-      component_id: componentId,
+      component_id: originalFile.component_id || componentId, // 보장된 component_id 사용
       type: originalFile.type,
+      vcmx_file_link: sourceUrl && sourceUrl.toLowerCase().endsWith('.vcmx') ? sourceUrl : null,
       created_at: originalFile.created_at, // 원본 파일의 등록일 유지
     };
+
+    console.log("버전 업데이트 삽입 데이터:", {
+      component_id: insertData.component_id,
+      created_at: insertData.created_at,
+      version: insertData.version
+    });
 
     console.log("최종 component_id 확인:", {
       입력_ID: componentId,
       삽입할_ID: insertData.component_id,
     });
+
+    // 만약 이름이 변경되었다면 해당 그룹의 모든 이름을 동기화
+    if (componentName && componentName !== originalFile.file_name) {
+      try {
+        await mysql.query("updateComponentNameByGroupId", {
+          component_id: insertData.component_id,
+          file_name: componentName,
+        });
+        console.log(`컴포넌트 그룹(${insertData.component_id}) 이름 동기화 완료: ${componentName}`);
+      } catch (syncError) {
+        console.warn("이름 동기화 실패 (신규 행은 생성됨):", syncError);
+      }
+    }
 
     const result = await mysql.query("componentVersionCreate", insertData);
     const newId = result.recordset[0].id;
@@ -1272,64 +1290,23 @@ const downloadAllVcmxFiles = async (req, res) => {
         // console.log(`타입: ${file.type}`);
 
         // 카테고리와 서브카테고리 정보 조회
-        const categoryResult = await mysql.query("getCategoryById", {
-          id: file.category_id,
-        });
-        const subCategoryResult = await mysql.query("getSubCategoryById", {
-          id: file.sub_category_id,
-        });
-
-        if (!categoryResult.recordset[0] || !subCategoryResult.recordset[0]) {
-          // console.log(`파일 ID ${file.id}: 카테고리 정보를 찾을 수 없습니다.`);
-          // console.log(`카테고리 결과:`, categoryResult.recordset);
-          // console.log(`서브카테고리 결과:`, subCategoryResult.recordset);
-          errorCount++;
-          continue;
-        }
-
-        const categoryName = categoryResult.recordset[0].name;
-        const subCategoryName = subCategoryResult.recordset[0].name;
-        const typePath = file.type === "object" ? "오브젝트" : "라이브러리";
-
         // 실제 파일 경로 구성
-        const basePath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          "vcmx",
-          typePath,
-          categoryName,
-          subCategoryName
-        );
-        const filename = path.basename(file.vcmx_file_link);
-        const filePath = path.join(basePath, filename);
+        const filePath = path.join(__dirname, "..", file.vcmx_file_link);
 
         // 파일 존재 확인
         try {
-          const normalizedPath = path.normalize(filePath);
-          const dirContents = await fs.readdir(path.dirname(normalizedPath));
-
-          // 파일명 비교 (타임스탬프 무시)
-          const targetBaseName = path
-            .basename(normalizedPath)
-            .replace(/-\d+\.vcmx$/, ".vcmx");
-          const actualFile = dirContents.find(
-            (file) => file.replace(/-\d+\.vcmx$/, ".vcmx") === targetBaseName
-          );
-
-          if (actualFile) {
+          if (fsSync.existsSync(filePath)) {
             // 파일 정보를 목록에 추가
             fileList.push({
               id: file.id,
-              fileName: actualFile,
+              fileName: path.basename(filePath),
               originalName: file.file_name,
-              category: categoryName,
-              subCategory: subCategoryName,
-              type: typePath,
+              category: "N/A",
+              subCategory: "N/A",
+              type: file.type,
               downloadUrl: `/api/components/download/${file.id}/vcmx`,
             });
             successCount++;
-            console.log(`파일 확인됨: ${actualFile}`);
           } else {
             console.log(`파일을 찾을 수 없습니다: ${filePath}`);
             errorCount++;
@@ -1436,6 +1413,74 @@ const getAllFiles = async (req, res) => {
   }
 };
 
+// 모든 파일의 최신 버전 정보 조회 (외부 API용)
+const getAllLatestFiles = async (req, res) => {
+  try {
+    console.log("모든 파일 최신 버전 정보 조회 요청");
+
+    // 모든 파일 최신 버전 정보 조회
+    const result = await mysql.query("getAllLatestFiles", {});
+
+    if (!result || !result.recordset) {
+      return res.status(500).json({
+        success: false,
+        message: "파일 정보를 조회할 수 없습니다.",
+      });
+    }
+
+    // 응답 데이터 가공
+    const files = result.recordset.map((file) => {
+      // main_features JSON 파싱
+      let mainFeatures = [];
+      try {
+        if (file.main_features) {
+          mainFeatures = JSON.parse(file.main_features);
+        }
+      } catch (error) {
+        console.warn("main_features 파싱 실패:", file.main_features);
+        mainFeatures = file.main_features ? [file.main_features] : [];
+      }
+
+      return {
+        id: file.id,
+        file_name: file.file_name,
+        version: file.version,
+        created_at: file.created_at,
+        updated_at: file.updated_at,
+        download_count: file.download_count,
+        source_file_link: file.source_file_link,
+        thumbnail_image: file.thumbnail_image,
+        uploader: file.uploader,
+        category_id: file.category_id,
+        component_id: file.component_id,
+        type: file.type,
+        description: file.description,
+        main_features: mainFeatures,
+        recommended_environment: file.recommended_environment,
+        icon_file_link: file.icon_file_link,
+        sub_category_id: file.sub_category_id,
+        is_active: file.is_active,
+      };
+    });
+
+    console.log(`총 ${files.length}개의 최신 버전 파일 정보 조회 완료`);
+
+    res.status(200).json({
+      success: true,
+      message: "모든 파일 최신 버전 정보 조회 성공",
+      total_count: files.length,
+      data: files,
+    });
+  } catch (error) {
+    console.error("모든 파일 최신 버전 정보 조회 에러:", error);
+    res.status(500).json({
+      success: false,
+      message: "파일 정보 조회 중 오류가 발생했습니다.",
+      error: error.message,
+    });
+  }
+};
+
 // 파일 일괄 이동 함수
 const bulkMoveFiles = async (req, res) => {
   try {
@@ -1516,7 +1561,7 @@ const bulkMoveFiles = async (req, res) => {
 
         // VCMX 파일 이동 (있는 경우)
         if (file.vcmx_file_link) {
-          const typePath = file.type === "object" ? "오브젝트" : "라이브러리";
+          const typePath = file.type === "ns_plugin" ? "오브젝트" : "라이브러리";
           const filename = path.basename(file.vcmx_file_link);
 
           const oldBasePath = path.join(
@@ -1558,7 +1603,7 @@ const bulkMoveFiles = async (req, res) => {
           sub_category_id: subCategoryId,
           vcmx_file_link: file.vcmx_file_link
             ? `/uploads/vcmx/${
-                file.type === "object" ? "오브젝트" : "라이브러리"
+                file.type === "ns_plugin" ? "오브젝트" : "라이브러리"
               }/${categoryName}/${subCategoryName}/${path.basename(
                 file.vcmx_file_link
               )}`
@@ -1623,5 +1668,6 @@ module.exports = {
   deleteComponents,
   downloadAllVcmxFiles, // vc에서 접근 파일 다운 - 추가
   getAllFiles, // vc에서 접근 - 새로 추가
+  getAllLatestFiles, // vc에서 접근 - 최신 버전만
   bulkMoveFiles, // 파일 일괄 이동 - 새로 추가
 };

@@ -16,7 +16,7 @@ const ObjectClientPage = () => {
 
   return (
     <ComponentPageLayout
-      type="object"
+      type="ns_plugin"
       initialPage={!pageParam || isNaN(page) || page < 1 ? 1 : page}
     />
   );

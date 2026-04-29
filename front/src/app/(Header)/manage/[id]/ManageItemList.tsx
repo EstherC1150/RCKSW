@@ -2,6 +2,7 @@
 
 import useUserStore from "@/app/stores/UserStore";
 import Image from "next/image";
+import ThumbnailPlaceholder from "../../../_components/common/ThumbnailPlaceholder";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useEffect, useCallback } from "react";
 import { IoArrowBack } from "react-icons/io5";
@@ -16,6 +17,8 @@ interface Category {
 interface FileLinks {
   source: string | null;
   icon: string | null;
+  fbx?: string | null;
+  vcmx?: string | null;
 }
 
 interface RelatedFile {
@@ -52,6 +55,7 @@ interface ComponentDetail {
     source: string;
     icon: string;
     fbx?: string;
+    vcmx?: string;
   };
   relatedFiles: RelatedFile[];
   type: string;
@@ -142,10 +146,10 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
   };
 
   const backToList = () => {
-    const fromType = searchParams.get("fromType") || "library";
+    const fromType = searchParams.get("fromType") || "vc_plugin";
     let basePath = "/manage/vc-plugin";
     
-    if (fromType === "object") basePath = "/manage/ns-plugin";
+    if (fromType === "ns_plugin") basePath = "/manage/ns-plugin";
     else if (fromType === "vc_model") basePath = "/manage/vc-model";
     else if (fromType === "ns_model") basePath = "/manage/ns-model";
     else if (fromType === "etc") basePath = "/manage/etc";
@@ -280,9 +284,8 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
           {/* 컴포넌트 이미지 영역 수정 */}
           <div className="flex flex-col">
              <h2 className="text-[20px] font-semibold mb-4 text-white">
-                {(componentData.fileLinks?.source?.toLowerCase()?.endsWith(".fbx") && 
-                  componentData.type === "library") ||
-                 (componentData.type === "vc_model" && componentData.fileLinks?.fbx)
+                {componentData.fileLinks?.fbx || 
+                 (componentData.fileLinks?.source?.toLowerCase()?.endsWith(".fbx"))
                   ? "3D 프리뷰"
                   : "썸네일"}
               </h2>
@@ -290,18 +293,24 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
               className="relative bg-gray-900 h-[360px] w-[360px] rounded-md shadow-lg overflow-hidden
               border border-gray-700/30 backdrop-blur-sm"
             >
-              {(componentData.fileLinks?.source?.toLowerCase()?.endsWith(".fbx") && 
-                componentData.type === "library") ||
-               (componentData.type === "vc_model" && componentData.fileLinks?.fbx) ? (
+              {componentData.fileLinks?.fbx || 
+               (componentData.fileLinks?.source?.toLowerCase()?.endsWith(".fbx")) ? (
                 <div className="relative w-full h-full">
                   <FbxViewer
                     key={componentData.fileLinks?.fbx || componentData.fileLinks?.source}
-                    fbxUrl={`${process.env.NEXT_PUBLIC_API_URL}${componentData.fileLinks?.fbx || componentData.fileLinks?.source}`}
+                    fbxUrl={componentData.fileLinks?.fbx || componentData.fileLinks?.source || ""}
                   />
                   <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded-md text-xs text-gray-300 z-10">
                     마우스 좌클릭: 회전 | 우클릭: 이동 | 휠: 확대/축소
                   </div>
                 </div>
+              ) : (componentData.thumbnailImage === "/images/ic-vc.png" || 
+                   componentData.thumbnailImage === "/images/ic-ns.png" || 
+                   componentData.thumbnailImage === "/images/ic-etc.png" ||
+                   componentData.thumbnailImage === "/uploads/thumbnails/ic-vc.png" || 
+                   componentData.thumbnailImage === "/uploads/thumbnails/ic-ns.png" || 
+                   componentData.thumbnailImage === "/uploads/thumbnails/ic-etc.png") ? (
+                <ThumbnailPlaceholder type={componentData.type} name={componentData.fileName} />
               ) : (
                 <Image
                   src={`${process.env.NEXT_PUBLIC_API_URL}${componentData.thumbnailImage}`}
@@ -318,7 +327,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
             <div className="flex flex-col h-full">
               <div className="flex-1">
                 <h2 className="text-[18px] font-semibold mb-4 text-white">
-                  주요 기능 목록
+                  주요 기능
                 </h2>
                 {user?.role === "admin" && isEditing ? (
                   <textarea
@@ -327,7 +336,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                     onChange={(e) => setFeatures(e.target.value)}
                   />
                 ) : (
-                  <div className="w-full h-[360px] px-[12px] py-[8px] rounded-md mb-4 text-white overflow-y-auto border-gray-700 border-[1px] bg-gray-800">
+                  <div className="w-full h-[360px] px-[12px] py-[8px] rounded-md mb-4 text-white overflow-y-auto border-gray-700 border-[1px] bg-gray-800 whitespace-pre-wrap">
                     {features}
                   </div>
                 )}
