@@ -309,21 +309,25 @@ module.exports = {
   // @type: 컴포넌트 타입
   // @component_id: 컴포넌트 ID
   componentCreate: `
-    EXEC [dbo].[usp_CreateComponent] 
-      @file_name = @file_name,
-      @version = @version,
-      @description = @description,
-      @main_features = @main_features,
-      @recommended_environment = @recommended_environment,
-      @thumbnail_image = @thumbnail_image,
-      @source_file_link = @source_file_link,
-      @icon_file_link = @icon_file_link,
-      @fbx_file_link = @fbx_file_link,
-      @vcmx_file_link = @vcmx_file_link,
-      @category_id = @category_id,
-      @sub_category_id = @sub_category_id,
-      @uploader = @uploader,
-      @type = @type
+    DECLARE @new_component_id INT;
+    INSERT INTO components DEFAULT VALUES;
+    SET @new_component_id = SCOPE_IDENTITY();
+    
+    DECLARE @InsertedFiles TABLE (id INT);
+
+    INSERT INTO files (
+      file_name, version, description, main_features, recommended_environment,
+      thumbnail_image, source_file_link, icon_file_link, fbx_file_link, vcmx_file_link,
+      category_id, sub_category_id, uploader, type, component_id
+    )
+    OUTPUT INSERTED.id INTO @InsertedFiles
+    VALUES (
+      @file_name, @version, @description, @main_features, @recommended_environment,
+      @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @vcmx_file_link,
+      @category_id, @sub_category_id, @uploader, @type, @new_component_id
+    );
+
+    SELECT id FROM @InsertedFiles;
   `,
 
   // 파일 목록을 검색하고 정렬하여 페이지네이션된 결과를 반환
@@ -527,22 +531,21 @@ module.exports = {
   // @component_id: 컴포넌트 ID
   // @type: 컴포넌트 타입
   componentVersionCreate: `
-    EXEC [dbo].[usp_CreateComponentVersion]
-      @file_name = @file_name,
-      @version = @version,
-      @description = @description,
-      @main_features = @main_features,
-      @recommended_environment = @recommended_environment,
-      @thumbnail_image = @thumbnail_image,
-      @source_file_link = @source_file_link,
-      @icon_file_link = @icon_file_link,
-      @fbx_file_link = @fbx_file_link,
-      @vcmx_file_link = @vcmx_file_link,
-      @category_id = @category_id,
-      @sub_category_id = @sub_category_id,
-      @uploader = @uploader,
-      @component_id = @component_id,
-      @type = @type
+    DECLARE @InsertedFiles TABLE (id INT);
+
+    INSERT INTO files (
+      file_name, version, description, main_features, recommended_environment,
+      thumbnail_image, source_file_link, icon_file_link, fbx_file_link, vcmx_file_link,
+      category_id, sub_category_id, uploader, type, component_id
+    )
+    OUTPUT INSERTED.id INTO @InsertedFiles
+    VALUES (
+      @file_name, @version, @description, @main_features, @recommended_environment,
+      @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @vcmx_file_link,
+      @category_id, @sub_category_id, @uploader, @type, @component_id
+    );
+
+    SELECT id FROM @InsertedFiles;
   `,
 
   // 카테고리별 통계 정보 조회
