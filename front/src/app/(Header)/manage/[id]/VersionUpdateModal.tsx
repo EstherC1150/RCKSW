@@ -3,8 +3,22 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import useUserStore from "@/app/stores/UserStore";
+import Image from "next/image";
 import FbxThumbnailGenerator, { FbxThumbnailGeneratorRef } from "../../../_components/common/FbxThumbnailGenerator";
 import ThumbnailPlaceholder from "../../../_components/common/ThumbnailPlaceholder";
+
+const isPlaceholderThumbnail = (url?: string) => {
+  if (!url) return true;
+  const placeholders = [
+    "/images/ic-vc.png",
+    "/images/ic-ns.png",
+    "/images/ic-etc.png",
+    "/uploads/thumbnails/ic-vc.png",
+    "/uploads/thumbnails/ic-ns.png",
+    "/uploads/thumbnails/ic-etc.png",
+  ];
+  return placeholders.some((placeholder) => url.includes(placeholder));
+};
 
 interface VersionUpdateModalProps {
   isOpen: boolean;
@@ -84,18 +98,14 @@ const VersionUpdateModal = ({
     string | null
   >(null);
 
-  const [existingFiles, setExistingFiles] = useState({
+  const [existingFiles] = useState({
     source: initialData?.fileLinks?.source || "",
     icon: initialData?.fileLinks?.icon || "",
-    fbx: (initialData as any)?.fileLinks?.fbx || "",
+    fbx: initialData?.fileLinks?.fbx || "",
   });
 
   const sourceFileInputRef = useRef<HTMLInputElement>(null);
   const fbxGenRef = useRef<FbxThumbnailGeneratorRef>(null);
-
-  // 자동 캡처 후 제출 트리거 관리용
-  const pendingSubmitRef = useRef(false);
-  const pendingFilesRef = useRef<typeof files>({});
 
   // 모달이 열릴 때 자동으로 다음 버전 계산 및 상태 초기화
   useEffect(() => {
@@ -114,7 +124,7 @@ const VersionUpdateModal = ({
       setUseExistingFbx(true);
 
       // 기존 썸네일 미리보기 설정
-      if (initialData?.thumbnailImage) {
+      if (initialData?.thumbnailImage && !isPlaceholderThumbnail(initialData.thumbnailImage)) {
         const thumbnailUrl = initialData.thumbnailImage.startsWith("http")
           ? initialData.thumbnailImage
           : `${process.env.NEXT_PUBLIC_API_URL}${initialData.thumbnailImage}`;
@@ -141,6 +151,7 @@ const VersionUpdateModal = ({
     incrementVersion,
     initialData?.thumbnailImage,
     initialData?.fileLinks?.icon,
+    initialData?.fileName,
   ]);
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -346,16 +357,22 @@ const VersionUpdateModal = ({
               </h3>
 
               <div className="flex items-center justify-center">
-                <div className="relative w-64 h-64 bg-gray-700 rounded-lg overflow-hidden">
-                  <img
-                    src={
-                      initialData.thumbnailImage.startsWith("http")
-                        ? initialData.thumbnailImage
-                        : `${process.env.NEXT_PUBLIC_API_URL}${initialData.thumbnailImage}`
-                    }
-                    alt="기존 썸네일"
-                    className="w-full h-full object-cover"
-                  />
+                <div className="relative w-64 h-64 bg-gray-700 rounded-lg overflow-hidden border border-gray-600">
+                  {!isPlaceholderThumbnail(initialData.thumbnailImage) ? (
+                    <Image
+                      src={
+                        initialData.thumbnailImage.startsWith("http")
+                          ? initialData.thumbnailImage
+                          : `${process.env.NEXT_PUBLIC_API_URL}${initialData.thumbnailImage}`
+                      }
+                      alt="기존 썸네일"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <ThumbnailPlaceholder type={componentType} name={formData.componentName} />
+                  )}
                 </div>
               </div>
 
@@ -422,12 +439,14 @@ const VersionUpdateModal = ({
                               sourceFileInputRef.current.value = "";
                             }
                             // 기존 썸네일 미리보기 복원
-                            if (initialData?.thumbnailImage) {
+                            if (initialData?.thumbnailImage && !isPlaceholderThumbnail(initialData.thumbnailImage)) {
                               const thumbnailUrl =
                                 initialData.thumbnailImage.startsWith("http")
                                   ? initialData.thumbnailImage
                                   : `${process.env.NEXT_PUBLIC_API_URL}${initialData.thumbnailImage}`;
                               setThumbnailPreview(thumbnailUrl);
+                            } else {
+                              setThumbnailPreview(null);
                             }
                           }
                         }}
@@ -478,10 +497,12 @@ const VersionUpdateModal = ({
                     <div className="relative w-full aspect-square max-w-[300px] bg-gray-900 rounded-2xl flex flex-col items-center justify-center border border-gray-600 overflow-hidden shadow-inner">
                       {thumbnailPreview ? (
                         <>
-                          <img
+                          <Image
                             src={thumbnailPreview}
                             alt="썸네일"
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
+                            unoptimized
                           />
                           <button
                             type="button"
@@ -528,11 +549,15 @@ const VersionUpdateModal = ({
                           />
                           {autoGeneratedThumbnail && (
                             <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 p-2">
-                               <img 
+                              <div className="relative w-full h-full">
+                               <Image 
                                  src={autoGeneratedThumbnail} 
-                                 className="w-full h-full object-cover border-2 border-cyan-500 rounded-lg" 
+                                 fill
+                                 className="object-cover border-2 border-cyan-500 rounded-lg" 
                                  alt="생성된 썸네일"
+                                 unoptimized
                                />
+                              </div>
                                <button
                                  type="button"
                                  onClick={() => setAutoGeneratedThumbnail(null)}
@@ -722,7 +747,13 @@ const VersionUpdateModal = ({
                   />
                   {iconPreview && (
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded border border-gray-600 overflow-hidden bg-gray-900 flex items-center justify-center">
-                      <img src={iconPreview} alt="아이콘 미리보기" className="w-full h-full object-contain" />
+                      <Image 
+                        src={iconPreview} 
+                        alt="아이콘 미리보기" 
+                        fill
+                        className="object-contain" 
+                        unoptimized
+                      />
                     </div>
                   )}
                 </div>
