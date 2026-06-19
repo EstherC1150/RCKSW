@@ -968,9 +968,6 @@ const updateComponentVersion = async (req, res) => {
     }
 
     const result = await mysql.query("componentVersionCreate", insertData);
-    const newId = result.recordset[0].id;
-    const savedDataResult = await mysql.query("getFileById", { id: newId });
-    const savedData = savedDataResult.recordset[0];
 
     console.log("새 버전 생성 결과:", result);
 
@@ -980,6 +977,10 @@ const updateComponentVersion = async (req, res) => {
         message: "새 버전 생성에 실패했습니다.",
       });
     }
+
+    const newId = result.recordset[0].id;
+    const savedDataResult = await mysql.query("getFileById", { id: newId });
+    const savedData = savedDataResult.recordset[0];
 
     console.log("저장된 데이터:", savedData);
     console.log("savedData.vcmx_file_link:", savedData.vcmx_file_link);
@@ -1249,7 +1250,7 @@ const downloadAllVcmxFiles = async (req, res) => {
 
     // 디버깅: 모든 파일 정보 먼저 확인
     console.log("\n=== 디버깅: 모든 파일 정보 ===");
-    const allFilesResult = await mysql.query("getAllFilesDebug");
+    const allFilesResult = await mysql.query("getAllFilesDebug", {});
     console.log("전체 파일 수:", allFilesResult.recordset.length);
     allFilesResult.recordset.forEach((file, index) => {
       console.log(
