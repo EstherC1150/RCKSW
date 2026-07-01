@@ -33,8 +33,6 @@ type LibraryListProps = {
 
 const LibraryList = forwardRef(function LibraryList(
   {
-    categoryId,
-    subCategoryId,
     type = "vc_plugin",
     curPage,
     goToPage,
@@ -57,8 +55,6 @@ const LibraryList = forwardRef(function LibraryList(
   const { getAccessToken } = useUserStore();
   // 전체 선택 체크박스 ref
   const selectAllRef = useRef<HTMLInputElement>(null);
-  const prevCategoryId = useRef<string | null>(undefined);
-  const prevSubCategoryId = useRef<string>(undefined);
 
   const itemsPerPage = 4;
 

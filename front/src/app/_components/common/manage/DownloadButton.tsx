@@ -158,7 +158,7 @@ export const DownloadIconButton = ({
             fileLinks={item.fileLinks}
             fileId={item.id}
             onClose={onClose}
-            componentType={(item as any).type}
+            componentType={item.type}
           />
         )}
       </div>

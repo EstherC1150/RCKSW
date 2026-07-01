@@ -12,6 +12,14 @@ import { OrbitControls, Stage, useFBX } from "@react-three/drei";
 import { Suspense } from "react";
 import * as THREE from "three";
 
+declare global {
+  interface Window {
+    triggerThumbnailCapture?: (() => void) | null;
+    onThumbnailCaptured?: ((dataUrl: string) => void) | null;
+    isAutoCapture?: boolean;
+  }
+}
+
 interface FbxThumbnailGeneratorProps {
   fbxFile?: File | null;
   fbxUrl?: string | null;
@@ -19,7 +27,7 @@ interface FbxThumbnailGeneratorProps {
 }
 
 interface FbxThumbnailGeneratorRef {
-  generateThumbnail: () => void;
+  generateThumbnail: () => Promise<string | void> | void;
 }
 
 function FbxModel({ fbxUrl }: { fbxUrl: string }) {
@@ -66,29 +74,29 @@ function ThumbnailCapture({
           onCapture(dataUrl);
 
           // 전역 콜백도 실행 (자동 캡처용)
-          if ((window as any).onThumbnailCaptured) {
+          if (window.onThumbnailCaptured) {
             console.log(
               "🔄 전역 콜백 실행 - 타입:",
-              typeof (window as any).onThumbnailCaptured
+              typeof window.onThumbnailCaptured
             );
-            const callback = (window as any).onThumbnailCaptured;
+            const callback = window.onThumbnailCaptured;
             try {
               callback(dataUrl);
               console.log("✅ 전역 콜백 실행 완료");
               // 자동 캡처 후에만 null로 설정 (수동 캡처는 유지)
-              if ((window as any).isAutoCapture) {
-                (window as any).onThumbnailCaptured = null;
-                (window as any).isAutoCapture = false;
+              if (window.isAutoCapture) {
+                window.onThumbnailCaptured = null;
+                window.isAutoCapture = false;
               }
             } catch (error) {
               console.error("❌ 전역 콜백 실행 실패:", error);
-              (window as any).onThumbnailCaptured = null;
-              (window as any).isAutoCapture = false;
+              window.onThumbnailCaptured = null;
+              window.isAutoCapture = false;
             }
           } else {
             console.log(
               "⚠️ 전역 콜백이 설정되지 않음 - 현재 값:",
-              (window as any).onThumbnailCaptured
+              window.onThumbnailCaptured
             );
           }
 
@@ -107,14 +115,14 @@ function ThumbnailCapture({
 
   // 부모 컴포넌트에서 호출할 수 있도록 함수 노출
   useEffect(() => {
-    (window as any).triggerThumbnailCapture = triggerCapture;
+    window.triggerThumbnailCapture = triggerCapture;
     return () => {
       // 언마운트 시 전역 레퍼런스 정리
-      if ((window as any).triggerThumbnailCapture === triggerCapture) {
-        (window as any).triggerThumbnailCapture = null;
+      if (window.triggerThumbnailCapture === triggerCapture) {
+        window.triggerThumbnailCapture = null;
       }
-      (window as any).onThumbnailCaptured = null;
-      (window as any).isAutoCapture = false;
+      window.onThumbnailCaptured = null;
+      window.isAutoCapture = false;
     };
   }, []);
 
@@ -138,22 +146,28 @@ const FbxThumbnailGenerator = forwardRef<
   const [isGenerating, setIsGenerating] = useState(false);
   useImperativeHandle(ref, () => ({
     generateThumbnail: () => {
-      if (fbxUrl && (window as any).triggerThumbnailCapture) {
-        console.log("🎨 FbxThumbnailGenerator: generateThumbnail 실행");
-        setIsGenerating(true);
+      return new Promise<string>((resolve) => {
+        if (fbxUrl && window.triggerThumbnailCapture) {
+          console.log("🎨 FbxThumbnailGenerator: generateThumbnail 실행");
+          setIsGenerating(true);
 
-        // 전역 캡처 완료 콜백을 임시로 설정
-        (window as any).onThumbnailCaptured = handleCapture;
-        (window as any).isAutoCapture = true; // 자동 캡처 플래그 설정
+          // 전역 캡처 완료 콜백을 임시로 설정
+          window.onThumbnailCaptured = (dataUrl: string) => {
+            handleCapture(dataUrl);
+            resolve(dataUrl);
+          };
+          window.isAutoCapture = true; // 자동 캡처 플래그 설정
 
-        // 캡처 실행
-        (window as any).triggerThumbnailCapture();
-      } else {
-        console.warn("⚠️ triggerThumbnailCapture 함수가 없습니다:", {
-          fbxUrl: !!fbxUrl,
-          triggerFn: !!(window as any).triggerThumbnailCapture,
-        });
-      }
+          // 캡처 실행
+          window.triggerThumbnailCapture();
+        } else {
+          console.warn("⚠️ triggerThumbnailCapture 함수가 없습니다:", {
+            fbxUrl: !!fbxUrl,
+            triggerFn: !!window.triggerThumbnailCapture,
+          });
+          resolve(""); // 실패 시 빈 문자열 반환
+        }
+      });
     },
   }));
 
