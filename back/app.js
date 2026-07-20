@@ -11,8 +11,19 @@ const path = require("path"); // 파일 경로 처리를 위한 모듈
 require("dotenv").config({ path: "mysql/.env" }); // 환경 변수 설정 파일 로드
 
 // CORS 설정
+// .env의 ALLOWED_ORIGINS(콤마로 구분)에 운영 도메인/IP를 추가하면 코드 수정 없이 반영됨
+const extraOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: ["http://localhost:3100", "http://localhost:3001", "http://localhost:3000"], // 향후 운영 서버 도메인 여기에 추가 예정
+  origin: [
+    "http://localhost:3100",
+    "http://localhost:3001",
+    "http://localhost:3000",
+    ...extraOrigins,
+  ],
   credentials: true,
 }));
 
