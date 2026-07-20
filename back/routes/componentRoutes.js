@@ -4,6 +4,7 @@ const multer = require("multer");
 const upload = require("../middleware/upload");
 const componentController = require("../controllers/componentController");
 const { verifyToken, isAdmin } = require("../middleware/auth");
+const { verifyTokenOrApiKey } = require("../middleware/apiKeyAuth");
 
 // 파일 목록 조회
 router.get("/", componentController.getFiles);
@@ -58,9 +59,9 @@ router.post(
     console.log("요청 헤더:", req.headers);
     next();
   },
-  verifyToken,
+  verifyTokenOrApiKey, // JWT 또는 X-API-Key 둘 다 허용
   (req, res, next) => {
-    console.log("=== verifyToken 미들웨어 통과 ===");
+    console.log("=== 인증 미들웨어 통과 ===");
     console.log("사용자 정보:", req.user);
     next();
   },
@@ -93,7 +94,7 @@ router.post(
 
 router.patch(
   "/:id",
-  verifyToken,
+  verifyTokenOrApiKey, // JWT 또는 X-API-Key 둘 다 허용
   upload.fields([
     { name: "thumbnail", maxCount: 1 }, // 선택사항
     { name: "sourceFile", maxCount: 1 }, // 선택사항

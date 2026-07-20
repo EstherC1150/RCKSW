@@ -177,9 +177,10 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
     router.push(target);
   };
 
-  // 관련 컴포넌트 클릭 핸들러
+  // 관련 컴포넌트 클릭 핸들러 (뒤로가기용 fromType 등 컨텍스트 유지)
   const handleRelatedComponentClick = (relatedFile: RelatedFile) => {
-    router.replace(`/manage/${relatedFile.id}`);
+    const query = searchParams.toString();
+    router.replace(`/manage/${relatedFile.id}${query ? `?${query}` : ""}`);
   };
 
   useEffect(() => {

@@ -1002,6 +1002,15 @@ const updateComponentVersion = async (req, res) => {
     }
 
     const newId = result.recordset[0].id;
+
+    // VC Model은 model_type이 버전마다 갈리지 않도록 같은 component_id의 모든 버전에 동일하게 반영
+    if (originalFile.type === "vc_model") {
+      await mysql.query("syncModelTypeForComponent", {
+        component_id: originalFile.component_id || componentId,
+        model_type: finalModelType,
+      });
+    }
+
     const savedDataResult = await mysql.query("getFileById", { id: newId });
     const savedData = savedDataResult.recordset[0];
 

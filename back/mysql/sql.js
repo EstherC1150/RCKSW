@@ -448,6 +448,7 @@ module.exports = {
       f.uploader,
       f.component_id,
       f.type,
+      f.model_type,
       f.created_at,
       f.updated_at,
       f.is_active,
@@ -549,6 +550,13 @@ module.exports = {
     );
 
     SELECT id FROM @InsertedFiles;
+  `,
+
+  // 같은 컴포넌트(component_id)의 모든 버전에 model_type을 동일하게 맞춤
+  // @component_id: 컴포넌트 ID
+  // @model_type: 적용할 모델 타입 (component 또는 layout)
+  syncModelTypeForComponent: `
+    UPDATE files SET model_type = @model_type WHERE component_id = @component_id
   `,
 
   // 카테고리별 통계 정보 조회
@@ -769,5 +777,15 @@ module.exports = {
       category_id = NULL,
       sub_category_id = NULL
     WHERE id = @id
+  `,
+
+  // API Key 조회 (외부 서버-to-서버 인증용)
+  // @key_value: 클라이언트가 전달한 X-API-Key 헤더 값
+  getApiKey: `
+    SELECT id, name, description, is_active, expires_at
+    FROM api_keys
+    WHERE key_value = @key_value
+      AND is_active = 1
+      AND (expires_at IS NULL OR expires_at > GETDATE())
   `,
 };
