@@ -46,6 +46,7 @@ const LibraryList = forwardRef(function LibraryList(
     | "latest"
     | "downloads"
     | "name";
+  const modelType = searchParams.get("modelType") || "";
   const [libraryList, setLibraryList] = useState<TLibrary[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -186,6 +187,7 @@ const LibraryList = forwardRef(function LibraryList(
           subCategoryId: "0",
           ...(search && { search }),
           ...(sortBy && { sortBy }),
+          ...(type === "vc_model" && modelType && { modelType }),
         });
 
         const response = await fetch(
@@ -221,7 +223,7 @@ const LibraryList = forwardRef(function LibraryList(
     };
 
     fetchLibraries();
-  }, [curPage, search, sortBy, type, itemsPerPage]);
+  }, [curPage, search, sortBy, type, itemsPerPage, modelType]);
 
   useImperativeHandle(ref, () => ({
     handleDeleteSelected,
@@ -319,9 +321,20 @@ const LibraryList = forwardRef(function LibraryList(
                 </div>
               </div>
               <p
-                className="flex font-[600] items-center justify-center flex-[8] text-white h-full"
+                className="flex items-center justify-center gap-2 font-[600] flex-[8] text-white h-full"
               >
                 {item.file_name}
+                {type === "vc_model" && item.model_type && (
+                  <span
+                    className={`text-[11px] px-2 py-[2px] rounded-full font-medium ${
+                      item.model_type === "layout"
+                        ? "bg-purple-500/20 text-purple-300"
+                        : "bg-cyan-500/20 text-cyan-300"
+                    }`}
+                  >
+                    {item.model_type === "layout" ? "레이아웃" : "컴포넌트"}
+                  </span>
+                )}
               </p>
               <p
                 className="flex font-[600] items-center justify-center flex-[2] text-white h-full"

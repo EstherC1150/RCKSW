@@ -48,6 +48,7 @@ interface ComponentListProps {
     updatedAt: string; // 업데이트 날짜 추가
     downloadCount: number;
     type: string;
+    modelType?: string;
   };
   onRelatedComponentClick: (file: RelatedFile) => void;
   refreshKey?: number;
@@ -326,6 +327,7 @@ const ComponentList = ({
           recommendedEnvironment: componentData.recommendedEnvironment,
           thumbnailImage: componentData.thumbnailImage, // 현재 버전의 썸네일 사용
           fileName: componentData.fileName,
+          modelType: componentData.modelType,
           fileLinks: {
             source: componentData.fileLinks.source || undefined,
             icon: componentData.fileLinks.icon || undefined,

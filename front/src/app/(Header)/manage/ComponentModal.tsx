@@ -38,6 +38,7 @@ const ComponentModal = ({
     categoryId: "",
     subCategoryId: "",
     type: type,
+    modelType: "component",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -93,6 +94,7 @@ const ComponentModal = ({
         categoryId: "",
         subCategoryId: "",
         type: value as TComponentFormData["type"],
+        modelType: "component",
       });
       setThumbnailPreview(null);
       setIconPreview(null);
@@ -264,6 +266,20 @@ const ComponentModal = ({
             </select>
           </div>
 
+          {formData.type === "vc_model" && (
+            <div className="mb-4">
+              <label className="block text-white mb-2">모델 타입</label>
+              <select
+                name="modelType"
+                value={formData.modelType || "component"}
+                onChange={handleInputChange}
+                className="w-full bg-input text-foreground p-2 rounded border border-input-border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all"
+              >
+                <option className="bg-gray-800 text-white" value="component">컴포넌트</option>
+                <option className="bg-gray-800 text-white" value="layout">레이아웃</option>
+              </select>
+            </div>
+          )}
 
           <div className="mb-4">
             <label className="block text-white mb-2">파일명</label>

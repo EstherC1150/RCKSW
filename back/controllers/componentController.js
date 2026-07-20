@@ -182,7 +182,17 @@ exports.createComponent = async (req, res) => {
       categoryId,
       subCategoryId,
       type,
+      modelType,
     } = req.body;
+
+    // VC Model은 component/layout 타입이 필수
+    if (type === "vc_model" && modelType !== "component" && modelType !== "layout") {
+      return res.status(400).json({
+        success: false,
+        message: "VC Model의 타입(component 또는 layout)을 선택해주세요.",
+      });
+    }
+    const finalModelType = type === "vc_model" ? modelType : null;
 
     // features가 배열이면 Join하고, 문자열이면 그대로 사용
     let finalFeatures = Array.isArray(features) ? features : (features || "");
@@ -334,6 +344,7 @@ exports.createComponent = async (req, res) => {
       sub_category_id: finalSubCategoryId,
       uploader: userEmail,
       type,
+      model_type: finalModelType,
       fbx_file_link: fbxUrl,
       vcmx_file_link: sourceUrl && sourceUrl.toLowerCase().endsWith('.vcmx') ? sourceUrl : null,
     };
@@ -387,6 +398,7 @@ const getFiles = async (req, res) => {
     const searchQuery = req.query.search || "";
     const sortBy = req.query.sortBy || "latest";
     const type = req.query.type || "";
+    const modelType = req.query.modelType || "";
     const offset = (page - 1) * limit;
 
     const searchParams = {
@@ -394,6 +406,7 @@ const getFiles = async (req, res) => {
       sub_category_id: subCategoryId,
       search: searchQuery,
       type: type,
+      model_type: modelType,
       sortBy: sortBy,
       offset: offset,
       limit: limit,
@@ -675,6 +688,7 @@ const getFileDetail = async (req, res) => {
       },
       relatedFiles: formattedRelatedFiles,
       type: file.type,
+      modelType: file.model_type,
     };
 
     res.json({
@@ -752,7 +766,15 @@ const updateComponentVersion = async (req, res) => {
       features,
       environment,
       useOriginalThumbnail,
+      modelType,
     } = req.body;
+
+    const finalModelType =
+      originalFile.type === "vc_model"
+        ? modelType === "component" || modelType === "layout"
+          ? modelType
+          : originalFile.model_type
+        : null;
 
     // 카테고리 정보는 더 이상 경로에 사용하지 않음 (null 처리 예정)
     const categoryName = "deleted"; 
@@ -939,6 +961,7 @@ const updateComponentVersion = async (req, res) => {
       uploader: userEmail,
       component_id: originalFile.component_id || componentId, // 보장된 component_id 사용
       type: originalFile.type,
+      model_type: finalModelType,
       vcmx_file_link: sourceUrl && sourceUrl.toLowerCase().endsWith('.vcmx') ? sourceUrl : null,
       created_at: originalFile.created_at, // 원본 파일의 등록일 유지
     };

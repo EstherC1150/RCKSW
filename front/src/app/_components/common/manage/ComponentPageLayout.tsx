@@ -42,6 +42,7 @@ const ComponentPageLayout = ({
     | "latest"
     | "downloads"
     | "name";
+  const modelType = searchParams.get("modelType") || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -49,6 +50,7 @@ const ComponentPageLayout = ({
   const [activeSort, setActiveSort] = useState<"latest" | "downloads" | "name">(
     sortBy
   );
+  const [activeModelType, setActiveModelType] = useState(modelType);
 
   const { user, getAccessToken } = useUserStore();
 
@@ -91,6 +93,9 @@ const ComponentPageLayout = ({
     formDataToSend.append("description", formData.description || "null");
     formDataToSend.append("environment", formData.environment || "null");
     formDataToSend.append("type", formData.type || type);
+    if ((formData.type || type) === "vc_model") {
+      formDataToSend.append("modelType", formData.modelType || "component");
+    }
 
     // 카테고리 정보는 null로 전송
     formDataToSend.append("categoryId", "null");
@@ -152,7 +157,8 @@ const ComponentPageLayout = ({
   useEffect(() => {
     setInputValue(search);
     setActiveSort(sortBy);
-  }, [search, sortBy]);
+    setActiveModelType(modelType);
+  }, [search, sortBy, modelType]);
 
   // 검색 입력 핸들러
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,6 +178,16 @@ const ComponentPageLayout = ({
     router.push(`${basePath}?${params.toString()}`);
   };
 
+  // 검색어 초기화 핸들러 (입력값 삭제와 동시에 목록도 즉시 초기화)
+  const handleClearSearch = () => {
+    setInputValue("");
+    const params = new URLSearchParams(searchParams);
+    params.delete("search");
+    params.set("page", "1");
+    params.set("sortBy", activeSort);
+    router.push(`${basePath}?${params.toString()}`);
+  };
+
   // 정렬 기준 변경 핸들러 (타입별 경로 사용)
   const handleSortChange = (sort: "latest" | "downloads" | "name") => {
     setActiveSort(sort);
@@ -182,6 +198,21 @@ const ComponentPageLayout = ({
     router.push(`${basePath}?${params.toString()}`);
   };
 
+
+  // 모델 타입 필터 변경 핸들러 (VC Model 전용)
+  const handleModelTypeChange = (value: string) => {
+    setActiveModelType(value);
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("modelType", value);
+    } else {
+      params.delete("modelType");
+    }
+    params.set("page", "1");
+    if (search) params.set("search", search);
+    params.set("sortBy", activeSort);
+    router.push(`${basePath}?${params.toString()}`);
+  };
 
   const handleTabChange = (tab: string) => {
     if (tab === "vc_plugin" && type !== "vc_plugin") {
@@ -332,7 +363,7 @@ const ComponentPageLayout = ({
           <div className="flex items-center gap-2">
             <div className="relative">
               <input
-                className="border border-input-border rounded-lg w-[240px] h-[40px] outline-none px-4 bg-input text-foreground text-[14px] placeholder-muted focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
+                className="border border-input-border rounded-lg w-[240px] h-[40px] outline-none pl-4 pr-9 bg-input text-foreground text-[14px] placeholder-muted focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
                 value={inputValue}
                 onChange={handleSearchInputChange}
                 onKeyPress={(e) => {
@@ -342,6 +373,16 @@ const ComponentPageLayout = ({
                 }}
                 placeholder="검색어를 입력하세요"
               />
+              {inputValue && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  aria-label="검색어 초기화"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-[14px] leading-none"
+                >
+                  ✕
+                </button>
+              )}
             </div>
             <button
               className="bg-white/10 text-white px-4 h-[40px] rounded-xl text-[14px] font-medium hover:bg-white/20 border border-white/5 transition-colors shadow-sm"
@@ -354,6 +395,34 @@ const ComponentPageLayout = ({
 
         {/* 등록/삭제 버튼 */}
         <div className="flex gap-2">
+          {/* 모델 타입 필터 (VC Model 전용) */}
+          {type === "vc_model" && (
+            <>
+              <div className="flex items-center gap-2 mr-4">
+                <p className="text-white text-[14px] mr-3">모델 타입</p>
+                <div className="flex gap-4">
+                  {[
+                    { value: "", label: "전체" },
+                    { value: "component", label: "컴포넌트" },
+                    { value: "layout", label: "레이아웃" },
+                  ].map((option) => (
+                    <span
+                      key={option.value}
+                      className={`text-[14px] cursor-pointer ${
+                        activeModelType === option.value
+                          ? "text-blue-400 font-medium"
+                          : "text-gray-400 hover:text-gray-300"
+                      }`}
+                      onClick={() => handleModelTypeChange(option.value)}
+                    >
+                      {option.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="w-px h-4 self-center bg-white/10 mr-5" />
+            </>
+          )}
           {/* 정렬 섹션 */}
           <div className="flex items-center gap-2 mr-5">
             <p className="text-white text-[14px] mr-3">정렬기준</p>

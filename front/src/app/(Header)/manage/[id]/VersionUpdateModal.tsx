@@ -38,6 +38,7 @@ interface VersionUpdateModalProps {
       vcmx?: string;
     };
     fileName?: string;
+    modelType?: string;
   };
   componentType: string;
 }
@@ -80,6 +81,7 @@ const VersionUpdateModal = ({
     description: initialData?.description || "",
     mainFeatures: initialData?.mainFeatures?.join("\n") || "",
     recommendedEnvironment: initialData?.recommendedEnvironment || "",
+    modelType: initialData?.modelType || "component",
   });
 
   const [files, setFiles] = useState<{
@@ -115,6 +117,7 @@ const VersionUpdateModal = ({
         ...prev,
         componentName: initialData.fileName || "",
         version: nextVersion,
+        modelType: initialData.modelType || "component",
       }));
 
       // 파일 상태 초기화
@@ -152,6 +155,7 @@ const VersionUpdateModal = ({
     initialData?.thumbnailImage,
     initialData?.fileLinks?.icon,
     initialData?.fileName,
+    initialData?.modelType,
   ]);
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -191,6 +195,10 @@ const VersionUpdateModal = ({
       formDataToSend.append("version", formData.version);
       formDataToSend.append("description", formData.description);
       formDataToSend.append("environment", formData.recommendedEnvironment);
+
+      if (componentType === "vc_model") {
+        formDataToSend.append("modelType", formData.modelType);
+      }
 
       // features 추가 (한 블록으로 전송)
       formDataToSend.append("features", formData.mainFeatures);
@@ -644,6 +652,25 @@ const VersionUpdateModal = ({
                     </p>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* 모델 타입 (VC Model 전용) */}
+            {componentType === "vc_model" && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  모델 타입
+                </label>
+                <select
+                  value={formData.modelType}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, modelType: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 bg-gray-700 rounded-md text-white border border-gray-600 focus:border-cyan-500 outline-none transition-all"
+                >
+                  <option value="component">컴포넌트</option>
+                  <option value="layout">레이아웃</option>
+                </select>
               </div>
             )}
 

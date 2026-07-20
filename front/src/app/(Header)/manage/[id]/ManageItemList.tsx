@@ -59,6 +59,7 @@ interface ComponentDetail {
   };
   relatedFiles: RelatedFile[];
   type: string;
+  modelType?: string;
 }
 
 interface ManageItemListProps {
@@ -275,6 +276,20 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
           <span className="text-sm text-gray-400">
             {formatDate(componentData.updatedAt)}
           </span>
+          {componentData.type === "vc_model" && componentData.modelType && (
+            <>
+              <span className="w-1 h-1 rounded-full bg-gray-600"></span>
+              <span
+                className={`text-[11px] px-2 py-[2px] rounded-full font-medium ${
+                  componentData.modelType === "layout"
+                    ? "bg-purple-500/20 text-purple-300"
+                    : "bg-cyan-500/20 text-cyan-300"
+                }`}
+              >
+                {componentData.modelType === "layout" ? "레이아웃" : "컴포넌트"}
+              </span>
+            </>
+          )}
         </div>
       </div>
 

@@ -318,13 +318,13 @@ module.exports = {
     INSERT INTO files (
       file_name, version, description, main_features, recommended_environment,
       thumbnail_image, source_file_link, icon_file_link, fbx_file_link, vcmx_file_link,
-      category_id, sub_category_id, uploader, type, component_id
+      category_id, sub_category_id, uploader, type, model_type, component_id
     )
     OUTPUT INSERTED.id INTO @InsertedFiles
     VALUES (
       @file_name, @version, @description, @main_features, @recommended_environment,
       @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @vcmx_file_link,
-      @category_id, @sub_category_id, @uploader, @type, @new_component_id
+      @category_id, @sub_category_id, @uploader, @type, @model_type, @new_component_id
     );
 
     SELECT id FROM @InsertedFiles;
@@ -365,9 +365,10 @@ module.exports = {
         (@sub_category_id = 0 OR f.sub_category_id = @sub_category_id) AND
         (@search = '' OR f.file_name LIKE '%' + @search + '%') AND
         (@type = '' OR f.type = @type) AND
+        (@model_type = '' OR f.model_type = @model_type) AND
         f.is_active = 1
     )
-    SELECT 
+    SELECT
       rf.*,
       cs.registration_date,
       cs.total_download_count
@@ -402,6 +403,7 @@ module.exports = {
         (@sub_category_id = 0 OR f.sub_category_id = @sub_category_id) AND
         (@search = '' OR f.file_name LIKE '%' + @search + '%') AND
         (@type = '' OR f.type = @type) AND
+        (@model_type = '' OR f.model_type = @model_type) AND
         f.is_active = 1
     )
     SELECT COUNT(*) as total FROM RankedFiles WHERE rn = 1
@@ -503,6 +505,7 @@ module.exports = {
       f.uploader,
       f.component_id,
       f.type,
+      f.model_type,
       f.created_at,
       f.updated_at,
       f.is_active,
@@ -536,13 +539,13 @@ module.exports = {
     INSERT INTO files (
       file_name, version, description, main_features, recommended_environment,
       thumbnail_image, source_file_link, icon_file_link, fbx_file_link, vcmx_file_link,
-      category_id, sub_category_id, uploader, type, component_id
+      category_id, sub_category_id, uploader, type, model_type, component_id
     )
     OUTPUT INSERTED.id INTO @InsertedFiles
     VALUES (
       @file_name, @version, @description, @main_features, @recommended_environment,
       @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @vcmx_file_link,
-      @category_id, @sub_category_id, @uploader, @type, @component_id
+      @category_id, @sub_category_id, @uploader, @type, @model_type, @component_id
     );
 
     SELECT id FROM @InsertedFiles;

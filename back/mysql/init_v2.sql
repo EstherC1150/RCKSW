@@ -47,6 +47,7 @@ CREATE TABLE [dbo].[files](
     [file_name] [nvarchar](255) NULL,
     [version] [nvarchar](50) NULL,
     [type] [nvarchar](50) NULL,
+    [model_type] [nvarchar](20) NULL, -- vc_model 전용: 'component' 또는 'layout'
     [description] [nvarchar](max) NULL,
     [main_features] [nvarchar](2500) NULL,
     [recommended_environment] [nvarchar](500) NULL,
