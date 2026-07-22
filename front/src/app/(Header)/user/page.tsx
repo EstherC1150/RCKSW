@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import SelectBox from "@/app/_components/common/SelectBox";
 import { useRouter } from "next/navigation";
 import { authenticatedFetch } from "@/app/utils/api";
+import { useAlertStore } from "@/app/stores/alertStore";
 
 interface User {
   id: string;
@@ -18,44 +19,15 @@ interface User {
   isLoggedIn: boolean;
 }
 
-interface ToastProps {
-  message: string;
-  type: "success" | "error";
-  onClose: () => void;
-}
-
-const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <div
-      className={`fixed top-4 right-4 p-4 rounded-md shadow-lg z-50 ${
-        type === "success" ? "bg-green-600" : "bg-red-600"
-      } text-white`}
-    >
-      {message}
-    </div>
-  );
-};
-
 const UserManagementPage = () => {
   const router = useRouter();
   const { getAccessToken, clearAll } = useUserStore();
+  const { showConfirm, showAlert, showToast } = useAlertStore();
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [isAllSelected, setIsAllSelected] = useState(false);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -98,17 +70,11 @@ const UserManagementPage = () => {
         setCurrentPage(data.currentPage);
         setTotalUsers(data.total);
       } else {
-        setToast({
-          message: "사용자 목록을 불러오는데 실패했습니다.",
-          type: "error",
-        });
+        showToast("사용자 목록을 불러오는데 실패했습니다.", "error");
       }
     } catch (err) {
       console.error("사용자 목록 조회 중 오류 발생:", err);
-      setToast({
-        message: "사용자 목록을 불러오는 중 오류가 발생했습니다.",
-        type: "error",
-      });
+      showToast("사용자 목록을 불러오는 중 오류가 발생했습니다.", "error");
     }
   }, [currentPage, getAccessToken, handleTokenInvalid]);
 
@@ -140,7 +106,7 @@ const UserManagementPage = () => {
       setTotalUsers(data.total);
     } catch (err) {
       console.error("사용자 검색 중 오류 발생:", err);
-      setToast({ message: "사용자 검색에 실패했습니다.", type: "error" });
+      showToast("사용자 검색에 실패했습니다.", "error");
     }
   };
 
@@ -169,15 +135,21 @@ const UserManagementPage = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedUsers.length === 0) {
-      setToast({ message: "삭제할 사용자를 선택해주세요.", type: "error" });
+      showToast("삭제할 사용자를 선택해주세요.", "error");
       return;
     }
 
-    if (
-      window.confirm(
-        `선택한 ${selectedUsers.length}명의 사용자를 삭제하시겠습니까?`
-      )
-    ) {
+    const confirmed = await showConfirm(
+      `선택한 ${selectedUsers.length}명의 사용자를 삭제하시겠습니까?`,
+      {
+        title: "사용자 삭제 확인",
+        type: "warning",
+        confirmText: "삭제",
+        cancelText: "취소",
+      }
+    );
+
+    if (confirmed) {
       try {
         const token = getAccessToken();
         if (!token) {
@@ -211,20 +183,14 @@ const UserManagementPage = () => {
           if (selectedUser && selectedUsers.includes(selectedUser.id)) {
             setSelectedUser(null);
           }
-          setToast({
-            message: "선택한 사용자가 삭제되었습니다.",
-            type: "success",
-          });
+          showToast("선택한 사용자가 삭제되었습니다.", "success");
           fetchUsers();
         } else {
-          setToast({ message: "사용자 삭제에 실패했습니다.", type: "error" });
+          showToast("사용자 삭제에 실패했습니다.", "error");
         }
       } catch (err) {
         console.error("사용자 삭제 중 오류 발생:", err);
-        setToast({
-          message: "사용자 삭제 중 오류가 발생했습니다.",
-          type: "error",
-        });
+        showToast("사용자 삭제 중 오류가 발생했습니다.", "error");
       }
     }
   };
@@ -293,20 +259,16 @@ const UserManagementPage = () => {
 
       setSelectedUser(updatedUser.data);
       setIsEditing(false);
-      setToast({
-        message: "사용자 정보가 수정되었습니다.",
-        type: "success",
-      });
+      showToast("사용자 정보가 수정되었습니다.", "success");
 
       fetchUsers();
     } catch (err) {
-      setToast({
-        message:
-          err instanceof Error
-            ? err.message
-            : "알 수 없는 오류가 발생했습니다.",
-        type: "error",
-      });
+      showToast(
+        err instanceof Error
+          ? err.message
+          : "알 수 없는 오류가 발생했습니다.",
+        "error"
+      );
     }
   };
 
@@ -336,13 +298,6 @@ const UserManagementPage = () => {
 
   return (
     <div className="flex h-full bg-background p-4">
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
 
       {/* 왼쪽 사용자 목록 및 검색 */}
       <div className="w-[65%] p-4 border-r border-gray-700 flex flex-col h-full">

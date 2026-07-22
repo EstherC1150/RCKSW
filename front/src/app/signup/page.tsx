@@ -23,9 +23,12 @@ type FormValues = {
   position: string;
 };
 
+import { useAlertStore } from "@/app/stores/alertStore";
+
 const SignupPage = () => {
   const router = useRouter();
   const [isEmailVerified, setIsEmailVerified] = React.useState(false);
+  const { showAlert } = useAlertStore();
 
   const {
     register,
@@ -51,7 +54,10 @@ const SignupPage = () => {
 
   const onSubmit = (data: FormValues) => {
     if (!isEmailVerified) {
-      alert("이메일 중복확인을 해주세요.");
+      showAlert("이메일 중복확인을 먼저 진행해주세요.", {
+        title: "확인 필요",
+        type: "warning",
+      });
       return;
     }
     const phone = `${data.phone1}-${data.phone2}-${data.phone3}`;
@@ -70,20 +76,27 @@ const SignupPage = () => {
       }),
     })
       .then((res) => res.json())
-      .then((data) => {
+      .then(async (data) => {
         console.log(data);
         if (data.success) {
-          alert("회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.");
+          await showAlert("회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.", {
+            title: "가입 완료",
+            type: "success",
+          });
           router.push("/login");
         } else {
-          alert(
-            "회원가입에 실패했습니다: " + (data.message || "알 수 없는 오류")
-          );
+          showAlert("회원가입에 실패했습니다: " + (data.message || "알 수 없는 오류"), {
+            title: "가입 실패",
+            type: "error",
+          });
         }
       })
       .catch((error) => {
         console.error("회원가입 오류:", error);
-        alert("회원가입 중 오류가 발생했습니다.");
+        showAlert("회원가입 처리 중 서버 오류가 발생했습니다.", {
+          title: "오류 발생",
+          type: "error",
+        });
       });
   };
 

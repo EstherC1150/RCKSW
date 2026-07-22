@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import useUserStore from "@/app/stores/UserStore"; // 인증 토큰 가져오기 위한 import
+import { useAlertStore } from "@/app/stores/alertStore";
 
 interface Category {
   id: number;
@@ -75,7 +76,7 @@ const CategoryEditModal = ({
       const accessToken = getAccessToken();
 
       if (!accessToken) {
-        alert("로그인이 필요한 서비스입니다.");
+        useAlertStore.getState().showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
         return;
       }
 
@@ -118,7 +119,7 @@ const CategoryEditModal = ({
       const accessToken = getAccessToken();
 
       if (!accessToken) {
-        alert("로그인이 필요한 서비스입니다.");
+        useAlertStore.getState().showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
         return;
       }
 
@@ -176,7 +177,7 @@ const CategoryEditModal = ({
     const accessToken = getAccessToken();
 
     if (!accessToken) {
-      alert("로그인이 필요한 서비스입니다.");
+      useAlertStore.getState().showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
       return;
     }
 
@@ -226,7 +227,7 @@ const CategoryEditModal = ({
       const accessToken = getAccessToken();
 
       if (!accessToken) {
-        alert("로그인이 필요한 서비스입니다.");
+        useAlertStore.getState().showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
         return;
       }
 
@@ -272,7 +273,7 @@ const CategoryEditModal = ({
       const accessToken = getAccessToken();
 
       if (!accessToken) {
-        alert("로그인이 필요한 서비스입니다.");
+        useAlertStore.getState().showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
         return;
       }
 
@@ -333,7 +334,7 @@ const CategoryEditModal = ({
     const accessToken = getAccessToken();
 
     if (!accessToken) {
-      alert("로그인이 필요한 서비스입니다.");
+      useAlertStore.getState().showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
       return;
     }
 
@@ -532,7 +533,7 @@ const CategoryEditModal = ({
 
     const accessToken = getAccessToken();
     if (!accessToken) {
-      alert("로그인이 필요한 서비스입니다.");
+      useAlertStore.getState().showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
       return;
     }
 
@@ -575,23 +576,9 @@ const CategoryEditModal = ({
   };
 
   const showToast = (message: string, type: "success" | "error" | "delete") => {
-    // 토스트 알림을 위한 간단한 구현
-    const toast = document.createElement("div");
-    toast.className = `fixed top-4 right-4 px-4 py-2 rounded shadow-lg transition-opacity duration-300 ease-in-out z-[10000] ${
-      type === "success"
-        ? "bg-green-500"
-        : type === "delete"
-        ? "bg-red-500"
-        : "bg-red-500"
-    } text-white`;
-    toast.innerText = message;
-    document.body.appendChild(toast);
-    setTimeout(() => {
-      toast.style.opacity = "0";
-      setTimeout(() => {
-        document.body.removeChild(toast);
-      }, 300);
-    }, 3000);
+    const { showToast: toast } = useAlertStore.getState();
+    const toastType = type === "error" || type === "delete" ? "error" : "success";
+    toast(message, toastType);
   };
 
   if (!isOpen) return null;

@@ -8,6 +8,8 @@ import useUserStore from "@/app/stores/UserStore"; // 사용자 정보 저장소
 import Image from "next/image";
 import LoadingSpinner from "@/app/_components/common/LoadingSpinner"; // 로딩 스피너 컴포넌트
 
+import { useAlertStore } from "@/app/stores/alertStore";
+
 // 로그인 페이지를 만드는 함수
 const LoginPage = () => {
   // 페이지 이동을 위한 기능
@@ -18,6 +20,7 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
   // 사용자 정보를 저장할 기능
   const { setUser, setTokens, isAuthenticated } = useUserStore();
+  const { showAlert } = useAlertStore();
 
   // 로그인 상태라면 자동 이동
   useEffect(() => {
@@ -53,14 +56,20 @@ const LoginPage = () => {
         }
         // 로그인 실패했을 때
         else {
-          alert("로그인에 실패했습니다.");
+          showAlert(data.message || "이메일 또는 비밀번호를 확인해주세요.", {
+            title: "로그인 실패",
+            type: "error",
+          });
           setIsLoading(false); // 실패 시 로딩 꺼줌
         }
       })
       .catch((error) => {
         // 오류가 발생했을 때
         console.error("로그인 오류:", error);
-        alert("로그인에 실패했습니다.");
+        showAlert("로그인 처리 중 서버 통신 오류가 발생했습니다.", {
+          title: "오류 발생",
+          type: "error",
+        });
         setIsLoading(false); // 에러 시 로딩 꺼줌
       });
   };

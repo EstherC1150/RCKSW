@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import VersionUpdateModal from "./VersionUpdateModal";
 import useUserStore from "@/app/stores/UserStore";
+import { useAlertStore } from "@/app/stores/alertStore";
 
 interface FileLinks {
   source: string | null;
@@ -169,7 +170,10 @@ const ComponentList = ({
       document.body.removeChild(link);
     } catch (error) {
       console.error("파일 다운로드 중 오류 발생:", error);
-      alert("파일 다운로드에 실패했습니다.");
+      useAlertStore.getState().showAlert("파일 다운로드에 실패했습니다.", {
+        title: "다운로드 실패",
+        type: "error",
+      });
     }
   };
 

@@ -6,6 +6,8 @@ import React, { useState, useEffect, useRef } from "react";
 import FbxThumbnailGenerator, { FbxThumbnailGeneratorRef } from "../../_components/common/FbxThumbnailGenerator";
 import VideoThumbnail, { isVideoThumbnail } from "../../_components/common/VideoThumbnail";
 
+import { useAlertStore } from "@/app/stores/alertStore";
+
 // 카테고리 타입 정의
 interface Category {
   id: number;
@@ -104,21 +106,40 @@ const ComponentModal = ({
       return;
     }
 
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
+
+    if (errors[name]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, files } = e.target;
+    const { showAlert } = useAlertStore.getState();
+
+    // 사용자가 새로운 파일(또는 올바른 파일)을 업로드하면 해당 필드의 에러 문구 즉시 지우기
+    if (errors[name]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
+
     if (files && files.length > 0) {
       const file = files[0];
       const ext = file.name.split('.').pop()?.toLowerCase();
       
       if (name === "iconFile") {
         if (!['svg', 'png', 'jpeg', 'jpg'].includes(ext || '')) {
-          alert('Icon 파일은 svg, png, jpeg, jpg 확장자만 업로드 가능합니다.');
+          showAlert('Icon 파일은 svg, png, jpeg, jpg 확장자만 업로드 가능합니다.', { title: '파일 확장자 오류', type: 'warning' });
           e.target.value = '';
           return;
         }
@@ -127,21 +148,21 @@ const ComponentModal = ({
       // VC Model 확장자 체크
       if (formData.type === "vc_model") {
         if (name === "sourceFile" && ext !== "vcmx") {
-          alert("VC Model의 소스 파일은 .vcmx 확장자만 가능합니다.");
+          showAlert("VC Model의 소스 파일은 .vcmx 확장자만 가능합니다.", { title: '파일 확장자 오류', type: 'warning' });
           e.target.value = "";
           return;
         }
         if (name === "fbxFile" && ext !== "fbx") {
-          alert("FBX 파일은 .fbx 확장자만 가능합니다.");
+          showAlert("FBX 파일은 .fbx 확장자만 가능합니다.", { title: '파일 확장자 오류', type: 'warning' });
           e.target.value = "";
           return;
         }
       }
 
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         [name]: file,
-      });
+      }));
 
       // 썸네일 이미지인 경우 미리보기 생성
       if (name === "thumbnail") {
@@ -185,25 +206,34 @@ const ComponentModal = ({
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
+    const { showAlert } = useAlertStore.getState();
 
-    // if (!formData.componentName)
-    //   newErrors.componentName = "파일명은 필수입니다.";
-    // if (!formData.version) newErrors.version = "버전은 필수입니다.";
-    // if (!formData.categoryId) newErrors.categoryId = "카테고리는 필수입니다.";
-    // if (!formData.subCategoryId)
-    //   newErrors.subCategoryId = "서브 카테고리는 필수입니다.";
-
+    // 1. 필수 파일(소스/설치 파일) 유무 우선 검증
     if (!formData.sourceFile) {
       newErrors.sourceFile = "소스/실행 파일은 필수입니다.";
-    }
-
-    if (formData.type === "vc_plugin" && !formData.thumbnail) {
-      alert("VC PlugIn 등록 시에는 MP4 또는 WebM 동영상 썸네일 첨부가 필수입니다.");
+      setErrors(newErrors);
+      showAlert(
+        formData.type === "vc_model"
+          ? "VCMX 소스 파일 첨부가 필수입니다."
+          : formData.type === "vc_plugin"
+          ? "설치파일(소스 파일) 첨부가 필수입니다."
+          : "파일 첨부가 필수입니다.",
+        { title: "필수 파일 누락", type: "warning" }
+      );
       return false;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    // 2. VC PlugIn 필수 동영상 썸네일 검증
+    if (formData.type === "vc_plugin" && !formData.thumbnail) {
+      showAlert(
+        "VC PlugIn 등록 시에는 MP4 또는 WebM 동영상 썸네일 첨부가 필수입니다.",
+        { title: "썸네일 필수", type: "warning" }
+      );
+      return false;
+    }
+
+    setErrors({});
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

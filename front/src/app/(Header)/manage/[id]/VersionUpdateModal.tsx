@@ -7,6 +7,7 @@ import Image from "next/image";
 import VideoThumbnail, { isVideoThumbnail } from "../../../_components/common/VideoThumbnail";
 import FbxThumbnailGenerator, { FbxThumbnailGeneratorRef } from "../../../_components/common/FbxThumbnailGenerator";
 import ThumbnailPlaceholder from "../../../_components/common/ThumbnailPlaceholder";
+import { useAlertStore } from "@/app/stores/alertStore";
 
 const isSupportedVideoFile = (file: File) =>
   ["video/mp4", "video/webm"].includes(file.type) && /\.(mp4|webm)$/i.test(file.name);
@@ -164,15 +165,16 @@ const VersionUpdateModal = ({
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    const { showAlert } = useAlertStore.getState();
     if (file) {
       if (componentType === "vc_plugin" && !isSupportedVideoFile(file)) {
-        alert("VC PlugIn 썸네일은 MP4 또는 WebM 동영상만 등록할 수 있습니다.");
+        showAlert("VC PlugIn 썸네일은 MP4 또는 WebM 동영상만 등록할 수 있습니다.", { title: "형식 오류", type: "warning" });
         e.target.value = "";
         return;
       }
 
       if (componentType !== "vc_plugin" && !file.type.startsWith("image/")) {
-        alert("썸네일은 이미지 파일만 등록할 수 있습니다.");
+        showAlert("썸네일은 이미지 파일만 등록할 수 있습니다.", { title: "형식 오류", type: "warning" });
         e.target.value = "";
         return;
       }
@@ -197,9 +199,10 @@ const VersionUpdateModal = ({
   // 제출 함수 (신규 등록과 동일한 방식)
   const onSubmit = async (submittedFiles: typeof files) => {
     const accessToken = getAccessToken();
+    const { showAlert, showToast } = useAlertStore.getState();
 
     if (!accessToken) {
-      alert("로그인이 필요한 서비스입니다.");
+      showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
       return;
     }
 
@@ -218,20 +221,6 @@ const VersionUpdateModal = ({
 
       // features 추가 (한 블록으로 전송)
       formDataToSend.append("features", formData.mainFeatures);
-
-      // 새 썸네일이 선택된 경우 추가
-      console.log("썸네일 처리:", {
-        hasThumbnail: !!submittedFiles.thumbnail,
-        thumbnailType: submittedFiles.thumbnail
-          ? submittedFiles.thumbnail.constructor.name
-          : "none",
-        thumbnailName: submittedFiles.thumbnail
-          ? submittedFiles.thumbnail.name
-          : "none",
-        thumbnailSize: submittedFiles.thumbnail
-          ? submittedFiles.thumbnail.size
-          : "none",
-      });
 
       if (submittedFiles.thumbnail) {
         formDataToSend.append("thumbnail", submittedFiles.thumbnail);
@@ -278,14 +267,14 @@ const VersionUpdateModal = ({
       );
 
       if (response.status === 401) {
-        alert("인증이 만료되었습니다. 다시 로그인해주세요.");
+        showAlert("인증이 만료되었습니다. 다시 로그인해주세요.", { title: "인증 오류", type: "error" });
         return;
       }
 
       const data = await response.json();
 
       if (data.success) {
-        alert("버전이 업데이트되었습니다.");
+        showToast("버전이 업데이트되었습니다.", "success");
         handleClose();
 
         // 최신 버전 페이지로 리다이렉션
@@ -295,11 +284,11 @@ const VersionUpdateModal = ({
           onSuccess();
         }
       } else {
-        alert(data.message || "버전 업데이트에 실패했습니다.");
+        showAlert(data.message || "버전 업데이트에 실패했습니다.", { title: "업데이트 실패", type: "error" });
       }
     } catch (error) {
       console.error("버전 업데이트 중 오류 발생:", error);
-      alert("버전 업데이트 중 오류가 발생했습니다.");
+      showAlert("버전 업데이트 중 오류가 발생했습니다.", { title: "오류 발생", type: "error" });
     }
   };
 
@@ -307,14 +296,15 @@ const VersionUpdateModal = ({
     e.preventDefault();
 
     const accessToken = getAccessToken();
+    const { showAlert } = useAlertStore.getState();
 
     if (!accessToken) {
-      alert("로그인이 필요한 서비스입니다.");
+      showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
       return;
     }
 
     if (!files.source && !useExistingSource) {
-      alert("소스/실행 파일은 필수입니다.");
+      showAlert("소스/실행 파일은 필수입니다.", { title: "필수 입력 누락", type: "warning" });
       return;
     }
 
@@ -528,7 +518,7 @@ const VersionUpdateModal = ({
                   if (file) {
                     const ext = file.name.split('.').pop()?.toLowerCase();
                     if (componentType === "vc_model" && ext !== "vcmx") {
-                      alert("VC Model의 소스 파일은 .vcmx 확장자만 가능합니다.");
+                      useAlertStore.getState().showAlert("VC Model의 소스 파일은 .vcmx 확장자만 가능합니다.", { title: "형식 오류", type: "warning" });
                       e.target.value = "";
                       return;
                     }
@@ -781,7 +771,7 @@ const VersionUpdateModal = ({
                     if (file) {
                       const ext = file.name.split('.').pop()?.toLowerCase();
                       if (ext !== "fbx") {
-                        alert("FBX 파일은 .fbx 확장자만 가능합니다.");
+                        useAlertStore.getState().showAlert("FBX 파일은 .fbx 확장자만 가능합니다.", { title: "형식 오류", type: "warning" });
                         e.target.value = "";
                         return;
                       }

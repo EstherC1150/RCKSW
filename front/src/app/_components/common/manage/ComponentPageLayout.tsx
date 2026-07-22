@@ -12,6 +12,7 @@ import React, {
 import ComponentModal from "@/app/(Header)/manage/ComponentModal";
 import { TComponentFormData } from "@/app/_types/manage/manage.types";
 import useUserStore from "@/app/stores/UserStore";
+import { useAlertStore } from "@/app/stores/alertStore";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // 카테고리 타입 정의
@@ -78,9 +79,10 @@ const ComponentPageLayout = ({
 
   const handleSubmitComponent = async (formData: TComponentFormData) => {
     const accessToken = getAccessToken();
+    const { showAlert, showToast } = useAlertStore.getState();
 
     if (!accessToken) {
-      alert("로그인이 필요한 서비스입니다.");
+      showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
       return;
     }
 
@@ -134,23 +136,21 @@ const ComponentPageLayout = ({
       const data = await response.json();
 
       if (data.success) {
-        alert(`${typeName}가 등록되었습니다.`);
+        showToast(`${typeName}가 등록되었습니다.`, "success");
         handleCloseModal();
         // 컴포넌트 목록 새로고침
         refreshList();
       } else {
         // 토큰 만료 등의 인증 오류 처리
         if (response.status === 401) {
-          alert("인증이 만료되었습니다. 다시 로그인해주세요.");
+          showAlert("인증이 만료되었습니다. 다시 로그인해주세요.", { title: "인증 오류", type: "error" });
           return;
         }
-        alert(
-          data.message || `${typeName} 등록에 실패했습니다.`
-        );
+        showAlert(data.message || `${typeName} 등록에 실패했습니다.`, { title: "등록 실패", type: "error" });
       }
     } catch (err) {
       console.error(`${typeName} 등록 중 오류 발생:`, err);
-      alert(`${typeName} 등록 중 오류가 발생했습니다.`);
+      showAlert(`${typeName} 등록 중 오류가 발생했습니다.`, { title: "오류 발생", type: "error" });
     }
   };
 
