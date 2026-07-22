@@ -197,6 +197,11 @@ const ComponentModal = ({
       newErrors.sourceFile = "소스/실행 파일은 필수입니다.";
     }
 
+    if (formData.type === "vc_plugin" && !formData.thumbnail) {
+      alert("VC PlugIn 등록 시에는 MP4 또는 WebM 동영상 썸네일 첨부가 필수입니다.");
+      return false;
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };

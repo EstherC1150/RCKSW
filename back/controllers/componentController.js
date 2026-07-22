@@ -206,7 +206,7 @@ exports.createComponent = async (req, res) => {
     if (type === "vc_plugin" && !isSupportedVideoThumbnail(req.files?.thumbnail?.[0])) {
       return res.status(400).json({
         success: false,
-        message: "VC PlugIn registration requires an MP4 or WebM video thumbnail.",
+        message: "VC PlugIn 등록 시에는 MP4 또는 WebM 동영상 썸네일 첨부가 필수입니다.",
       });
     }
 
@@ -780,7 +780,7 @@ const updateComponentVersion = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "VC PlugIn thumbnails must be MP4 or WebM videos.",
+        message: "VC PlugIn 썸네일은 MP4 또는 WebM 동영상 파일만 가능합니다.",
       });
     }
 

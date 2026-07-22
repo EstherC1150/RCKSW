@@ -52,7 +52,7 @@ const upload = multer({
         ["video/mp4", "video/webm"].includes(file.mimetype);
 
       if (req.body.type === "vc_plugin" && !isSupportedVideo) {
-        return cb(new Error("VC PlugIn thumbnails must be MP4 or WebM videos."), false);
+        return cb(new Error("VC PlugIn 썸네일은 MP4 또는 WebM 동영상 파일만 가능합니다."), false);
       }
 
       if (req.body.type !== "vc_plugin" && !file.mimetype.startsWith("image/")) {
