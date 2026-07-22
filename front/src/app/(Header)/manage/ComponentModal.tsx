@@ -4,6 +4,7 @@ import Image from "next/image";
 import { TComponentFormData } from "@/app/_types/manage/manage.types";
 import React, { useState, useEffect, useRef } from "react";
 import FbxThumbnailGenerator, { FbxThumbnailGeneratorRef } from "../../_components/common/FbxThumbnailGenerator";
+import VideoThumbnail, { isVideoThumbnail } from "../../_components/common/VideoThumbnail";
 
 // 카테고리 타입 정의
 interface Category {
@@ -416,12 +417,21 @@ const ComponentModal = ({
                   <div className="relative w-full aspect-square max-w-[300px] bg-gray-900 rounded-2xl flex flex-col items-center justify-center border border-gray-600 overflow-hidden shadow-inner">
                     {thumbnailPreview ? (
                       <>
-                        <Image
-                          src={thumbnailPreview}
-                          alt="썸네일"
-                          fill
-                          className="object-cover"
-                        />
+                        {formData.thumbnail && (isVideoThumbnail(formData.thumbnail.name) || formData.thumbnail.type?.startsWith("video/")) ? (
+                          <VideoThumbnail
+                            src={thumbnailPreview}
+                            alt="동영상 썸네일 미리보기"
+                            controls={true}
+                            previewOnHover={false}
+                          />
+                        ) : (
+                          <Image
+                            src={thumbnailPreview}
+                            alt="썸네일"
+                            fill
+                            className="object-cover"
+                          />
+                        )}
                         <button
                           type="button"
                           onClick={() => {
