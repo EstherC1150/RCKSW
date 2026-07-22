@@ -46,7 +46,16 @@ const upload = multer({
 
     // 썸네일은 선택사항 (이미지 파일만 허용)
     if (file.fieldname === "thumbnail") {
-      if (!file.mimetype.startsWith("image/")) {
+      const extension = path.extname(file.originalname).toLowerCase();
+      const isSupportedVideo =
+        [".mp4", ".webm"].includes(extension) &&
+        ["video/mp4", "video/webm"].includes(file.mimetype);
+
+      if (req.body.type === "vc_plugin" && !isSupportedVideo) {
+        return cb(new Error("VC PlugIn thumbnails must be MP4 or WebM videos."), false);
+      }
+
+      if (req.body.type !== "vc_plugin" && !file.mimetype.startsWith("image/")) {
         return cb(new Error("이미지 파일만 업로드 가능합니다."), false);
       }
     }

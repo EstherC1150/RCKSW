@@ -3,6 +3,7 @@
 import useUserStore from "@/app/stores/UserStore";
 import Image from "next/image";
 import ThumbnailPlaceholder from "../../../_components/common/ThumbnailPlaceholder";
+import VideoThumbnail, { isVideoThumbnail } from "../../../_components/common/VideoThumbnail";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useEffect, useCallback } from "react";
 import { IoArrowBack } from "react-icons/io5";
@@ -327,6 +328,12 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                    componentData.thumbnailImage === "/uploads/thumbnails/ic-ns.png" || 
                    componentData.thumbnailImage === "/uploads/thumbnails/ic-etc.png") ? (
                 <ThumbnailPlaceholder type={componentData.type} name={componentData.fileName} />
+              ) : isVideoThumbnail(componentData.thumbnailImage) ? (
+                <VideoThumbnail
+                  src={`${process.env.NEXT_PUBLIC_API_URL}${componentData.thumbnailImage}`}
+                  alt={`${componentData.fileName} 동영상 썸네일`}
+                  alwaysPlay={true}
+                />
               ) : (
                 <Image
                   src={`${process.env.NEXT_PUBLIC_API_URL}${componentData.thumbnailImage}`}

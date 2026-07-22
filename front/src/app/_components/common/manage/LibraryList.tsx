@@ -12,6 +12,7 @@ import React, {
 import useSearchStore from "@/app/stores/SearchStore";
 import { TLibrary } from "@/app/_types/manage/manage.types";
 import ThumbnailPlaceholder from "../ThumbnailPlaceholder";
+import VideoThumbnail, { isVideoThumbnail } from "../VideoThumbnail";
 import { DownloadIconButton } from "./DownloadButton";
 import useUserStore from "@/app/stores/UserStore";
 
@@ -305,6 +306,12 @@ const LibraryList = forwardRef(function LibraryList(
                     item.thumbnail_image === "/uploads/thumbnails/ic-ns.png" || 
                     item.thumbnail_image === "/uploads/thumbnails/ic-etc.png") ? (
                     <ThumbnailPlaceholder type={type} name={item.file_name} />
+                  ) : isVideoThumbnail(item.thumbnail_image) ? (
+                    <VideoThumbnail
+                      src={`${process.env.NEXT_PUBLIC_API_URL}${item.thumbnail_image}`}
+                      alt={`${item.file_name} 동영상 썸네일`}
+                      alwaysPlay={index === libraryList.findIndex((it) => isVideoThumbnail(it.thumbnail_image))}
+                    />
                   ) : (
                     <Image
                       src={

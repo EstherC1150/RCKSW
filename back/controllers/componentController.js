@@ -11,6 +11,15 @@ const {
   sendComponentCreate,
 } = require("../controllers/sseController");
 
+const isSupportedVideoThumbnail = (file) => {
+  if (!file) return false;
+  const extension = path.extname(file.originalname || file.filename).toLowerCase();
+  return (
+    [".mp4", ".webm"].includes(extension) &&
+    ["video/mp4", "video/webm"].includes(file.mimetype)
+  );
+};
+
 // 파일 타입과 확장자에 따라 저장 경로(카테고리)를 결정하는 헬퍼 함수
 const getPathByCategory = (type, originalName, fieldName) => {
   const ext = path.extname(originalName).toLowerCase();
@@ -193,6 +202,13 @@ exports.createComponent = async (req, res) => {
       });
     }
     const finalModelType = type === "vc_model" ? modelType : null;
+
+    if (type === "vc_plugin" && !isSupportedVideoThumbnail(req.files?.thumbnail?.[0])) {
+      return res.status(400).json({
+        success: false,
+        message: "VC PlugIn registration requires an MP4 or WebM video thumbnail.",
+      });
+    }
 
     // features가 배열이면 Join하고, 문자열이면 그대로 사용
     let finalFeatures = Array.isArray(features) ? features : (features || "");
@@ -754,6 +770,17 @@ const updateComponentVersion = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "원본 컴포넌트 ID가 없습니다.",
+      });
+    }
+
+    if (
+      originalFile.type === "vc_plugin" &&
+      req.files?.thumbnail?.[0] &&
+      !isSupportedVideoThumbnail(req.files.thumbnail[0])
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "VC PlugIn thumbnails must be MP4 or WebM videos.",
       });
     }
 

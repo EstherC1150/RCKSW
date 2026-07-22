@@ -327,14 +327,14 @@ const ComponentModal = ({
               파일 업로드
             </h3>
 
-            {/* 소스/실행 파일 */}
+            {/* 소스/실행 파일 (설치파일) */}
             <div className="mb-4">
               <label className="block text-white mb-2">
                 {formData.type === "vc_model" 
                   ? "VCMX 파일 (필수)" 
-                  : formData.type === "ns_model" || formData.type === "etc"
-                    ? "파일 (필수)" 
-                    : "소스/실행 파일 (필수)"}
+                  : formData.type === "vc_plugin"
+                    ? "설치파일 (필수)"
+                    : "파일 (필수)"}
               </label>
               <input
                 type="file"
@@ -382,42 +382,33 @@ const ComponentModal = ({
                 </p>
               </div>
             )}
-
-            {/* 아이콘 파일 (VC/NS/etc 모델에서는 제외) */}
-            {formData.type !== "vc_model" && formData.type !== "ns_model" && formData.type !== "etc" && (
-              <div className="mb-4">
-                <label className="block text-white mb-2">
-                  Icon 파일 (선택사항)
-                </label>
-                <div className="relative">
-                  <input
-                    type="file"
-                    name="iconFile"
-                    accept=".svg,.png,.jpeg,.jpg"
-                    onChange={handleFileChange}
-                    className="w-full bg-input text-foreground p-2 rounded border border-input-border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all pr-12"
-                  />
-                  {iconPreview && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded border border-border overflow-hidden bg-card flex items-center justify-center shadow-sm relative">
-                      <Image src={iconPreview} alt="아이콘 미리보기" fill className="object-contain" />
-                    </div>
-                  )}
-                </div>
-                {formData.iconFile && (
-                  <p className="text-green-500 mt-1">
-                    {(formData.iconFile as File).name} 파일이 선택되었습니다.
-                  </p>
-                )}
-              </div>
-            )}
           </div>
 
           {/* 썸네일 설정 섹션 (NS/etc Model은 자동 생성되므로 제외) */}
           {formData.sourceFile && formData.type !== "ns_model" && formData.type !== "etc" && (
             <div className="mb-6 bg-card rounded-xl border border-border mt-4 p-6 shadow-sm">
-              <h3 className="text-white font-semibold mb-4 flex items-center">
-                썸네일 설정
+              <h3 className="text-white font-semibold mb-4 flex items-center justify-between">
+                <span>썸네일 설정</span>
+                {formData.type === "vc_plugin" && (
+                  <span className="bg-red-500/20 border border-red-500/60 text-red-400 text-xs px-3 py-1 rounded-full font-bold animate-pulse">
+                    동영상 썸네일 필수 (MP4 / WebM)
+                  </span>
+                )}
               </h3>
+
+              {formData.type === "vc_plugin" && (
+                <div className="mb-5 p-4 bg-cyan-950/90 border-2 border-cyan-400 rounded-xl flex items-start gap-3 shadow-[0_0_20px_rgba(6,182,212,0.25)]">
+                  <div className="text-xs leading-relaxed">
+                    <div className="font-bold text-cyan-300 text-sm flex items-center gap-2 mb-1">
+                      <span>[필수] VC PlugIn 동영상 썸네일 안내</span>
+                      <span className="bg-cyan-400 text-black px-1.5 py-0.5 rounded text-[10px] font-extrabold uppercase">Required</span>
+                    </div>
+                    <p className="text-cyan-100/90">
+                      VC PlugIn 등록 시에는 <strong className="text-white underline underline-offset-2 decoration-cyan-400 font-bold">MP4 또는 WebM 동영상 썸네일</strong>을 반드시 업로드하셔야 정상 등록됩니다.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* 썸네일 결과 (또는 기본 아이콘 / 3D 뷰어) */}
@@ -528,11 +519,20 @@ const ComponentModal = ({
 
                 {/* 오른쪽: 직접 썸네일 업로드 섹션 */}
                 <div className="flex flex-col justify-center">
-                  <h4 className="text-white font-medium mb-2 text-base">
-                    직접 썸네일 설정 <span className="text-gray-400 text-xs font-normal ml-1">(선택항목)</span>
+                  <h4 className="text-white font-medium mb-2 text-base flex items-center gap-2">
+                    <span>직접 썸네일 설정</span>
+                    {formData.type === "vc_plugin" ? (
+                      <span className="text-red-400 text-xs font-bold bg-red-950/80 border border-red-500/50 px-2 py-0.5 rounded">
+                        동영상 필수 (MP4 / WebM)
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-xs font-normal ml-1">(선택항목)</span>
+                    )}
                   </h4>
                   <p className="text-gray-400 text-xs mb-4 leading-relaxed">
-                    직접 이미지를 업로드하지 않으면 상단의 {formData.fbxFile ? '캡처본' : '기본 아이콘'}이 썸네일로 사용됩니다.
+                    {formData.type === "vc_plugin" 
+                      ? "VC PlugIn 타입은 MP4 또는 WebM 동영상 파일 업로드가 필수입니다."
+                      : `직접 이미지를 업로드하지 않으면 상단의 ${formData.fbxFile ? '캡처본' : '기본 아이콘'}이 썸네일로 사용됩니다.`}
                   </p>
                   
                   <div className="relative">
@@ -540,20 +540,24 @@ const ComponentModal = ({
                       type="file"
                       id="thumbnail-upload"
                       name="thumbnail"
-                      accept="image/*"
+                      accept={formData.type === "vc_plugin" ? "video/mp4,video/webm" : "image/*"}
                       onChange={handleFileChange}
                       className="hidden"
                     />
                     <label 
                       htmlFor="thumbnail-upload"
-                      className="w-full cursor-pointer bg-gray-900 hover:bg-gray-750 text-gray-300 p-3 rounded-lg border border-gray-700/50 transition-all text-xs flex items-center justify-between group"
+                      className={`w-full cursor-pointer p-3 rounded-lg border transition-all text-xs flex items-center justify-between group ${
+                        formData.type === "vc_plugin" && !formData.thumbnail
+                          ? "bg-cyan-950/40 border-cyan-500/80 hover:bg-cyan-900/50 text-cyan-200"
+                          : "bg-gray-900 hover:bg-gray-750 text-gray-300 border-gray-700/50"
+                      }`}
                     >
-                      <span className="truncate">{formData.thumbnail ? formData.thumbnail.name : '파일을 선택하세요'}</span>
-                      <span className="bg-gray-700 group-hover:bg-gray-600 px-2 py-1 rounded text-[10px] text-white shrink-0 ml-2">파일 찾기</span>
+                      <span className="truncate">{formData.thumbnail ? formData.thumbnail.name : (formData.type === "vc_plugin" ? '동영상 파일 선택 (MP4, WebM)' : '파일을 선택하세요')}</span>
+                      <span className="bg-cyan-600 group-hover:bg-cyan-500 px-2 py-1 rounded text-[10px] text-white shrink-0 ml-2 font-medium">파일 찾기</span>
                     </label>
                   </div>
                   <p className="text-gray-500 text-[10px] mt-2">
-                    💡 1:1 비율의 JPG, PNG 권장
+                    {formData.type === "vc_plugin" ? "💡 MP4, WebM 동영상 권장" : "💡 1:1 비율 권장"}
                   </p>
                 </div>
               </div>
