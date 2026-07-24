@@ -249,15 +249,7 @@ const VersionUpdateModal = ({
         formDataToSend.append("sourceFile", submittedFiles.source);
       }
 
-      // 아이콘 파일 처리
-      if (useExistingIcon && existingFiles.icon) {
-        // 기존 Icon 파일 사용 시 경로 전송
-        formDataToSend.append("useExistingIcon", "true");
-        formDataToSend.append("existingIconPath", existingFiles.icon);
-      } else if (submittedFiles.icon) {
-        // 새 Icon 파일 선택 시
-        formDataToSend.append("iconFile", submittedFiles.icon);
-      }
+
 
       // FBX 파일 처리 (VC Model)
       if (useExistingFbx && existingFiles.fbx) {

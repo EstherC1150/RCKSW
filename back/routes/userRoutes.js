@@ -31,6 +31,9 @@ router.post("/login", userController.login);
 // verifyToken: JWT 토큰 검증
 router.get("/profile", verifyToken, userController.getProfile);
 
+// 본인 프로필 정보 수정
+router.patch("/profile", verifyToken, userController.updateMyProfile);
+
 // 사용자 정보 수정 (관리자만 가능)
 // verifyToken: JWT 토큰 검증
 // isAdmin: 관리자 권한 확인

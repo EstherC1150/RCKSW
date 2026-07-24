@@ -113,10 +113,6 @@ const ComponentPageLayout = ({
       formDataToSend.append("sourceFile", formData.sourceFile);
     }
 
-    if (formData.iconFile) {
-      formDataToSend.append("iconFile", formData.iconFile);
-    }
-
     if (formData.fbxFile) {
       formDataToSend.append("fbxFile", formData.fbxFile);
     }
@@ -459,30 +455,30 @@ const ComponentPageLayout = ({
               </span>
             </div>
           </div>
-          {user?.role === "admin" && (
-            <>
-              <button
-                className="px-6 h-[40px] bg-cyan-600/90 hover:bg-cyan-500 border border-cyan-400/50 text-white rounded-lg text-[14px] font-medium shadow-[0_0_15px_rgba(8,145,178,0.3)] transition-all duration-300 flex items-center justify-center"
-                onClick={handleOpenModal}
-              >
-                등록
-              </button>
-              <button
-                className="px-6 h-[40px] bg-rose-600/20 hover:bg-rose-500/80 border border-rose-500/50 text-rose-300 hover:text-white rounded-lg text-[14px] font-medium hover:shadow-[0_0_15px_rgba(225,29,72,0.3)] transition-all duration-300 flex items-center justify-center backdrop-blur-sm"
-                onClick={async () => {
-                  if (
-                    libraryListRef.current &&
-                    libraryListRef.current.handleDeleteSelected
-                  ) {
-                    const deleted =
-                      await libraryListRef.current.handleDeleteSelected();
-                    if (deleted) refreshList();
-                  }
-                }}
-              >
-                삭제
-              </button>
-            </>
+          {(user?.role === "admin" || user?.role === "developer") && (
+            <button
+              className="px-6 h-[40px] bg-cyan-600/90 hover:bg-cyan-500 border border-cyan-400/50 text-white rounded-lg text-[14px] font-medium shadow-[0_0_15px_rgba(8,145,178,0.3)] transition-all duration-300 flex items-center justify-center"
+              onClick={handleOpenModal}
+            >
+              등록
+            </button>
+          )}
+          {(user?.role === "admin" || user?.role === "developer") && (
+            <button
+              className="px-6 h-[40px] bg-rose-600/20 hover:bg-rose-500/80 border border-rose-500/50 text-rose-300 hover:text-white rounded-lg text-[14px] font-medium hover:shadow-[0_0_15px_rgba(225,29,72,0.3)] transition-all duration-300 flex items-center justify-center backdrop-blur-sm"
+              onClick={async () => {
+                if (
+                  libraryListRef.current &&
+                  libraryListRef.current.handleDeleteSelected
+                ) {
+                  const deleted =
+                    await libraryListRef.current.handleDeleteSelected();
+                  if (deleted) refreshList();
+                }
+              }}
+            >
+              삭제
+            </button>
           )}
         </div>
       </div>

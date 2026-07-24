@@ -33,7 +33,7 @@ const componentRoutes = require("./routes/componentRoutes"); // 컴포넌트 관
 const categoryRoutes = require("./routes/categoryRoutes"); // 카테고리 관련 라우트
 const statsRoutes = require("./routes/statsRoutes"); // 통계 관련 라우트
 
-const PORT = process.env.PORT || 8180; // 서버 포트 설정 (사용자 요청: 8180)
+const PORT = process.env.PORT || 8081;
 
 // 요청 본문 파싱을 위한 미들웨어 설정
 app.use(express.json({ limit: "5120mb" })); // JSON 요청 본문 파싱 (최대 5GB)
