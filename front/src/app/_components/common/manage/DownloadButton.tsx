@@ -117,9 +117,6 @@ export const DownloadOptions = ({
     >
       <div className="flex flex-col gap-2">
         {/* 타입별로 노출할 버튼 필터링 */}
-        {fileLinks.icon && componentType === "vc_plugin" && (
-          <FileDownloadButton fileId={fileId} fileType="icon" componentType={componentType} />
-        )}
         {fileLinks.fbx && componentType === "vc_model" && (
           <FileDownloadButton fileId={fileId} fileType="fbx" componentType={componentType} />
         )}

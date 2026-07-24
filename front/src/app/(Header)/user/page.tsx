@@ -311,7 +311,7 @@ const UserManagementPage = () => {
                   options={[
                     { label: "전체", value: "all" },
                     { label: "이름", value: "username" },
-                    { label: "이메일", value: "email" },
+                    { label: "아이디", value: "email" },
                     { label: "부서", value: "department" },
                   ]}
                   defaultValue="all"
@@ -380,7 +380,7 @@ const UserManagementPage = () => {
               <tr className="bg-gray-700">
                 <th className="p-2"></th>
                 <th className="p-2">이름</th>
-                <th className="p-2">이메일</th>
+                <th className="p-2">아이디</th>
                 <th className="p-2">부서</th>
                 <th className="p-2">직위</th>
                 <th className="p-2">전화번호</th>
@@ -411,7 +411,7 @@ const UserManagementPage = () => {
                   <td className="p-2 truncate">{user.position}</td>
                   <td className="p-2 truncate">{user.phone_number}</td>
                   <td className="p-2 truncate">
-                    {user.role === "admin" ? "관리자" : "유저"}
+                    {user.role === "admin" ? "관리자" : user.role === "developer" ? "개발자" : "일반 유저"}
                   </td>
                   {/* <td className="p-2 truncate">
                     {user.is_approved ? "승인" : "미승인"}
@@ -500,7 +500,7 @@ const UserManagementPage = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">
-                    이메일
+                    아이디
                   </label>
                   <div className="text-white">{selectedUser.email}</div>
                 </div>
@@ -582,11 +582,12 @@ const UserManagementPage = () => {
                       className="w-full px-3 py-2 bg-gray-700 text-white rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="admin">관리자</option>
+                      <option value="developer">개발자</option>
                       <option value="user">유저</option>
                     </select>
                   ) : (
                     <div className="text-white">
-                      {selectedUser.role === "admin" ? "관리자" : "유저"}
+                      {selectedUser.role === "admin" ? "관리자" : selectedUser.role === "developer" ? "개발자" : "유저"}
                     </div>
                   )}
                 </div>

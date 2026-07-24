@@ -6,10 +6,13 @@ import useUserStore from "@/app/stores/UserStore";
 import Image from "next/image";
 import Link from "next/link";
 
+import MyPageModal from "./MyPageModal";
+
 const Header = () => {
   const router = useRouter();
   const pathname = usePathname();
   const [showOptions, setShowOptions] = useState(false);
+  const [isMyPageOpen, setIsMyPageOpen] = useState(false);
   const optionsRef = useRef<HTMLDivElement>(null);
   const { user, clearAll } = useUserStore();
 
@@ -45,35 +48,49 @@ const Header = () => {
   }, []);
 
   return (
-    <header className="h-[64px] bg-card border-b border-border flex items-center justify-between px-8 z-30 shadow-sm transition-all flex-shrink-0">
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-3">
-          <Image src="/images/RCK Logo-en-Horizontal-Reverse.png" alt="RCK Logo" width={100} height={26} className="object-contain" priority />
-        </div>
-        {isManagement}
-      </div>
-      <div className="flex gap-[8px] items-center relative">
-        <p
-          className="text-[14px] font-medium cursor-pointer hover:underline"
-          onClick={() => setShowOptions(!showOptions)}
-        >
-          {user?.username}님
-        </p>
-        {showOptions && (
-          <div
-            ref={optionsRef}
-            className="absolute top-[30px] right-0 bg-card border border-gray-600 rounded-md shadow-lg z-10 w-[100px] items-center"
-          >
-            <button
-              className="w-full px-4 py-2 text-left text-white hover:bg-gray-700 text-[14px]"
-              onClick={handleLogout}
-            >
-              로그아웃
-            </button>
+    <>
+      <header className="h-[64px] bg-card border-b border-border flex items-center justify-between px-8 z-30 shadow-sm transition-all flex-shrink-0">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <Image src="/images/RCK Logo-en-Horizontal-Reverse.png" alt="RCK Logo" width={100} height={26} className="object-contain" priority />
           </div>
-        )}
-      </div>
-    </header>
+          {isManagement}
+        </div>
+        <div className="flex gap-[8px] items-center relative">
+          <p
+            className="text-[14px] font-medium cursor-pointer hover:underline"
+            onClick={() => setShowOptions(!showOptions)}
+          >
+            {user?.username}님
+          </p>
+          {showOptions && (
+            <div
+              ref={optionsRef}
+              className="absolute top-[30px] right-0 bg-card border border-gray-600 rounded-md shadow-lg z-10 w-[120px] overflow-hidden"
+            >
+              <button
+                className="w-full px-4 py-2.5 text-left text-white hover:bg-gray-700 text-[14px] border-b border-gray-700 flex items-center gap-2"
+                onClick={() => {
+                  setIsMyPageOpen(true);
+                  setShowOptions(false);
+                }}
+              >
+                마이페이지
+              </button>
+              <button
+                className="w-full px-4 py-2.5 text-left text-white hover:bg-gray-700 text-[14px] flex items-center gap-2 text-red-400 hover:text-red-300"
+                onClick={handleLogout}
+              >
+                로그아웃
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* 마이페이지 팝업 모달 */}
+      <MyPageModal isOpen={isMyPageOpen} onClose={() => setIsMyPageOpen(false)} />
+    </>
   );
 };
 

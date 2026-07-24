@@ -109,7 +109,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
   useEffect(() => {
     const fetchComponentData = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
         const response = await fetch(
           `${apiUrl}/api/components/${id}`
         );
@@ -352,7 +352,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                 <h2 className="text-[18px] font-semibold mb-4 text-white">
                   주요 기능
                 </h2>
-                {user?.role === "admin" && isEditing ? (
+                {(user?.role === "admin" || user?.role === "developer") && isEditing ? (
                   <textarea
                     className="w-full h-[360px] bg-[#A7A7A7] resize-none px-[12px] py-[8px] rounded-md mb-4 text-white"
                     value={features}

@@ -8,8 +8,8 @@ import {
   IoLockClosed,
   IoMail,
   IoPhonePortrait,
+  IoBriefcase,
 } from "react-icons/io5";
-import { motion, AnimatePresence } from "framer-motion";
 
 type FormValues = {
   name: string;
@@ -54,7 +54,7 @@ const SignupPage = () => {
 
   const onSubmit = (data: FormValues) => {
     if (!isEmailVerified) {
-      showAlert("이메일 중복확인을 먼저 진행해주세요.", {
+      showAlert("아이디 중복확인을 먼저 진행해주세요.", {
         title: "확인 필요",
         type: "warning",
       });
@@ -103,7 +103,7 @@ const SignupPage = () => {
   const handleEmailVerification = async () => {
     const email = watch("email");
     if (!email) {
-      setError("email", { message: "이메일을 입력해주세요." });
+      setError("email", { message: "아이디를 입력해주세요." });
       return;
     }
     clearErrors("email");
@@ -112,32 +112,35 @@ const SignupPage = () => {
         `${process.env.NEXT_PUBLIC_API_URL}/api/users/checkEmail`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({ email }),
         }
       );
       const data = await res.json();
-      if (data.success && data.available) {
-        setIsEmailVerified(true);
-      } else {
+      if (data.exists || !data.available) {
+        setError("email", { message: "이미 사용 중인 아이디입니다." });
         setIsEmailVerified(false);
-        setError("email", { message: "이미 존재하는 이메일입니다." });
+      } else {
+        showAlert("사용 가능한 아이디입니다.", { title: "확인 완료", type: "success" });
+        setIsEmailVerified(true);
       }
-    } catch {
-      setIsEmailVerified(false);
-      setError("email", { message: "이메일 확인 중 오류가 발생했습니다." });
+    } catch (error) {
+      console.error("아이디 중복 확인 오류:", error);
+      showAlert("아이디 중복 확인 중 오류가 발생했습니다.", { title: "오류 발생", type: "error" });
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen w-full bg-background text-foreground py-12 px-4">
-      <div className="flex flex-col items-center w-full max-w-[480px] bg-card p-6 sm:p-10 rounded-2xl border border-border shadow-lg">
-        <h1 className="text-[32px] font-bold tracking-tight mb-2 text-white">회원가입</h1>
-        <p className="text-[14px] font-medium mb-8 text-center text-muted">
-          회원가입을 위해 아래 정보를 입력해주세요.
-        </p>
+    <div className="min-h-screen bg-background flex flex-col justify-center items-center px-4 sm:px-6 py-12">
+      <div className="w-full max-w-md bg-card p-8 rounded-2xl shadow-xl border border-border">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-white mb-2">회원가입</h1>
+          <p className="text-muted text-[14px]">스마트 컴포넌트 라이브러리 계정 생성</p>
+        </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="w-full flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="relative">
             <IoPerson className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted" size={18} />
             <input
@@ -151,13 +154,13 @@ const SignupPage = () => {
           {errors.name && <p className="text-red-400 text-xs pl-2">{errors.name.message}</p>}
 
           <div className="relative">
-            <IoMail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted" size={18} />
+            <IoPerson className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted" size={18} />
             <input
               className="w-full h-[52px] text-white pl-[45px] pr-[100px] outline-none text-[15px]
               bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors"
-              type="email"
-              placeholder="이메일"
-              {...register("email", { required: "이메일을 입력해주세요", pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: "유효한 이메일 주소를 입력해주세요" } })}
+              type="text"
+              placeholder="아이디"
+              {...register("email", { required: "아이디를 입력해주세요" })}
               onChange={(e) => { setValue("email", e.target.value); setIsEmailVerified(false); clearErrors("email"); }}
             />
             <div className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -202,32 +205,55 @@ const SignupPage = () => {
           </div>
           {errors.confirmPassword && <p className="text-red-400 text-xs pl-2">{errors.confirmPassword.message}</p>}
 
-          <div className="flex gap-1.5 sm:gap-2">
-            <div className="relative flex-1">
-              <IoPhonePortrait className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted" size={16} />
+          {/* 전화번호 3칸 분할 입력 (너비 비율 및 패딩 완벽 보정) */}
+          <div>
+            <div className="flex items-center gap-2 w-full">
+              {/* 첫 번째 칸 (010): 아이콘 포함, 고정 105px */}
+              <div className="relative w-[105px] flex-shrink-0">
+                <IoPhonePortrait className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted" size={18} />
+                <input
+                  className="w-full h-[52px] text-white pl-[38px] pr-[8px] outline-none text-[15px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center font-medium"
+                  type="text"
+                  placeholder="010"
+                  maxLength={3}
+                  {...register("phone1", {
+                    required: "필수",
+                    pattern: { value: /^\d{3}$/, message: "숫자만" },
+                  })}
+                />
+              </div>
+              <span className="text-muted font-bold text-lg flex-shrink-0">-</span>
+              {/* 두 번째 칸 (중간 4자리): flex-1 */}
               <input
-                className="w-full h-[52px] text-white pl-[32px] pr-[5px] outline-none text-[14px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center"
-                type="text" placeholder="010" maxLength={3}
-                {...register("phone1", { required: "필수", pattern: { value: /^\d{3}$/, message: "숫자만" } })}
+                className="flex-1 min-w-0 h-[52px] text-white px-2 outline-none text-[15px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center font-medium"
+                type="text"
+                placeholder="0000"
+                maxLength={4}
+                {...register("phone2", {
+                  required: "필수",
+                  pattern: { value: /^\d{3,4}$/, message: "숫자만" },
+                })}
+              />
+              <span className="text-muted font-bold text-lg flex-shrink-0">-</span>
+              {/* 세 번째 칸 (끝 4자리): flex-1 */}
+              <input
+                className="flex-1 min-w-0 h-[52px] text-white px-2 outline-none text-[15px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center font-medium"
+                type="text"
+                placeholder="0000"
+                maxLength={4}
+                {...register("phone3", {
+                  required: "필수",
+                  pattern: { value: /^\d{4}$/, message: "숫자만" },
+                })}
               />
             </div>
-            <span className="self-center text-muted font-bold">-</span>
-            <input
-              className="flex-1 h-[52px] text-white outline-none text-[14px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center"
-              type="text" placeholder="0000" maxLength={4}
-              {...register("phone2", { required: "필수", pattern: { value: /^\d{3,4}$/, message: "숫자만" } })}
-            />
-            <span className="self-center text-muted font-bold">-</span>
-            <input
-              className="flex-1 h-[52px] text-white outline-none text-[14px] bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-center"
-              type="text" placeholder="0000" maxLength={4}
-              {...register("phone3", { required: "필수", pattern: { value: /^\d{4}$/, message: "숫자만" } })}
-            />
+            {(errors.phone1 || errors.phone2 || errors.phone3) && (
+              <p className="text-red-400 text-xs pl-2 mt-1">정확한 전화번호 11자리를 입력해주세요</p>
+            )}
           </div>
-          {(errors.phone1 || errors.phone2 || errors.phone3) && <p className="text-red-400 text-xs pl-2">정확한 전화번호를 입력해주세요</p>}
 
           <div className="relative">
-            <IoMail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted" size={18} />
+            <IoBriefcase className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted" size={18} />
             <input
               className="w-full h-[52px] text-white pl-[45px] pr-[20px] outline-none text-[15px]
               bg-input border border-input-border placeholder-muted rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-colors"

@@ -194,7 +194,8 @@ module.exports = {
     SELECT 
       id,
       file_name,
-      icon_file_link,
+      vcmx_file_link,
+      source_file_link,
       category_id,
       sub_category_id,
       type
@@ -237,17 +238,28 @@ module.exports = {
     WHERE id = @file_id
   `,
 
-  // 파일의 카테고리와 Icon 링크 업데이트 (일괄 이동용)
-  // @file_id: 파일 ID
-  // @category_id: 새로운 카테고리 ID
-  // @sub_category_id: 새로운 서브카테고리 ID
-  // @icon_file_link: 새로운 Icon 파일 링크
   updateFileCategory: `
     UPDATE files 
     SET category_id = @category_id, 
         sub_category_id = @sub_category_id,
-        icon_file_link = @icon_file_link
+        vcmx_file_link = @vcmx_file_link
     WHERE id = @file_id
+  `,
+
+  updateMyProfile: `
+    UPDATE users 
+    SET 
+      username = @username,
+      department = @department,
+      position = @position,
+      phone_number = @phone_number
+    WHERE id = @id
+  `,
+
+  updateUserPassword: `
+    UPDATE users
+    SET pwd = @pwd
+    WHERE id = @id
   `,
 
   // 사용자 로그인
@@ -616,7 +628,8 @@ module.exports = {
       id,
       thumbnail_image,
       source_file_link,
-      icon_file_link
+      fbx_file_link,
+      vcmx_file_link
     FROM files 
     WHERE component_id IN (SELECT CAST(value AS INT) FROM STRING_SPLIT(@component_ids, ','))
     AND is_active = 1
@@ -629,7 +642,8 @@ module.exports = {
       id,
       thumbnail_image,
       source_file_link,
-      icon_file_link
+      fbx_file_link,
+      vcmx_file_link
     FROM files 
     WHERE id IN (SELECT CAST(value AS INT) FROM STRING_SPLIT(@ids, ','))
     AND is_active = 1
@@ -664,19 +678,20 @@ module.exports = {
     WHERE email = @email
   `,
 
-  // 모든 Icon 파일 정보 조회 (일괄 다운로드용)
+  // 모든 VCMX 파일 정보 조회 (일괄 다운로드용)
   getAllVcmxFiles: `
     SELECT 
       id,
       file_name,
-      icon_file_link,
+      vcmx_file_link,
+      source_file_link,
       category_id,
       sub_category_id,
       type,
       is_active
     FROM files 
-    WHERE icon_file_link IS NOT NULL 
-    AND icon_file_link != ''
+    WHERE (vcmx_file_link IS NOT NULL AND vcmx_file_link != '')
+       OR (source_file_link IS NOT NULL AND source_file_link LIKE '%.vcmx%')
     ORDER BY category_id, sub_category_id, file_name
   `,
 
@@ -706,15 +721,17 @@ module.exports = {
       updated_at,
       download_count,
       source_file_link,
+      fbx_file_link,
+      vcmx_file_link,
       thumbnail_image,
       uploader,
       category_id,
       component_id,
       type,
+      model_type,
       description,
       main_features,
       recommended_environment,
-      icon_file_link,
       sub_category_id,
       is_active
     FROM files 
@@ -741,15 +758,17 @@ module.exports = {
       updated_at,
       download_count,
       source_file_link,
+      fbx_file_link,
+      vcmx_file_link,
       thumbnail_image,
       uploader,
       category_id,
       component_id,
       type,
+      model_type,
       description,
       main_features,
       recommended_environment,
-      icon_file_link,
       sub_category_id,
       is_active
     FROM RankedFiles 
