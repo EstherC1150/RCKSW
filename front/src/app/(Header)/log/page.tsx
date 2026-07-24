@@ -105,7 +105,7 @@ const LogPage = () => {
                 </colgroup>
                 <thead>
                   <tr className="bg-gray-700 text-center">
-                    <th className="p-3 text-center">이메일</th>
+                    <th className="p-3 text-center">아이디</th>
                     <th className="p-3 text-center">이름</th>
                     <th className="p-3 text-center">부서</th>
                     <th className="p-3 text-center">직책</th>

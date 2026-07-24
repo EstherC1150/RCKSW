@@ -183,7 +183,7 @@ const ComponentList = ({
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
           <h2 className="text-[20px] font-semibold text-white">버전 목록</h2>
-          {user?.role === "admin" && (
+          {(user?.role === "admin" || user?.role === "developer") && (
             <button
               onClick={handleOpenModal}
               className="px-4 py-2 text-sm font-medium rounded-lg 
@@ -267,25 +267,7 @@ const ComponentList = ({
                           )}
                         </button>
                       )}
-                      {file.fileLinks.icon && componentData.type === "vc_plugin" && (
-                        <button
-                          onClick={(e) =>
-                            handleFileDownload(
-                              e,
-                              file.id,
-                              "icon",
-                              `${file.fileName}_${file.version}_icon${file.fileLinks.icon ? "." + file.fileLinks.icon.split(".").pop() : ""}`
-                            )
-                          }
-                          className="px-3 py-1 text-sm rounded-md
-                            bg-gradient-to-r from-purple-600 to-purple-700
-                            hover:from-purple-700 hover:to-purple-800
-                            transition-all duration-200 ease-in-out
-                            shadow-sm shadow-purple-500/20"
-                        >
-                          아이콘 다운로드
-                        </button>
-                      )}
+
                       {file.fileLinks.fbx && componentData.type === "vc_model" && (
                         <button
                           onClick={(e) =>

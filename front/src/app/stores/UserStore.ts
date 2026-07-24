@@ -10,7 +10,7 @@ interface User {
   position: string; // 직책
   phone_number: string; // 전화번호
   isLoggedIn: boolean;
-  role: "user" | "admin";
+  role: "user" | "developer" | "admin";
   log: string;
 }
 
@@ -73,7 +73,7 @@ const useUserStore = create<UserState>()(
       // 인증 상태 확인
       isAuthenticated: () => {
         const state = get();
-        return !!(state.user?.isLoggedIn && state.tokens?.accessToken);
+        return !!(state.user && state.tokens?.accessToken);
       },
 
       // 액세스 토큰 가져오기

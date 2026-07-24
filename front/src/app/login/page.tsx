@@ -53,14 +53,14 @@ const LoginPage = () => {
         }
         // 로그인 실패했을 때
         else {
-          alert("로그인에 실패했습니다.");
+          alert(data.message || "로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
           setIsLoading(false); // 실패 시 로딩 꺼줌
         }
       })
       .catch((error) => {
         // 오류가 발생했을 때
         console.error("로그인 오류:", error);
-        alert("로그인에 실패했습니다.");
+        alert("서버 연결에 실패했습니다. 백엔드 서버 상태를 확인해주세요.");
         setIsLoading(false); // 에러 시 로딩 꺼줌
       });
   };
@@ -123,13 +123,13 @@ const LoginPage = () => {
               bg-white/5 border border-white/10 placeholder-transparent rounded-xl focus:bg-white/10 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all shadow-inner peer"
               type="text"
               id="email"
-              placeholder="이메일"
+              placeholder="아이디"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={handleKeyDown}
             />
             <label htmlFor="email" className="absolute left-[45px] -top-[9px] bg-[#0E1528] px-1 text-[12px] text-primary transition-all peer-placeholder-shown:text-[15px] peer-placeholder-shown:text-muted peer-placeholder-shown:top-[16px] peer-placeholder-shown:bg-transparent peer-focus:-top-[9px] peer-focus:text-[12px] peer-focus:text-primary peer-focus:bg-[#0E1528] rounded-md pointer-events-none">
-              이메일 주소
+              아이디
             </label>
           </div>
           

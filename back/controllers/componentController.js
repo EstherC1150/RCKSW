@@ -1213,7 +1213,8 @@ const deleteComponents = async (req, res) => {
       const filesToDelete = [
         fileInfo.thumbnail_image,
         fileInfo.source_file_link,
-        fileInfo.icon_file_link,
+        fileInfo.fbx_file_link,
+        fileInfo.vcmx_file_link,
       ].filter((filePath) => filePath && filePath.trim() !== "");
 
       for (const filePath of filesToDelete) {
@@ -1441,15 +1442,17 @@ const getAllFiles = async (req, res) => {
         updated_at: file.updated_at,
         download_count: file.download_count,
         source_file_link: file.source_file_link,
+        fbx_file_link: file.fbx_file_link,
+        vcmx_file_link: file.vcmx_file_link,
         thumbnail_image: file.thumbnail_image,
         uploader: file.uploader,
         category_id: file.category_id,
         component_id: file.component_id,
         type: file.type,
+        model_type: file.model_type,
         description: file.description,
         main_features: mainFeatures,
         recommended_environment: file.recommended_environment,
-        icon_file_link: file.icon_file_link,
         sub_category_id: file.sub_category_id,
         is_active: file.is_active,
       };
@@ -1509,15 +1512,17 @@ const getAllLatestFiles = async (req, res) => {
         updated_at: file.updated_at,
         download_count: file.download_count,
         source_file_link: file.source_file_link,
+        fbx_file_link: file.fbx_file_link,
+        vcmx_file_link: file.vcmx_file_link,
         thumbnail_image: file.thumbnail_image,
         uploader: file.uploader,
         category_id: file.category_id,
         component_id: file.component_id,
         type: file.type,
+        model_type: file.model_type,
         description: file.description,
         main_features: mainFeatures,
         recommended_environment: file.recommended_environment,
-        icon_file_link: file.icon_file_link,
         sub_category_id: file.sub_category_id,
         is_active: file.is_active,
       };
