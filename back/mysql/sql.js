@@ -504,7 +504,7 @@ module.exports = {
   `,
 
   // 컴포넌트의 최신 버전 정보 조회
-  // @component_id: 컴포넌트 ID
+  // @component_id: 컴포넌트 ID 또는 파일 ID
   getLatestComponentVersion: `
     SELECT TOP 1
       f.id,
@@ -533,9 +533,12 @@ module.exports = {
     FROM files f
     LEFT JOIN categories c ON f.category_id = c.id
     LEFT JOIN sub_categories sc ON f.sub_category_id = sc.id
-    WHERE (f.component_id = @component_id OR f.id = @component_id)
+    WHERE f.component_id = ISNULL(
+      (SELECT TOP 1 component_id FROM files WHERE component_id = @component_id AND is_active = 1),
+      (SELECT TOP 1 component_id FROM files WHERE id = @component_id AND is_active = 1)
+    )
     AND f.is_active = 1
-    ORDER BY f.updated_at DESC
+    ORDER BY f.created_at DESC, f.id DESC
   `,
 
   // 컴포넌트 새 버전 생성
@@ -557,13 +560,15 @@ module.exports = {
     INSERT INTO files (
       file_name, version, description, main_features, recommended_environment,
       thumbnail_image, source_file_link, icon_file_link, fbx_file_link, vcmx_file_link,
-      category_id, sub_category_id, uploader, type, model_type, component_id
+      category_id, sub_category_id, uploader, type, model_type, component_id,
+      created_at, updated_at
     )
     OUTPUT INSERTED.id INTO @InsertedFiles
     VALUES (
       @file_name, @version, @description, @main_features, @recommended_environment,
       @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @vcmx_file_link,
-      @category_id, @sub_category_id, @uploader, @type, @model_type, @component_id
+      @category_id, @sub_category_id, @uploader, @type, @model_type, @component_id,
+      GETDATE(), GETDATE()
     );
 
     SELECT id FROM @InsertedFiles;

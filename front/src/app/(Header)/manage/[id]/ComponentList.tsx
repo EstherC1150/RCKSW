@@ -306,21 +306,24 @@ const ComponentList = ({
         componentId={componentData.componentId}
         componentType={componentData.type}
         onSuccess={handleVersionUpdateSuccess}
-        initialData={{
-          version: allVersions[0]?.version || componentData.version,
-          description: componentData.description,
-          mainFeatures: componentData.mainFeatures,
-          recommendedEnvironment: componentData.recommendedEnvironment,
-          thumbnailImage: componentData.thumbnailImage, // 현재 버전의 썸네일 사용
-          fileName: componentData.fileName,
-          modelType: componentData.modelType,
-          fileLinks: {
-            source: componentData.fileLinks.source || undefined,
-            icon: componentData.fileLinks.icon || undefined,
-            fbx: componentData.fileLinks.fbx || undefined,
-            vcmx: componentData.fileLinks.vcmx || undefined,
-          },
-        }}
+        initialData={(() => {
+          const latest = allVersions[0];
+          return {
+            version: latest?.version || componentData.version,
+            description: latest?.description || componentData.description,
+            mainFeatures: latest?.mainFeatures || componentData.mainFeatures,
+            recommendedEnvironment: latest?.recommendedEnvironment || componentData.recommendedEnvironment,
+            thumbnailImage: latest?.thumbnailImage || componentData.thumbnailImage,
+            fileName: latest?.fileName || componentData.fileName,
+            modelType: componentData.modelType,
+            fileLinks: {
+              source: latest?.fileLinks?.source || componentData.fileLinks.source || undefined,
+              icon: latest?.fileLinks?.icon || componentData.fileLinks.icon || undefined,
+              fbx: latest?.fileLinks?.fbx || componentData.fileLinks.fbx || undefined,
+              vcmx: latest?.fileLinks?.vcmx || componentData.fileLinks.vcmx || undefined,
+            },
+          };
+        })()}
       />
     </div>
   );
