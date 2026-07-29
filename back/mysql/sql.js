@@ -371,7 +371,7 @@ module.exports = {
         sc.name as sub_category_name,
         ROW_NUMBER() OVER (
           PARTITION BY f.component_id 
-          ORDER BY ISNULL(f.updated_at, f.created_at) DESC, f.id DESC
+          ORDER BY f.created_at DESC, f.id DESC
         ) as rn
       FROM files f
       LEFT JOIN categories c ON f.category_id = c.id
@@ -411,7 +411,7 @@ module.exports = {
         f.*,
         ROW_NUMBER() OVER (
           PARTITION BY f.component_id 
-          ORDER BY f.updated_at DESC
+          ORDER BY f.created_at DESC, f.id DESC
         ) as rn
       FROM files f
       LEFT JOIN sub_categories sc ON f.sub_category_id = sc.id

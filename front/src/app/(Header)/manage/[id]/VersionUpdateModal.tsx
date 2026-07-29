@@ -117,14 +117,16 @@ const VersionUpdateModal = ({
 
   // 모달이 열릴 때 자동으로 다음 버전 계산 및 상태 초기화
   useEffect(() => {
-    if (isOpen && initialData?.version) {
-      const nextVersion = incrementVersion(initialData.version);
-      setFormData((prev) => ({
-        ...prev,
-        componentName: initialData.fileName || "",
+    if (isOpen) {
+      const nextVersion = initialData?.version ? incrementVersion(initialData.version) : "1.0.0";
+      setFormData({
+        componentName: initialData?.fileName || "",
         version: nextVersion,
-        modelType: initialData.modelType || "component",
-      }));
+        description: initialData?.description || "",
+        mainFeatures: Array.isArray(initialData?.mainFeatures) ? initialData.mainFeatures.join("\n") : initialData?.mainFeatures || "",
+        recommendedEnvironment: initialData?.recommendedEnvironment || "",
+        modelType: initialData?.modelType || "component",
+      });
 
       // 파일 상태 초기화
       setFiles({});
@@ -154,15 +156,7 @@ const VersionUpdateModal = ({
         setIconPreview(null);
       }
     }
-  }, [
-    isOpen,
-    initialData?.version,
-    incrementVersion,
-    initialData?.thumbnailImage,
-    initialData?.fileLinks?.icon,
-    initialData?.fileName,
-    initialData?.modelType,
-  ]);
+  }, [isOpen]);
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
