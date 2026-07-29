@@ -330,13 +330,15 @@ module.exports = {
     INSERT INTO files (
       file_name, version, description, main_features, recommended_environment,
       thumbnail_image, source_file_link, icon_file_link, fbx_file_link, vcmx_file_link,
-      category_id, sub_category_id, uploader, type, model_type, component_id
+      category_id, sub_category_id, uploader, type, model_type, component_id,
+      created_at, updated_at
     )
     OUTPUT INSERTED.id INTO @InsertedFiles
     VALUES (
       @file_name, @version, @description, @main_features, @recommended_environment,
       @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @vcmx_file_link,
-      @category_id, @sub_category_id, @uploader, @type, @model_type, @new_component_id
+      @category_id, @sub_category_id, @uploader, @type, @model_type, @new_component_id,
+      GETDATE(), GETDATE()
     );
 
     SELECT id FROM @InsertedFiles;
@@ -355,6 +357,7 @@ module.exports = {
       SELECT 
         component_id,
         MIN(created_at) as registration_date,
+        MAX(ISNULL(updated_at, created_at)) as max_updated_at,
         SUM(download_count) as total_download_count
       FROM files
       WHERE is_active = 1
@@ -363,11 +366,12 @@ module.exports = {
     RankedFiles AS (
       SELECT 
         f.*,
+        ISNULL(f.updated_at, f.created_at) as effective_updated_at,
         c.name as category_name,
         sc.name as sub_category_name,
         ROW_NUMBER() OVER (
           PARTITION BY f.component_id 
-          ORDER BY f.updated_at DESC
+          ORDER BY ISNULL(f.updated_at, f.created_at) DESC, f.id DESC
         ) as rn
       FROM files f
       LEFT JOIN categories c ON f.category_id = c.id
@@ -390,8 +394,9 @@ module.exports = {
     ORDER BY
       CASE WHEN @sortBy = 'name' THEN rf.file_name END ASC,
       CASE WHEN @sortBy = 'downloads' THEN ISNULL(cs.total_download_count, 0) END DESC,
-      CASE WHEN @sortBy = 'latest' THEN rf.updated_at END DESC,
-      CASE WHEN @sortBy NOT IN ('name', 'downloads', 'latest') THEN rf.updated_at END DESC
+      CASE WHEN @sortBy = 'latest' THEN cs.max_updated_at END DESC,
+      CASE WHEN @sortBy NOT IN ('name', 'downloads', 'latest') THEN cs.max_updated_at END DESC,
+      rf.id DESC
     OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
   `,
 
@@ -806,5 +811,15 @@ module.exports = {
     WHERE key_value = @key_value
       AND is_active = 1
       AND (expires_at IS NULL OR expires_at > GETDATE())
+  `,
+
+  // 특정 버전에 해당하는 컴포넌트 정보(설명, 주요 기능) 업데이트
+  updateComponentInfoById: `
+    UPDATE files 
+    SET 
+      main_features = @main_features,
+      description = @description,
+      updated_at = GETDATE()
+    WHERE id = @id
   `,
 };

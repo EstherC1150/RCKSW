@@ -103,6 +103,9 @@ router.patch(
   componentController.updateComponentVersion
 );
 
+// 특정 버전의 컴포넌트 주요 기능 / 정보 수정
+router.put("/:id/info", verifyTokenOrApiKey, componentController.updateComponentInfo);
+
 // 파일 상세 정보 조회 (가장 일반적인 라우트를 마지막에 배치)
 router.get("/:fileId", componentController.getFileDetail);
 

@@ -455,6 +455,7 @@ const getFiles = async (req, res) => {
 
         return {
           ...file,
+          updated_at: file.updated_at || file.created_at,
           thumbnail_image: thumbnailPath,
           main_features: JSON.parse(file.main_features || "[]"),
           download_count: file.total_download_count || file.download_count || 0,
@@ -507,23 +508,24 @@ const downloadFile = async (req, res) => {
       const originalFileName = path.basename(file.fbx_file_link);
       const fileExtension = path.extname(originalFileName);
       fileName = `${file.file_name}_${file.version}${fileExtension}`;
-    } else if (fileType === "icon") {
-      if (!file.icon_file_link) {
-        return res.status(404).json({ success: false, message: "아이콘 파일이 존재하지 않습니다." });
+    } else if (fileType === "icon" || fileType === "thumbnail") {
+      const iconOrThumbLink = file.icon_file_link || file.thumbnail_image;
+      if (!iconOrThumbLink) {
+        return res.status(404).json({ success: false, message: "썸네일/아이콘 파일이 존재하지 않습니다." });
       }
       // leading slash 제거하여 path.join이 올바르게 동작하도록 함
-      const iconLink = file.icon_file_link.startsWith('/') ? file.icon_file_link.substring(1) : file.icon_file_link;
+      const iconLink = iconOrThumbLink.startsWith('/') ? iconOrThumbLink.substring(1) : iconOrThumbLink;
       filePath = path.join(__dirname, "..", iconLink);
       
       const iconFileName = path.basename(iconLink);
       const fileExtension = path.extname(iconFileName);
-      fileName = `${file.file_name}_${file.version}${fileExtension}`;
+      fileName = `${file.file_name}_${file.version}_thumbnail${fileExtension}`;
 
-      console.log("아이콘 파일 다운로드 시도:", {
+      console.log("썸네일/아이콘 파일 다운로드 시도:", {
         fileId,
         fileName,
         filePath,
-        iconLink: file.icon_file_link,
+        iconLink: iconOrThumbLink,
       });
     } else {
       return res.status(400).json({
@@ -661,7 +663,7 @@ const getFileDetail = async (req, res) => {
           : "/images/thumbnail.png",
         downloadCount: relatedFile.download_count,
         createdAt: relatedFile.created_at,
-        updatedAt: relatedFile.updated_at, // 업데이트 날짜 추가
+        updatedAt: relatedFile.updated_at || relatedFile.created_at,
         description: relatedFile.description,
         mainFeatures: relatedFile.main_features
           ? typeof relatedFile.main_features === "string"
@@ -685,7 +687,7 @@ const getFileDetail = async (req, res) => {
       fileName: file.file_name,
       version: file.version,
       createdAt: file.created_at,
-      updatedAt: file.updated_at,
+      updatedAt: file.updated_at || file.created_at,
       downloadCount: file.download_count,
       thumbnailImage: thumbnailPath,
       description: file.description,
@@ -1724,12 +1726,67 @@ const bulkMoveFiles = async (req, res) => {
   }
 };
 
+const updateComponentInfo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description, features, mainFeatures } = req.body;
+
+    const fileResult = await mysql.query("getFileById", { id });
+    if (!fileResult || fileResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: "컴포넌트를 찾을 수 없습니다." });
+    }
+
+    const currentFile = fileResult.recordset[0];
+    const rawFeatures = features !== undefined ? features : mainFeatures;
+
+    let featuresString;
+    if (rawFeatures !== undefined) {
+      if (typeof rawFeatures === "string") {
+        if (rawFeatures.startsWith("[") || rawFeatures.startsWith("{")) {
+          featuresString = rawFeatures;
+        } else {
+          // 줄바꿈(엔터)을 그대로 배열 항목으로 저장하여 빈 줄 및 줄바꿈 보존
+          const lines = rawFeatures.split("\n");
+          featuresString = JSON.stringify(lines);
+        }
+      } else if (Array.isArray(rawFeatures)) {
+        featuresString = JSON.stringify(rawFeatures);
+      } else {
+        featuresString = "[]";
+      }
+    } else {
+      featuresString = currentFile.main_features || "[]";
+    }
+
+    await mysql.query("updateComponentInfoById", {
+      id,
+      description: description !== undefined ? description : currentFile.description || "",
+      main_features: featuresString,
+    });
+
+    console.log(`컴포넌트 정보 업데이트 완료 (id: ${id})`);
+
+    return res.json({
+      success: true,
+      message: "컴포넌트 정보가 성공적으로 수정되었습니다.",
+    });
+  } catch (error) {
+    console.error("컴포넌트 정보 수정 실패:", error);
+    return res.status(500).json({
+      success: false,
+      message: "컴포넌트 정보 수정에 실패했습니다.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createComponent: exports.createComponent,
   getFiles,
   downloadFile,
   getFileDetail,
   updateComponentVersion,
+  updateComponentInfo,
   deleteComponents,
   downloadAllVcmxFiles, // vc에서 접근 파일 다운 - 추가
   getAllFiles, // vc에서 접근 - 새로 추가
