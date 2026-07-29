@@ -211,6 +211,7 @@ const VersionUpdateModal = ({
       const formDataToSend = new FormData();
 
       // 기본 데이터 추가
+      formDataToSend.append("type", componentType);
       formDataToSend.append("componentName", formData.componentName);
       formDataToSend.append("version", formData.version);
       formDataToSend.append("description", formData.description);
