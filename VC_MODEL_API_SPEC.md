@@ -29,7 +29,7 @@
 
 ## 💡 [중요] 버전 중복 방지 및 등록 권장 워크플로우 (Version Workflow)
 
-외부 시스템/플러그인에서 모델 등록 시 **버전 겹침을 방지하기 위한 권장 절차**입니다.
+외부 시스템에서 모델 등록 시 **버전 겹침을 방지하기 위한 권장 절차**입니다.
 
 ```mermaid
 graph TD
@@ -133,13 +133,11 @@ graph TD
 
 ---
 
-## 6. 개발 연동 예제 (Code Examples)
+## 6. HTTP 요청 표준 예제 (cURL Request Examples)
 
-### 6.1 cURL 예제
-
-#### A. 최초 등록 (POST)
+### 6.1 최초 등록 (POST)
 ```bash
-curl -X POST "http://your-server-domain:8180/api/components" \
+curl -X POST "http://<서버_도메인_또는_IP>:8180/api/components" \
   -H "X-API-Key: YOUR_API_KEY_HERE" \
   -F "type=vc_model" \
   -F "modelType=component" \
@@ -150,60 +148,17 @@ curl -X POST "http://your-server-domain:8180/api/components" \
   -F "sourceFile=@/path/to/Robot_Arm_A1.vcmx"
 ```
 
-#### B. 버전 업데이트 (PATCH)
+### 6.2 버전 업데이트 (PATCH)
 ```bash
-curl -X PATCH "http://your-server-domain:8180/api/components/105" \
+curl -X PATCH "http://<서버_도메인_또는_IP>:8180/api/components/105" \
   -H "X-API-Key: YOUR_API_KEY_HERE" \
   -F "version=1.1.0" \
   -F "description=V1.1.0 버전 업데이트" \
   -F "sourceFile=@/path/to/Robot_Arm_A1_v1.1.vcmx"
 ```
 
----
-
-### 6.2 C# (.NET / HttpClient) 연동 예제
-
-```csharp
-using System;
-using System.IO;
-using System.Net.Http;
-using System.Threading.Tasks;
-
-public class VcModelApiClient
-{
-    private static readonly HttpClient client = new HttpClient();
-    private const string ServerUrl = "http://your-server-domain:8180";
-    private const string ApiKey = "YOUR_API_KEY_HERE";
-
-    public static async Task UploadVcModelAsync(string componentName, string version, string filePath, string modelType = "component")
-    {
-        using (var content = new MultipartFormDataContent())
-        {
-            // 헤더 설정
-            client.DefaultRequestHeaders.Remove("X-API-Key");
-            client.DefaultRequestHeaders.Add("X-API-Key", ApiKey);
-
-            // 파라미터 추가
-            content.Add(new StringContent("vc_model"), "type");
-            content.Add(new StringContent(modelType), "modelType");
-            content.Add(new StringContent(componentName), "componentName");
-            content.Add(new StringContent(version), "version");
-            content.Add(new StringContent("Visual Components 3D Model"), "description");
-
-            // 파일 추가
-            if (File.Exists(filePath))
-            {
-                var fileBytes = File.ReadAllBytes(filePath);
-                var fileContent = new ByteArrayContent(fileBytes);
-                content.Add(fileContent, "sourceFile", Path.GetFileName(filePath));
-            }
-
-            // POST 요청 (최초 등록)
-            HttpResponseMessage response = await client.PostAsync($"{ServerUrl}/api/components", content);
-            string responseString = await response.Content.GetAsyncAsString();
-            Console.WriteLine($"응답 상태: {response.StatusCode}");
-            Console.WriteLine($"응답 본문: {responseString}");
-        }
-    }
-}
+### 6.3 최신 목록 조회 (GET)
+```bash
+curl -X GET "http://<서버_도메인_또는_IP>:8180/api/components/all_update?type=vc_model" \
+  -H "X-API-Key: YOUR_API_KEY_HERE"
 ```
