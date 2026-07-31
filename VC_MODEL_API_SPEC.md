@@ -20,9 +20,32 @@
 
 | 기능 | HTTP Method | Endpoint | 설명 |
 | :--- | :---: | :--- | :--- |
-| **VC-Model 최초 등록** | `POST` | `/api/components` | 최초 버전(V1.0 등)의 VC Model을 DB에 등록 |
-| **VC-Model 버전 업데이트** | `PATCH` | `/api/components/:id` | 기존 모델에 신규 버전 레코드를 추가 생성(Insert) |
-| **최신 VC-Model 목록 조회** | `GET` | `/api/components/all_update` | 등록된 모델들의 최신 버전 정보 목록 조회 |
+| **최신 VC-Model 목록 조회** | `GET` | `/api/components/all_update?type=vc_model` | 현재 등록된 모델들의 최신 버전 및 `id`/`component_id` 목록 조회 |
+| **VC-Model 최초 등록** | `POST` | `/api/components` | 신규 모델을 최초 등록 (새로운 컴포넌트 생성) |
+| **VC-Model 버전 업데이트** | `PATCH` | `/api/components/:id` | 기존 모델에 겹치지 않는 새 버전 레코드를 추가 생성 |
+| **특정 모델 버전 히스토리 조회**| `GET` | `/api/components/:fileId` | 특정 모델의 전체 버전 목록(`relatedFiles`) 조회 |
+
+---
+
+## 💡 [중요] 버전 중복 방지 및 등록 권장 워크플로우 (Version Workflow)
+
+외부 시스템/플러그인에서 모델 등록 시 **버전 겹침을 방지하기 위한 권장 절차**입니다.
+
+```mermaid
+graph TD
+    A[등록할 모델 명칭 file_name 준비] --> B["1. GET /api/components/all_update?type=vc_model 호출"]
+    B --> C{기존에 동일한 file_name이 존재하는가?}
+    C -- "아니오 (신규 모델)" --> D["POST /api/components 호출 (최초 등록)"]
+    C -- "예 (기존 모델 존재)" --> E["해당 모델의 id / component_id 및 최신 version 확인"]
+    E --> F["기존 버전과 중복되지 않는 상위 버전 지정 (예: 1.0.0 -> 1.1.0)"]
+    F --> G["PATCH /api/components/:id 호출 (버전 업데이트)"]
+```
+
+1. **사전 조회**: `GET /api/components/all_update?type=vc_model`을 먼저 호출합니다.
+2. **신규 컴포넌트인 경우**: 동일한 모델명이 존재하지 않는 경우 `POST /api/components`로 최초 등록합니다.
+3. **기존 컴포넌트 업데이트인 경우**:
+   - 조회된 데이터에서 대상 모델의 `id` (또는 `component_id`) 및 현재 `version`을 확인합니다.
+   - 기존 버전과 **겹치지 않는 새 버전(예: `1.0.0` ➔ `1.1.0`)**을 지정하여 `PATCH /api/components/:id`를 호출합니다.
 
 ---
 
@@ -42,7 +65,7 @@
 | **`type`** | 🟢 **[필수]** | String | `"vc_model"` | 등록 구분 키. **반드시 `"vc_model"` 고정값** |
 | **`modelType`** | 🟢 **[필수]** | String | `"component"` 또는 `"layout"` | **VC Model 세부 분류** (컴포넌트 또는 레이아웃) |
 | **`componentName`** | 🟢 **[필수]** | String | `Robot_Arm_A1` | 컴포넌트/모델 명칭 |
-| **`version`** | 🟢 **[필수]** | String | `1.0.0` | 등록할 버전 정보 |
+| **`version`** | 🟢 **[필수]** | String | `1.0.0` | 등록할 버전 정보 (예: `1.0.0`) |
 | **`description`** | ⚪ **[선택]** | String | `Visual Components 3D 모델` | 모델에 대한 상세 설명 |
 | **`features`**<br>*(또는 `main_features`)* | ⚪ **[선택]** | String / Array | `["3D 모션", "컨베이어"]` | 주요 기능 목록 (`features`, `main_features`, `mainFeatures` 키 모두 인식) |
 | **`environment`** | ⚪ **[선택]** | String | `Visual Components 4.7+` | 권장 실행 환경 |
@@ -51,36 +74,10 @@
 
 | File Field Name | 구분 | Type | 허용 확장자 | 설명 |
 | :--- | :---: | :---: | :--- | :--- |
-| **`sourceFile`** | 🟡 **[조건부]** | File | `.vcmx`, `.vcl`, `.fbx`, `.dll` | 메인 소스 모델 파일 (보통 필수 권장) |
+| **`sourceFile`** | 🟡 **[조건부]** | File | `.vcmx`, `.vcl`, `.fbx`, `.dll` | 메인 소스 모델 파일 |
 | **`fbxFile`** | ⚪ **[선택]** | File | `.fbx` | 3D 모델 미리보기용 FBX 파일 |
 | **`thumbnail`** | ⚪ **[선택]** | File | `.png`, `.jpg`, `.jpeg` | 썸네일 이미지 (미첨부 시 FBX에서 자동 생성) |
 | **`iconFile`** | ⚪ **[선택]** | File | `.png`, `.jpg`, `.ico` | 컴포넌트 아이콘 파일 |
-
-> [!TIP]
-> **썸네일 자동 생성**: `thumbnail`을 업로드하지 않더라도, `fbxFile` 또는 `.fbx` 확장자의 `sourceFile`을 업로드하면 서버에서 3D 썸네일을 자동 추출하여 등록합니다.
-
-### 3.4 응답 예시 (`200 OK`)
-
-```json
-{
-  "success": true,
-  "message": "컴포넌트 등록 완료",
-  "data": {
-    "id": 105,
-    "component_id": 105,
-    "file_name": "Robot_Arm_A1",
-    "version": "1.0.0",
-    "description": "Visual Components 3D 모델 설명",
-    "type": "vc_model",
-    "model_type": "component",
-    "thumbnail_image": "/uploads/thumbnails/auto-thumbnail-1721634567.png",
-    "source_file_link": "/uploads/source/vc_model/vcmx/Robot_Arm_A1.vcmx",
-    "fbx_file_link": "/uploads/source/vc_model/fbx/Robot_Arm_A1.fbx",
-    "uploader": "api-key:ExternalSystem",
-    "created_at": "2026-07-22T16:53:00.000Z"
-  }
-}
-```
 
 ---
 
@@ -98,46 +95,88 @@
 
 | Parameter Name | 구분 | Type | 허용 값 / 예시 | 설명 |
 | :--- | :---: | :---: | :--- | :--- |
-| **`version`** | 🟢 **[필수]** | String | `1.1.0` | **업데이트할 새 버전 번호** |
-| **`componentName`** | ⚪ **[선택]** | String | `Robot_Arm_A1` | 변경할 컴포넌트명 (변경 시 그룹 내 모든 버전 명칭 동기화) |
-| **`modelType`** | ⚪ **[선택]** | String | `"component"` 또는 `"layout"` | 모델 타입 변경 시 지정 (미입력 시 기존 값 유지) |
+| **`version`** | 🟢 **[필수]** | String | `1.1.0` | **기존 버전과 겹치지 않는 새 버전 번호** |
+| **`componentName`** | ⚪ **[선택]** | String | `Robot_Arm_A1` | 변경할 컴포넌트명 |
+| **`modelType`** | ⚪ **[선택]** | String | `"component"` 또는 `"layout"` | 모델 타입 변경 시 지정 |
 | **`description`** | ⚪ **[선택]** | String | `V1.1.0 기능 개선 업데이트` | 새 버전에 대한 설명 |
 | **`features`**<br>*(또는 `main_features`)* | ⚪ **[선택]** | String / Array | `["신규 동작 추가"]` | 새 버전의 주요 기능 |
 | **`environment`** | ⚪ **[선택]** | String | `Visual Components 4.8+` | 권장 실행 환경 |
 | **`useExistingSource`** | 🟡 **[조건부]** | String | `"true"` 또는 `"false"` | `"true"` 지정 시 소스 파일 재업로드 없이 기존 소스 유지 |
 
-### 4.3 Form Data 파일 (Files)
-
-| File Field Name | 구분 | Type | 허용 확장자 | 설명 |
-| :--- | :---: | :---: | :--- | :--- |
-| **`sourceFile`** | 🟡 **[조건부]** | File | `.vcmx`, `.vcl`, `.fbx`, `.dll` | **새 버전에 사용할 파일.** (`useExistingSource` 미지정 시 🟢 **필수**) |
-| **`fbxFile`** | ⚪ **[선택]** | File | `.fbx` | 새 버전용 FBX 파일 |
-| **`thumbnail`** | ⚪ **[선택]** | File | `.png`, `.jpg`, `.jpeg` | 새 버전용 썸네일 |
-| **`iconFile`** | ⚪ **[선택]** | File | `.png`, `.jpg`, `.ico` | 새 버전용 아이콘 |
-
 ---
 
 ## 5. VC-Model 최신 목록 조회 API (Select)
 
-현재 등록되어 있는 최신 버전의 VC-Model 목록을 조회합니다.
+현재 등록되어 있는 최신 버전의 VC-Model 목록을 조회하여 기존 컴포넌트의 `id`와 `version`을 파악할 때 사용합니다.
 
 ### 5.1 기본 정보
 - **Endpoint**: `GET /api/components/all_update?type=vc_model`
 - **Header**: `X-API-Key: <API_KEY>` (🟢 필수)
 
+### 5.2 응답 예시 (`200 OK`)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 105,
+      "component_id": 105,
+      "file_name": "Robot_Arm_A1",
+      "version": "1.0.0",
+      "type": "vc_model",
+      "model_type": "component"
+    }
+  ]
+}
+```
+
 ---
 
 ## 6. 개발언어별 예제 (Code Examples)
 
-### 6.1 cURL 예제 (최초 등록)
-```bash
-curl -X POST "http://your-server-domain:8180/api/components" \
-  -H "X-API-Key: YOUR_API_KEY_HERE" \
-  -F "type=vc_model" \
-  -F "modelType=component" \
-  -F "componentName=Robot_Arm_A1" \
-  -F "version=1.0.0" \
-  -F "description=Visual Components 3D 로봇 팔 모델" \
-  -F "features=[\"3D 모션\", \"고속 제어\"]" \
-  -F "sourceFile=@/path/to/Robot_Arm_A1.vcmx"
+### 6.1 Python 워크플로우 예제 (조회 후 버전 중복 없이 업데이트)
+
+```python
+import requests
+
+SERVER_URL = "http://your-server-domain:8180"
+API_KEY = "YOUR_API_KEY_HERE"
+HEADERS = {"X-API-Key": API_KEY}
+
+def upload_or_update_vc_model(file_name, new_version, file_path):
+    # 1. 기존 등록된 최신 모델 목록 조회
+    res = requests.get(f"{SERVER_URL}/api/components/all_update?type=vc_model", headers=HEADERS)
+    models = res.json().get("data", [])
+    
+    existing_model = next((m for m in models if m["file_name"] == file_name), None)
+    
+    if existing_model:
+        # 기존 모델이 존재하는 경우 -> PATCH (버전 업데이트)
+        target_id = existing_model["id"]
+        current_version = existing_model["version"]
+        print(f"기존 모델 발견 ({file_name}, 현재 버전: {current_version}) -> {new_version} 버전으로 업데이트 진행")
+        
+        url = f"{SERVER_URL}/api/components/{target_id}"
+        data = {"version": new_version, "description": f"{new_version} 업데이트"}
+        files = {"sourceFile": open(file_path, "rb")}
+        patch_res = requests.patch(url, headers=HEADERS, data=data, files=files)
+        print("업데이트 결과:", patch_res.json())
+    else:
+        # 신규 모델인 경우 -> POST (최초 등록)
+        print(f"신규 모델 등록 진행 ({file_name})")
+        url = f"{SERVER_URL}/api/components"
+        data = {
+            "type": "vc_model",
+            "modelType": "component",
+            "componentName": file_name,
+            "version": new_version,
+            "description": "최초 등록 모델"
+        }
+        files = {"sourceFile": open(file_path, "rb")}
+        post_res = requests.post(url, headers=HEADERS, data=data, files=files)
+        print("최초 등록 결과:", post_res.json())
+
+# 사용 예시
+# upload_or_update_vc_model("Robot_Arm_A1", "1.1.0", "./Robot_Arm_A1_v1.1.vcmx")
 ```
