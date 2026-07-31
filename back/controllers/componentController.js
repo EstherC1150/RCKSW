@@ -210,20 +210,25 @@ exports.createComponent = async (req, res) => {
       });
     }
 
-    // features가 배열이면 Join하고, 문자열이면 그대로 사용
-    let finalFeatures = Array.isArray(features) ? features : (features || "");
+    const rawFeatures = features ?? req.body.main_features ?? req.body.mainFeatures;
+    let featuresString = "[]";
+    if (Array.isArray(rawFeatures)) {
+      const filtered = rawFeatures.filter((item) => item !== undefined && item !== null && String(item).trim() !== "");
+      featuresString = JSON.stringify(filtered);
+    } else if (typeof rawFeatures === "string" && rawFeatures.trim() !== "") {
+      const trimmed = rawFeatures.trim();
+      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+        featuresString = trimmed;
+      } else {
+        featuresString = JSON.stringify([trimmed]);
+      }
+    }
 
     // 파일은 선택사항 (단독 생성되는 경우도 고려)
-    // 필수값이 누락된 경우 "null" 문자열로 대체 (프론트엔드에서 처리하지만 백엔드에서도 안전장치 마련)
-    const finalComponentName = componentName || "null";
-    const finalVersion = version || "null";
-    const finalCategoryIdStr = categoryId || "null";
-    const finalSubCategoryIdStr = subCategoryId || "null";
-
+    const finalComponentName = componentName || "";
+    const finalVersion = version || "";
 
     // 카테고리 정보는 더 이상 경로에 사용하지 않음 (null 처리 예정)
-    const categoryName = "deleted"; 
-    const subCategoryName = "deleted";
     const finalCategoryId = null; 
     const finalSubCategoryId = null;
 
@@ -350,9 +355,9 @@ exports.createComponent = async (req, res) => {
     const insertData = {
       file_name: finalComponentName,
       version: finalVersion,
-      description: description || "null",
-      main_features: typeof finalFeatures === 'string' ? JSON.stringify([finalFeatures]) : JSON.stringify(finalFeatures || []),
-      recommended_environment: environment || "null",
+      description: description || "",
+      main_features: featuresString,
+      recommended_environment: environment || "",
       thumbnail_image: thumbnailUrl,
       source_file_link: sourceUrl,
       icon_file_link: iconUrl,
@@ -957,20 +962,29 @@ const updateComponentVersion = async (req, res) => {
 
     console.log("최종 썸네일 URL:", thumbnailUrl);
 
+    const rawFeatures = features ?? req.body.main_features ?? req.body.mainFeatures;
     let featuresString;
     try {
-      if (typeof features === "string") {
-        featuresString = features.startsWith("[")
-          ? features
-          : JSON.stringify([features]);
-      } else if (Array.isArray(features)) {
-        featuresString = JSON.stringify(features);
+      if (rawFeatures !== undefined && rawFeatures !== null) {
+        if (Array.isArray(rawFeatures)) {
+          const filtered = rawFeatures.filter((item) => item !== undefined && item !== null && String(item).trim() !== "");
+          featuresString = JSON.stringify(filtered);
+        } else if (typeof rawFeatures === "string" && rawFeatures.trim() !== "") {
+          const trimmed = rawFeatures.trim();
+          if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+            featuresString = trimmed;
+          } else {
+            featuresString = JSON.stringify([trimmed]);
+          }
+        } else {
+          featuresString = "[]";
+        }
       } else {
         featuresString = originalFile.main_features || "[]";
       }
     } catch (e) {
       console.error("Features parsing error:", e);
-      featuresString = "[]";
+      featuresString = originalFile.main_features || "[]";
     }
 
     const insertData = {
