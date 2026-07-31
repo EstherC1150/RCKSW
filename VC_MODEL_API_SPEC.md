@@ -133,50 +133,77 @@ graph TD
 
 ---
 
-## 6. 개발언어별 예제 (Code Examples)
+## 6. 개발 연동 예제 (Code Examples)
 
-### 6.1 Python 워크플로우 예제 (조회 후 버전 중복 없이 업데이트)
+### 6.1 cURL 예제
 
-```python
-import requests
+#### A. 최초 등록 (POST)
+```bash
+curl -X POST "http://your-server-domain:8180/api/components" \
+  -H "X-API-Key: YOUR_API_KEY_HERE" \
+  -F "type=vc_model" \
+  -F "modelType=component" \
+  -F "componentName=Robot_Arm_A1" \
+  -F "version=1.0.0" \
+  -F "description=Visual Components 3D 로봇 팔 모델" \
+  -F "features=[\"3D 모션\", \"고속 제어\"]" \
+  -F "sourceFile=@/path/to/Robot_Arm_A1.vcmx"
+```
 
-SERVER_URL = "http://your-server-domain:8180"
-API_KEY = "YOUR_API_KEY_HERE"
-HEADERS = {"X-API-Key": API_KEY}
+#### B. 버전 업데이트 (PATCH)
+```bash
+curl -X PATCH "http://your-server-domain:8180/api/components/105" \
+  -H "X-API-Key: YOUR_API_KEY_HERE" \
+  -F "version=1.1.0" \
+  -F "description=V1.1.0 버전 업데이트" \
+  -F "sourceFile=@/path/to/Robot_Arm_A1_v1.1.vcmx"
+```
 
-def upload_or_update_vc_model(file_name, new_version, file_path):
-    # 1. 기존 등록된 최신 모델 목록 조회
-    res = requests.get(f"{SERVER_URL}/api/components/all_update?type=vc_model", headers=HEADERS)
-    models = res.json().get("data", [])
-    
-    existing_model = next((m for m in models if m["file_name"] == file_name), None)
-    
-    if existing_model:
-        # 기존 모델이 존재하는 경우 -> PATCH (버전 업데이트)
-        target_id = existing_model["id"]
-        current_version = existing_model["version"]
-        print(f"기존 모델 발견 ({file_name}, 현재 버전: {current_version}) -> {new_version} 버전으로 업데이트 진행")
-        
-        url = f"{SERVER_URL}/api/components/{target_id}"
-        data = {"version": new_version, "description": f"{new_version} 업데이트"}
-        files = {"sourceFile": open(file_path, "rb")}
-        patch_res = requests.patch(url, headers=HEADERS, data=data, files=files)
-        print("업데이트 결과:", patch_res.json())
-    else:
-        # 신규 모델인 경우 -> POST (최초 등록)
-        print(f"신규 모델 등록 진행 ({file_name})")
-        url = f"{SERVER_URL}/api/components"
-        data = {
-            "type": "vc_model",
-            "modelType": "component",
-            "componentName": file_name,
-            "version": new_version,
-            "description": "최초 등록 모델"
+---
+
+### 6.2 C# (.NET / HttpClient) 연동 예제
+
+```csharp
+using System;
+using System.IO;
+using System.Net.Http;
+using System.Threading.Tasks;
+
+public class VcModelApiClient
+{
+    private static readonly HttpClient client = new HttpClient();
+    private const string ServerUrl = "http://your-server-domain:8180";
+    private const string ApiKey = "YOUR_API_KEY_HERE";
+
+    public static async Task UploadVcModelAsync(string componentName, string version, string filePath, string modelType = "component")
+    {
+        using (var content = new MultipartFormDataContent())
+        {
+            // 헤더 설정
+            client.DefaultRequestHeaders.Remove("X-API-Key");
+            client.DefaultRequestHeaders.Add("X-API-Key", ApiKey);
+
+            // 파라미터 추가
+            content.Add(new StringContent("vc_model"), "type");
+            content.Add(new StringContent(modelType), "modelType");
+            content.Add(new StringContent(componentName), "componentName");
+            content.Add(new StringContent(version), "version");
+            content.Add(new StringContent("Visual Components 3D Model"), "description");
+
+            // 파일 추가
+            if (File.Exists(filePath))
+            {
+                var fileBytes = File.ReadAllBytes(filePath);
+                var fileContent = new ByteArrayContent(fileBytes);
+                content.Add(fileContent, "sourceFile", Path.GetFileName(filePath));
+            }
+
+            // POST 요청 (최초 등록)
+            HttpResponseMessage response = await client.PostAsync($"{ServerUrl}/api/components", content);
+            string responseString = await response.Content.GetAsyncAsString();
+            Console.WriteLine($"응답 상태: {response.StatusCode}");
+            Console.WriteLine($"응답 본문: {responseString}");
         }
-        files = {"sourceFile": open(file_path, "rb")}
-        post_res = requests.post(url, headers=HEADERS, data=data, files=files)
-        print("최초 등록 결과:", post_res.json())
-
-# 사용 예시
-# upload_or_update_vc_model("Robot_Arm_A1", "1.1.0", "./Robot_Arm_A1_v1.1.vcmx")
+    }
+}
 ```
