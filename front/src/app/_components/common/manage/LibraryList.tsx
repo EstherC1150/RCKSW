@@ -15,6 +15,7 @@ import ThumbnailPlaceholder from "../ThumbnailPlaceholder";
 import VideoThumbnail, { isVideoThumbnail } from "../VideoThumbnail";
 import { DownloadIconButton } from "./DownloadButton";
 import useUserStore from "@/app/stores/UserStore";
+import { useAlertStore } from "@/app/stores/alertStore";
 
 type ApiResponse = {
   files: Omit<TLibrary, "selected">[];
@@ -143,7 +144,16 @@ const LibraryList = forwardRef(function LibraryList(
   // 삭제 함수
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return false;
-    if (!window.confirm("정말 삭제하시겠습니까?")) return false;
+    const { showConfirm, showAlert, showToast } = useAlertStore.getState();
+
+    const confirmed = await showConfirm(`선택한 ${selectedIds.length}개 항목을 삭제하시겠습니까?`, {
+      title: "항목 삭제 확인",
+      type: "warning",
+      confirmText: "삭제",
+      cancelText: "취소",
+    });
+
+    if (!confirmed) return false;
     const accessToken = getAccessToken();
     try {
       const response = await fetch(
@@ -159,10 +169,12 @@ const LibraryList = forwardRef(function LibraryList(
       );
       if (!response.ok) throw new Error("삭제에 실패했습니다.");
       setLibraryList((prev) => prev.filter((item) => !item.selected));
+      showToast("선택한 항목이 삭제되었습니다.", "success");
       return true;
     } catch (err) {
-      alert(
-        err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다"
+      showAlert(
+        err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다",
+        { title: "삭제 오류", type: "error" }
       );
       return false;
     }

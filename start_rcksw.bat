@@ -2,7 +2,7 @@
 echo Starting RCKSW Services...
 
 REM RCKSW 폴더로 이동
-cd /d c:\Users\c\Desktop\rck\VCLM
+cd /d "C:\Users\c\orca\workspaces\RCKSW\팝업-창-커스텀"
 
 REM PM2 설치 여부 확인
 where pm2 >nul 2>nul

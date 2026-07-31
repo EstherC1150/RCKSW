@@ -50,46 +50,37 @@ const checkEmail = async (req, res) => {
   try {
     const { email } = req.body;
 
-    // 이메일 입력 확인
+    // 아이디 입력 확인
     if (!email) {
       return res.status(400).json({
         success: false,
-        message: "이메일을 입력해주세요.",
+        message: "아이디를 입력해주세요.",
       });
     }
 
-    // 이메일 형식 검증 (간단한 정규식)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        message: "올바른 이메일 형식이 아닙니다.",
-      });
-    }
-
-    // 데이터베이스에서 이메일 중복 확인
+    // 데이터베이스에서 아이디 중복 확인
     const result = await mssql.query("checkEmailExists", { email: email });
 
     if (result.recordset.length > 0) {
-      // 이메일이 이미 존재함
+      // 아이디가 이미 존재함
       return res.status(409).json({
         success: false,
-        message: "이미 사용 중인 이메일입니다.",
+        message: "이미 사용 중인 아이디입니다.",
         available: false,
       });
     }
 
-    // 이메일 사용 가능
+    // 아이디 사용 가능
     res.status(200).json({
       success: true,
-      message: "사용 가능한 이메일입니다.",
+      message: "사용 가능한 아이디입니다.",
       available: true,
     });
   } catch (error) {
-    console.error("이메일 중복 체크 에러:", error);
+    console.error("아이디 중복 체크 에러:", error);
     res.status(500).json({
       success: false,
-      message: "이메일 중복 확인 중 오류가 발생했습니다.",
+      message: "아이디 중복 확인 중 오류가 발생했습니다.",
       error: error.message,
     });
   }
@@ -104,7 +95,7 @@ const signup = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "필수 항목이 누락되었습니다. (이메일, 비밀번호, 사용자명은 필수입니다)",
+          "필수 항목이 누락되었습니다. (아이디, 비밀번호, 사용자명은 필수입니다)",
       });
     }
 
@@ -132,7 +123,7 @@ const signup = async (req, res) => {
       // MSSQL 중복 키 에러 코드
       return res.status(409).json({
         success: false,
-        message: "이미 등록된 이메일입니다.",
+        message: "이미 등록된 아이디입니다.",
       });
     }
     res.status(500).json({
@@ -150,7 +141,7 @@ const login = async (req, res) => {
     if (!email || !pwd) {
       return res.status(400).json({
         success: false,
-        message: "이메일과 비밀번호를 모두 입력해주세요.",
+        message: "아이디와 비밀번호를 모두 입력해주세요.",
       });
     }
 
@@ -159,7 +150,7 @@ const login = async (req, res) => {
     if (result.recordset.length === 0) {
       return res.status(401).json({
         success: false,
-        message: "이메일 또는 비밀번호가 올바르지 않습니다.",
+        message: "아이디 또는 비밀번호가 올바르지 않습니다.",
       });
     }
 
@@ -169,7 +160,7 @@ const login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: "이메일 또는 비밀번호가 올바르지 않습니다.",
+        message: "아이디 또는 비밀번호가 올바르지 않습니다.",
       });
     }
 
@@ -207,6 +198,7 @@ const login = async (req, res) => {
           email: user.email,
           username: user.username,
           role: user.role,
+          isLoggedIn: true,
         },
         token,
         refreshToken,
@@ -224,16 +216,15 @@ const login = async (req, res) => {
 
 const getProfile = async (req, res) => {
   try {
-    // 관리자 권한 체크
-    if (!req.user || req.user.role !== "admin") {
-      return res.status(403).json({
+    if (!req.user) {
+      return res.status(401).json({
         success: false,
-        message: "관리자만 사용자 프로필을 조회할 수 있습니다.",
+        message: "인증이 필요합니다.",
       });
     }
 
-    // URL 파라미터에서 사용자 ID 받기 (관리자가 특정 사용자 조회)
-    const userId = req.params.id || req.user.id;
+    // 관리자가 특정 사용자 ID를 조회하는 경우 vs 본인 프로필 조회하는 경우
+    const userId = (req.user.role === "admin" && req.params.id) ? req.params.id : req.user.id;
 
     const result = await mssql.query("getUserById", { id: userId });
 
@@ -265,6 +256,77 @@ const getProfile = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "프로필 조회 중 오류가 발생했습니다.",
+      error: error.message,
+    });
+  }
+};
+
+const updateMyProfile = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: "인증이 필요합니다.",
+      });
+    }
+
+    const userId = req.user.id;
+    const { username, department, position, phone_number, currentPassword, newPassword } = req.body;
+
+    const userResult = await mssql.query("getUserById", { id: userId });
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "해당 사용자를 찾을 수 없습니다.",
+      });
+    }
+
+    const user = userResult.recordset[0];
+
+    // 비밀번호 변경 요청이 포함된 경우
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({
+          success: false,
+          message: "현재 비밀번호를 입력해주세요.",
+        });
+      }
+
+      const loginResult = await mssql.query("userLogin", { email: user.email });
+      const fullUser = loginResult.recordset[0];
+      const isMatch = await bcrypt.compare(currentPassword, fullUser.pwd);
+      if (!isMatch) {
+        return res.status(400).json({
+          success: false,
+          message: "현재 비밀번호가 일치하지 않습니다.",
+        });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await mssql.query("updateUserPassword", { id: userId, pwd: hashedPassword });
+    }
+
+    await mssql.query("updateMyProfile", {
+      id: userId,
+      username: username || user.username,
+      department: department || user.department,
+      position: position || user.position,
+      phone_number: phone_number || user.phone_number,
+    });
+
+    const updatedUserResult = await mssql.query("getUserById", { id: userId });
+    const updatedUser = updatedUserResult.recordset[0];
+
+    res.status(200).json({
+      success: true,
+      message: "프로필 정보가 성공적으로 수정되었습니다.",
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({
+      success: false,
+      message: "프로필 수정 중 오류가 발생했습니다.",
       error: error.message,
     });
   }
@@ -388,6 +450,7 @@ module.exports = {
   signup,
   login,
   getProfile,
+  updateMyProfile,
   updateUser,
   deleteUsers,
 };

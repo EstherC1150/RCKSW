@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const upload = require("../middleware/upload");
 const componentController = require("../controllers/componentController");
-const { verifyToken, isAdmin } = require("../middleware/auth");
+const { verifyToken, isAdmin, isDeveloperOrAdmin } = require("../middleware/auth");
 const { verifyTokenOrApiKey } = require("../middleware/apiKeyAuth");
 
 // 파일 목록 조회
@@ -67,9 +67,8 @@ router.post(
   },
   upload.fields([
     { name: "thumbnail", maxCount: 1 }, // 선택사항
-    { name: "sourceFile", maxCount: 1 }, // 필수 (경우에 따라 썸네일 자동 생성)
-    { name: "iconFile", maxCount: 1 }, // 선택사항
-    { name: "fbxFile", maxCount: 1 }, // FBX 파일 (VC Model 등)
+    { name: "sourceFile", maxCount: 1 }, // 필수
+    { name: "fbxFile", maxCount: 1 }, // FBX 파일
   ]),
   handleMulterError,
   (req, res, next) => {
@@ -81,14 +80,14 @@ router.post(
   componentController.createComponent
 );
 
-// 컴포넌트 삭제 (관리자 전용)
-router.delete("/", verifyToken, isAdmin, componentController.deleteComponents);
+// 컴포넌트 삭제 (개발자 / 관리자 가능)
+router.delete("/", verifyToken, isDeveloperOrAdmin, componentController.deleteComponents);
 
-// 파일 일괄 이동 (관리자 전용)
+// 파일 일괄 이동 (개발자 / 관리자 가능)
 router.post(
   "/bulk-move",
   verifyToken,
-  isAdmin,
+  isDeveloperOrAdmin,
   componentController.bulkMoveFiles
 );
 
@@ -98,12 +97,14 @@ router.patch(
   upload.fields([
     { name: "thumbnail", maxCount: 1 }, // 선택사항
     { name: "sourceFile", maxCount: 1 }, // 선택사항
-    { name: "iconFile", maxCount: 1 }, // 선택사항
-    { name: "fbxFile", maxCount: 1 }, // FBX 파일 추가
+    { name: "fbxFile", maxCount: 1 }, // FBX 파일
   ]),
   handleMulterError,
   componentController.updateComponentVersion
 );
+
+// 특정 버전의 컴포넌트 주요 기능 / 정보 수정
+router.put("/:id/info", verifyTokenOrApiKey, componentController.updateComponentInfo);
 
 // 파일 상세 정보 조회 (가장 일반적인 라우트를 마지막에 배치)
 router.get("/:fileId", componentController.getFileDetail);

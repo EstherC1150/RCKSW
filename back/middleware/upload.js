@@ -44,20 +44,18 @@ const upload = multer({
       }
     }
 
-    // 썸네일은 선택사항 (이미지 파일만 허용)
+    // 썸네일은 선택사항 (이미지 및 동영상 파일 허용)
     if (file.fieldname === "thumbnail") {
       const extension = path.extname(file.originalname).toLowerCase();
-      const isSupportedVideo =
-        [".mp4", ".webm"].includes(extension) &&
-        ["video/mp4", "video/webm"].includes(file.mimetype);
+      const isVideoExtension = [".mp4", ".webm", ".avi", ".mov", ".mkv"].includes(extension);
+      const isVideoMime = file.mimetype.startsWith("video/") || ["video/mp4", "video/webm"].includes(file.mimetype);
+      const isImageMime = file.mimetype.startsWith("image/");
 
-      if (req.body.type === "vc_plugin" && !isSupportedVideo) {
-        return cb(new Error("VC PlugIn 썸네일은 MP4 또는 WebM 동영상 파일만 가능합니다."), false);
+      if (isVideoExtension || isVideoMime || isImageMime) {
+        return cb(null, true);
       }
 
-      if (req.body.type !== "vc_plugin" && !file.mimetype.startsWith("image/")) {
-        return cb(new Error("이미지 파일만 업로드 가능합니다."), false);
-      }
+      return cb(new Error("이미지 또는 지원되는 동영상 파일만 업로드 가능합니다."), false);
     }
 
     // VCMX 파일은 선택사항

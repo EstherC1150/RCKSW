@@ -194,7 +194,8 @@ module.exports = {
     SELECT 
       id,
       file_name,
-      icon_file_link,
+      vcmx_file_link,
+      source_file_link,
       category_id,
       sub_category_id,
       type
@@ -237,17 +238,28 @@ module.exports = {
     WHERE id = @file_id
   `,
 
-  // 파일의 카테고리와 Icon 링크 업데이트 (일괄 이동용)
-  // @file_id: 파일 ID
-  // @category_id: 새로운 카테고리 ID
-  // @sub_category_id: 새로운 서브카테고리 ID
-  // @icon_file_link: 새로운 Icon 파일 링크
   updateFileCategory: `
     UPDATE files 
     SET category_id = @category_id, 
         sub_category_id = @sub_category_id,
-        icon_file_link = @icon_file_link
+        vcmx_file_link = @vcmx_file_link
     WHERE id = @file_id
+  `,
+
+  updateMyProfile: `
+    UPDATE users 
+    SET 
+      username = @username,
+      department = @department,
+      position = @position,
+      phone_number = @phone_number
+    WHERE id = @id
+  `,
+
+  updateUserPassword: `
+    UPDATE users
+    SET pwd = @pwd
+    WHERE id = @id
   `,
 
   // 사용자 로그인
@@ -318,13 +330,15 @@ module.exports = {
     INSERT INTO files (
       file_name, version, description, main_features, recommended_environment,
       thumbnail_image, source_file_link, icon_file_link, fbx_file_link, vcmx_file_link,
-      category_id, sub_category_id, uploader, type, model_type, component_id
+      category_id, sub_category_id, uploader, type, model_type, component_id,
+      created_at, updated_at
     )
     OUTPUT INSERTED.id INTO @InsertedFiles
     VALUES (
       @file_name, @version, @description, @main_features, @recommended_environment,
       @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @vcmx_file_link,
-      @category_id, @sub_category_id, @uploader, @type, @model_type, @new_component_id
+      @category_id, @sub_category_id, @uploader, @type, @model_type, @new_component_id,
+      GETDATE(), GETDATE()
     );
 
     SELECT id FROM @InsertedFiles;
@@ -343,6 +357,7 @@ module.exports = {
       SELECT 
         component_id,
         MIN(created_at) as registration_date,
+        MAX(ISNULL(updated_at, created_at)) as max_updated_at,
         SUM(download_count) as total_download_count
       FROM files
       WHERE is_active = 1
@@ -351,11 +366,12 @@ module.exports = {
     RankedFiles AS (
       SELECT 
         f.*,
+        ISNULL(f.updated_at, f.created_at) as effective_updated_at,
         c.name as category_name,
         sc.name as sub_category_name,
         ROW_NUMBER() OVER (
           PARTITION BY f.component_id 
-          ORDER BY f.updated_at DESC
+          ORDER BY f.created_at DESC, f.id DESC
         ) as rn
       FROM files f
       LEFT JOIN categories c ON f.category_id = c.id
@@ -378,8 +394,9 @@ module.exports = {
     ORDER BY
       CASE WHEN @sortBy = 'name' THEN rf.file_name END ASC,
       CASE WHEN @sortBy = 'downloads' THEN ISNULL(cs.total_download_count, 0) END DESC,
-      CASE WHEN @sortBy = 'latest' THEN rf.updated_at END DESC,
-      CASE WHEN @sortBy NOT IN ('name', 'downloads', 'latest') THEN rf.updated_at END DESC
+      CASE WHEN @sortBy = 'latest' THEN cs.max_updated_at END DESC,
+      CASE WHEN @sortBy NOT IN ('name', 'downloads', 'latest') THEN cs.max_updated_at END DESC,
+      rf.id DESC
     OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
   `,
 
@@ -394,7 +411,7 @@ module.exports = {
         f.*,
         ROW_NUMBER() OVER (
           PARTITION BY f.component_id 
-          ORDER BY f.updated_at DESC
+          ORDER BY f.created_at DESC, f.id DESC
         ) as rn
       FROM files f
       LEFT JOIN sub_categories sc ON f.sub_category_id = sc.id
@@ -487,7 +504,7 @@ module.exports = {
   `,
 
   // 컴포넌트의 최신 버전 정보 조회
-  // @component_id: 컴포넌트 ID
+  // @component_id: 컴포넌트 ID 또는 파일 ID
   getLatestComponentVersion: `
     SELECT TOP 1
       f.id,
@@ -516,9 +533,12 @@ module.exports = {
     FROM files f
     LEFT JOIN categories c ON f.category_id = c.id
     LEFT JOIN sub_categories sc ON f.sub_category_id = sc.id
-    WHERE (f.component_id = @component_id OR f.id = @component_id)
+    WHERE f.component_id = ISNULL(
+      (SELECT TOP 1 component_id FROM files WHERE component_id = @component_id AND is_active = 1),
+      (SELECT TOP 1 component_id FROM files WHERE id = @component_id AND is_active = 1)
+    )
     AND f.is_active = 1
-    ORDER BY f.updated_at DESC
+    ORDER BY f.created_at DESC, f.id DESC
   `,
 
   // 컴포넌트 새 버전 생성
@@ -540,13 +560,15 @@ module.exports = {
     INSERT INTO files (
       file_name, version, description, main_features, recommended_environment,
       thumbnail_image, source_file_link, icon_file_link, fbx_file_link, vcmx_file_link,
-      category_id, sub_category_id, uploader, type, model_type, component_id
+      category_id, sub_category_id, uploader, type, model_type, component_id,
+      created_at, updated_at
     )
     OUTPUT INSERTED.id INTO @InsertedFiles
     VALUES (
       @file_name, @version, @description, @main_features, @recommended_environment,
       @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @vcmx_file_link,
-      @category_id, @sub_category_id, @uploader, @type, @model_type, @component_id
+      @category_id, @sub_category_id, @uploader, @type, @model_type, @component_id,
+      GETDATE(), GETDATE()
     );
 
     SELECT id FROM @InsertedFiles;
@@ -616,7 +638,8 @@ module.exports = {
       id,
       thumbnail_image,
       source_file_link,
-      icon_file_link
+      fbx_file_link,
+      vcmx_file_link
     FROM files 
     WHERE component_id IN (SELECT CAST(value AS INT) FROM STRING_SPLIT(@component_ids, ','))
     AND is_active = 1
@@ -629,7 +652,8 @@ module.exports = {
       id,
       thumbnail_image,
       source_file_link,
-      icon_file_link
+      fbx_file_link,
+      vcmx_file_link
     FROM files 
     WHERE id IN (SELECT CAST(value AS INT) FROM STRING_SPLIT(@ids, ','))
     AND is_active = 1
@@ -664,19 +688,20 @@ module.exports = {
     WHERE email = @email
   `,
 
-  // 모든 Icon 파일 정보 조회 (일괄 다운로드용)
+  // 모든 VCMX 파일 정보 조회 (일괄 다운로드용)
   getAllVcmxFiles: `
     SELECT 
       id,
       file_name,
-      icon_file_link,
+      vcmx_file_link,
+      source_file_link,
       category_id,
       sub_category_id,
       type,
       is_active
     FROM files 
-    WHERE icon_file_link IS NOT NULL 
-    AND icon_file_link != ''
+    WHERE (vcmx_file_link IS NOT NULL AND vcmx_file_link != '')
+       OR (source_file_link IS NOT NULL AND source_file_link LIKE '%.vcmx%')
     ORDER BY category_id, sub_category_id, file_name
   `,
 
@@ -706,15 +731,17 @@ module.exports = {
       updated_at,
       download_count,
       source_file_link,
+      fbx_file_link,
+      vcmx_file_link,
       thumbnail_image,
       uploader,
       category_id,
       component_id,
       type,
+      model_type,
       description,
       main_features,
       recommended_environment,
-      icon_file_link,
       sub_category_id,
       is_active
     FROM files 
@@ -741,15 +768,17 @@ module.exports = {
       updated_at,
       download_count,
       source_file_link,
+      fbx_file_link,
+      vcmx_file_link,
       thumbnail_image,
       uploader,
       category_id,
       component_id,
       type,
+      model_type,
       description,
       main_features,
       recommended_environment,
-      icon_file_link,
       sub_category_id,
       is_active
     FROM RankedFiles 
@@ -787,5 +816,15 @@ module.exports = {
     WHERE key_value = @key_value
       AND is_active = 1
       AND (expires_at IS NULL OR expires_at > GETDATE())
+  `,
+
+  // 특정 버전에 해당하는 컴포넌트 정보(설명, 주요 기능) 업데이트
+  updateComponentInfoById: `
+    UPDATE files 
+    SET 
+      main_features = @main_features,
+      description = @description,
+      updated_at = GETDATE()
+    WHERE id = @id
   `,
 };

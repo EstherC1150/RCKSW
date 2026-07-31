@@ -22,6 +22,8 @@ export const metadata: Metadata = {
   description: "Smart Component Library Management System",
 };
 
+import { CustomAlertModal } from "@/app/_components/common/CustomAlertModal";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -33,6 +35,7 @@ export default function RootLayout({
         className={`${NotoSans.variable} ${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground transition-colors duration-300`}
       >
         <div className="flex-1">{children}</div>
+        <CustomAlertModal />
       </body>
     </html>
   );

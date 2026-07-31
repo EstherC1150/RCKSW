@@ -12,6 +12,7 @@ import React, {
 import ComponentModal from "@/app/(Header)/manage/ComponentModal";
 import { TComponentFormData } from "@/app/_types/manage/manage.types";
 import useUserStore from "@/app/stores/UserStore";
+import { useAlertStore } from "@/app/stores/alertStore";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // 카테고리 타입 정의
@@ -78,9 +79,10 @@ const ComponentPageLayout = ({
 
   const handleSubmitComponent = async (formData: TComponentFormData) => {
     const accessToken = getAccessToken();
+    const { showAlert, showToast } = useAlertStore.getState();
 
     if (!accessToken) {
-      alert("로그인이 필요한 서비스입니다.");
+      showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
       return;
     }
 
@@ -113,10 +115,6 @@ const ComponentPageLayout = ({
       formDataToSend.append("sourceFile", formData.sourceFile);
     }
 
-    if (formData.iconFile) {
-      formDataToSend.append("iconFile", formData.iconFile);
-    }
-
     if (formData.fbxFile) {
       formDataToSend.append("fbxFile", formData.fbxFile);
     }
@@ -134,23 +132,21 @@ const ComponentPageLayout = ({
       const data = await response.json();
 
       if (data.success) {
-        alert(`${typeName}가 등록되었습니다.`);
+        showToast(`${typeName}가 등록되었습니다.`, "success");
         handleCloseModal();
         // 컴포넌트 목록 새로고침
         refreshList();
       } else {
         // 토큰 만료 등의 인증 오류 처리
         if (response.status === 401) {
-          alert("인증이 만료되었습니다. 다시 로그인해주세요.");
+          showAlert("인증이 만료되었습니다. 다시 로그인해주세요.", { title: "인증 오류", type: "error" });
           return;
         }
-        alert(
-          data.message || `${typeName} 등록에 실패했습니다.`
-        );
+        showAlert(data.message || `${typeName} 등록에 실패했습니다.`, { title: "등록 실패", type: "error" });
       }
     } catch (err) {
       console.error(`${typeName} 등록 중 오류 발생:`, err);
-      alert(`${typeName} 등록 중 오류가 발생했습니다.`);
+      showAlert(`${typeName} 등록 중 오류가 발생했습니다.`, { title: "오류 발생", type: "error" });
     }
   };
 
@@ -459,30 +455,30 @@ const ComponentPageLayout = ({
               </span>
             </div>
           </div>
-          {user?.role === "admin" && (
-            <>
-              <button
-                className="px-6 h-[40px] bg-cyan-600/90 hover:bg-cyan-500 border border-cyan-400/50 text-white rounded-lg text-[14px] font-medium shadow-[0_0_15px_rgba(8,145,178,0.3)] transition-all duration-300 flex items-center justify-center"
-                onClick={handleOpenModal}
-              >
-                등록
-              </button>
-              <button
-                className="px-6 h-[40px] bg-rose-600/20 hover:bg-rose-500/80 border border-rose-500/50 text-rose-300 hover:text-white rounded-lg text-[14px] font-medium hover:shadow-[0_0_15px_rgba(225,29,72,0.3)] transition-all duration-300 flex items-center justify-center backdrop-blur-sm"
-                onClick={async () => {
-                  if (
-                    libraryListRef.current &&
-                    libraryListRef.current.handleDeleteSelected
-                  ) {
-                    const deleted =
-                      await libraryListRef.current.handleDeleteSelected();
-                    if (deleted) refreshList();
-                  }
-                }}
-              >
-                삭제
-              </button>
-            </>
+          {(user?.role === "admin" || user?.role === "developer") && (
+            <button
+              className="px-6 h-[40px] bg-cyan-600/90 hover:bg-cyan-500 border border-cyan-400/50 text-white rounded-lg text-[14px] font-medium shadow-[0_0_15px_rgba(8,145,178,0.3)] transition-all duration-300 flex items-center justify-center"
+              onClick={handleOpenModal}
+            >
+              등록
+            </button>
+          )}
+          {(user?.role === "admin" || user?.role === "developer") && (
+            <button
+              className="px-6 h-[40px] bg-rose-600/20 hover:bg-rose-500/80 border border-rose-500/50 text-rose-300 hover:text-white rounded-lg text-[14px] font-medium hover:shadow-[0_0_15px_rgba(225,29,72,0.3)] transition-all duration-300 flex items-center justify-center backdrop-blur-sm"
+              onClick={async () => {
+                if (
+                  libraryListRef.current &&
+                  libraryListRef.current.handleDeleteSelected
+                ) {
+                  const deleted =
+                    await libraryListRef.current.handleDeleteSelected();
+                  if (deleted) refreshList();
+                }
+              }}
+            >
+              삭제
+            </button>
           )}
         </div>
       </div>

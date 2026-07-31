@@ -2,26 +2,26 @@ module.exports = {
   apps: [
     {
       name: "rcksw_front",
-      script: "node",
-      args: "c:/Users/c/Desktop/rck/VCLM/front/node_modules/next/dist/bin/next start",
-      cwd: "c:/Users/c/Desktop/rck/VCLM/front",
+      script: "npm",
+      args: "run start",
+      cwd: "./front",
       instances: 1,
       exec_mode: "fork",
       env: {
         NODE_ENV: "production",
-        PORT: 3001
+        PORT: 3100
       }
     },
     {
       name: "rcksw_back",
       script: "node",
       args: "app.js",
-      cwd: "c:/Users/c/Desktop/rck/VCLM/back",
+      cwd: "./back",
       instances: 1,
       exec_mode: "fork",
       env: {
         NODE_ENV: "production",
-        PORT: 8081
+        PORT: 8180
       }
     }
   ]

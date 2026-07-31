@@ -6,7 +6,6 @@ export type TComponentFormData = {
   features: string;
   environment: string;
   sourceFile: File | null;
-  iconFile: File | null;
   fbxFile: File | null;
   categoryId: string;
   subCategoryId: string;

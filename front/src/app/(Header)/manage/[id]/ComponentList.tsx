@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import VersionUpdateModal from "./VersionUpdateModal";
 import useUserStore from "@/app/stores/UserStore";
+import { useAlertStore } from "@/app/stores/alertStore";
 
 interface FileLinks {
   source: string | null;
@@ -169,7 +170,10 @@ const ComponentList = ({
       document.body.removeChild(link);
     } catch (error) {
       console.error("파일 다운로드 중 오류 발생:", error);
-      alert("파일 다운로드에 실패했습니다.");
+      useAlertStore.getState().showAlert("파일 다운로드에 실패했습니다.", {
+        title: "다운로드 실패",
+        type: "error",
+      });
     }
   };
 
@@ -183,7 +187,7 @@ const ComponentList = ({
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-4">
           <h2 className="text-[20px] font-semibold text-white">버전 목록</h2>
-          {user?.role === "admin" && (
+          {(user?.role === "admin" || user?.role === "developer") && (
             <button
               onClick={handleOpenModal}
               className="px-4 py-2 text-sm font-medium rounded-lg 
@@ -267,25 +271,7 @@ const ComponentList = ({
                           )}
                         </button>
                       )}
-                      {file.fileLinks.icon && componentData.type === "vc_plugin" && (
-                        <button
-                          onClick={(e) =>
-                            handleFileDownload(
-                              e,
-                              file.id,
-                              "icon",
-                              `${file.fileName}_${file.version}_icon${file.fileLinks.icon ? "." + file.fileLinks.icon.split(".").pop() : ""}`
-                            )
-                          }
-                          className="px-3 py-1 text-sm rounded-md
-                            bg-gradient-to-r from-purple-600 to-purple-700
-                            hover:from-purple-700 hover:to-purple-800
-                            transition-all duration-200 ease-in-out
-                            shadow-sm shadow-purple-500/20"
-                        >
-                          아이콘 다운로드
-                        </button>
-                      )}
+
                       {file.fileLinks.fbx && componentData.type === "vc_model" && (
                         <button
                           onClick={(e) =>
@@ -320,21 +306,24 @@ const ComponentList = ({
         componentId={componentData.componentId}
         componentType={componentData.type}
         onSuccess={handleVersionUpdateSuccess}
-        initialData={{
-          version: allVersions[0]?.version || componentData.version,
-          description: componentData.description,
-          mainFeatures: componentData.mainFeatures,
-          recommendedEnvironment: componentData.recommendedEnvironment,
-          thumbnailImage: componentData.thumbnailImage, // 현재 버전의 썸네일 사용
-          fileName: componentData.fileName,
-          modelType: componentData.modelType,
-          fileLinks: {
-            source: componentData.fileLinks.source || undefined,
-            icon: componentData.fileLinks.icon || undefined,
-            fbx: componentData.fileLinks.fbx || undefined,
-            vcmx: componentData.fileLinks.vcmx || undefined,
-          },
-        }}
+        initialData={(() => {
+          const latest = allVersions[0];
+          return {
+            version: latest?.version || componentData.version,
+            description: latest?.description || componentData.description,
+            mainFeatures: latest?.mainFeatures || componentData.mainFeatures,
+            recommendedEnvironment: latest?.recommendedEnvironment || componentData.recommendedEnvironment,
+            thumbnailImage: latest?.thumbnailImage || componentData.thumbnailImage,
+            fileName: latest?.fileName || componentData.fileName,
+            modelType: componentData.modelType,
+            fileLinks: {
+              source: latest?.fileLinks?.source || componentData.fileLinks.source || undefined,
+              icon: latest?.fileLinks?.icon || componentData.fileLinks.icon || undefined,
+              fbx: latest?.fileLinks?.fbx || componentData.fileLinks.fbx || undefined,
+              vcmx: latest?.fileLinks?.vcmx || componentData.fileLinks.vcmx || undefined,
+            },
+          };
+        })()}
       />
     </div>
   );

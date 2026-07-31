@@ -1,12 +1,12 @@
-"use client";
-
 import useUserStore from "@/app/stores/UserStore";
+import { useAlertStore } from "@/app/stores/alertStore";
+import { authenticatedFetch } from "@/app/utils/api";
 import Image from "next/image";
 import ThumbnailPlaceholder from "../../../_components/common/ThumbnailPlaceholder";
 import VideoThumbnail, { isVideoThumbnail } from "../../../_components/common/VideoThumbnail";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useState, useEffect, useCallback } from "react";
-import { IoArrowBack } from "react-icons/io5";
+import { IoArrowBack, IoDownloadOutline, IoPencil } from "react-icons/io5";
 import dynamic from "next/dynamic";
 import ComponentList from "./ComponentList";
 
@@ -87,8 +87,9 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
   const [features, setFeatures] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isDownloadingThumbnail, setIsDownloadingThumbnail] = useState(false);
+  const [isEditingFeatures, setIsEditingFeatures] = useState(false);
 
   const refreshList = useCallback(() => {
     setRefreshKey((prev) => prev + 1);
@@ -109,7 +110,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
   useEffect(() => {
     const fetchComponentData = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
         const response = await fetch(
           `${apiUrl}/api/components/${id}`
         );
@@ -121,8 +122,12 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
         const result = await response.json();
         if (result.success) {
           setComponentData(result.data);
-          setDescription(result.data.description);
-          setFeatures(result.data.mainFeatures.join("\n"));
+          setDescription(result.data.description || "");
+          setFeatures(
+            Array.isArray(result.data.mainFeatures)
+              ? result.data.mainFeatures.join("\n")
+              : result.data.mainFeatures || ""
+          );
         }
       } catch (err) {
         setError(
@@ -136,15 +141,91 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
     fetchComponentData();
   }, [id, refreshKey]);
 
-  const handleSave = async () => {
-    // TODO: API 요청 구현
-    // 1. PUT /api/components/{id} 엔드포인트로 요청
-    // 2. description과 features를 서버에 전송
-    // 3. 성공 시 isEditing을 false로 변경
-    // 4. 실패 시 에러 메시지 표시
-    setIsEditing(false);
-    // 저장 후 데이터 새로고침
-    refreshList();
+  const handleSaveFeatures = async () => {
+    if (!componentData) return;
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
+      const response = await authenticatedFetch(`${apiUrl}/api/components/${id}/info`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          features: features,
+        }),
+      });
+
+      const result = await response.json();
+      if (response.ok && result.success) {
+        useAlertStore.getState().showAlert("주요 기능이 성공적으로 수정되었습니다.", {
+          title: "수정 완료",
+          type: "success",
+        });
+        setIsEditingFeatures(false);
+        refreshList();
+      } else {
+        throw new Error(result.message || "주요 기능 수정에 실패했습니다.");
+      }
+    } catch (err) {
+      console.error("주요 기능 수정 오류:", err);
+      useAlertStore.getState().showAlert(
+        err instanceof Error ? err.message : "수정 중 오류가 발생했습니다.",
+        { title: "오류 발생", type: "error" }
+      );
+    }
+  };
+
+  const handleThumbnailDownload = async () => {
+    if (!componentData?.thumbnailImage) return;
+    setIsDownloadingThumbnail(true);
+    try {
+      const isVideo = isVideoThumbnail(componentData.thumbnailImage);
+      const ext = componentData.thumbnailImage.split(".").pop() || (isVideo ? "mp4" : "png");
+      const downloadFileName = `${componentData.fileName}_v${componentData.version}_thumbnail.${ext}`;
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
+      const downloadUrl = `${apiUrl}/api/components/download/${componentData.id}/thumbnail`;
+
+      const response = await fetch(downloadUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/octet-stream",
+        },
+      });
+
+      if (!response.ok) {
+        // Direct file fetch fallback
+        const fileRes = await fetch(`${apiUrl}${componentData.thumbnailImage}`);
+        if (!fileRes.ok) throw new Error("썸네일 파일을 다운로드할 수 없습니다.");
+        const blob = await fileRes.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = downloadFileName;
+        document.body.appendChild(link);
+        link.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(link);
+      } else {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = downloadFileName;
+        document.body.appendChild(link);
+        link.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error("썸네일 다운로드 중 오류:", error);
+      useAlertStore.getState().showAlert("썸네일 다운로드에 실패했습니다.", {
+        title: "다운로드 실패",
+        type: "error",
+      });
+    } finally {
+      setIsDownloadingThumbnail(false);
+    }
   };
 
   const backToList = () => {
@@ -160,17 +241,10 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
     const fromPage = searchParams.get("fromPage");
     const fromSortBy = searchParams.get("fromSortBy");
     const fromSearch = searchParams.get("fromSearch");
-    const fromCategory = searchParams.get("fromCategory");
-    const fromSubCategory = searchParams.get("fromSubCategory");
 
     if (fromPage) params.set("page", fromPage);
     if (fromSortBy) params.set("sortBy", fromSortBy);
     if (fromSearch) params.set("search", fromSearch);
-
-    // 카테고리/서브카테고리는 리스트 내부 상태로 반영되므로 URL 파라미터 필요 없으면 생략 가능
-    // 필요 시 아래처럼 붙일 수 있음 (리스트에서 읽어 사용하려면)
-    // if (fromCategory && fromCategory !== "all") params.set("categoryId", fromCategory);
-    // if (fromSubCategory && fromSubCategory !== "0") params.set("subCategoryId", fromSubCategory);
 
     const target = params.toString()
       ? `${basePath}?${params.toString()}`
@@ -196,9 +270,23 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
     return <div className="text-white">에러: {error}</div>;
   }
 
+  const isVcPlugin = componentData.type === "vc_plugin";
+  const hasFbxPreview =
+    componentData.fileLinks?.fbx ||
+    componentData.fileLinks?.source?.toLowerCase()?.endsWith(".fbx");
+  const isWideThumbnail = !hasFbxPreview && (isVcPlugin || isVideoThumbnail(componentData.thumbnailImage));
+
+  const isPlaceholder =
+    componentData.thumbnailImage === "/images/ic-vc.png" ||
+    componentData.thumbnailImage === "/images/ic-ns.png" ||
+    componentData.thumbnailImage === "/images/ic-etc.png" ||
+    componentData.thumbnailImage === "/uploads/thumbnails/ic-vc.png" ||
+    componentData.thumbnailImage === "/uploads/thumbnails/ic-ns.png" ||
+    componentData.thumbnailImage === "/uploads/thumbnails/ic-etc.png";
+
   return (
     <div className="h-full flex flex-col py-[20px] px-[30px] text-white">
-      {/* 상단 버튼 영역 수정 */}
+      {/* 상단 버튼 영역 */}
       <div className="flex items-center justify-between mt-4 mb-6">
         <button
           onClick={backToList}
@@ -214,52 +302,6 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
           />
           <span className="text-gray-300 text-sm font-medium">목록 보기</span>
         </button>
-
-        {/* <div className="flex gap-3">
-          {user?.role === "admin" && (
-            <>
-              {isEditing ? (
-                <button
-                  onClick={handleSave}
-                  className="px-4 py-2 rounded-lg
-                  bg-gradient-to-r from-blue-600 to-blue-700
-                  hover:from-blue-700 hover:to-blue-800
-                  text-white font-medium text-sm
-                  transition-all duration-300 ease-in-out
-                  shadow-lg shadow-blue-500/20
-                  border border-blue-600/30"
-                >
-                  저장
-                </button>
-              ) : (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 rounded-lg
-                  bg-gradient-to-r from-blue-600 to-blue-700
-                  hover:from-blue-700 hover:to-blue-800
-                  text-white font-medium text-sm
-                  transition-all duration-300 ease-in-out
-                  shadow-lg shadow-blue-500/20
-                  border border-blue-600/30"
-                >
-                  수정
-                </button>
-              )}
-            </>
-          )}
-          <button
-            onClick={() => router.back()}
-            className="px-4 py-2 rounded-lg
-              bg-gradient-to-r from-gray-700 to-gray-800
-              hover:from-gray-800 hover:to-gray-900
-              text-white font-medium text-sm
-              transition-all duration-300 ease-in-out
-              shadow-lg shadow-gray-800/20
-              border border-gray-700/30"
-          >
-            목록
-          </button>
-        </div> */}
       </div>
 
       {/* 컴포넌트 제목 추가 */}
@@ -297,42 +339,70 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
 
       {/* 상단 컴포넌트 상세 정보 영역 */}
       <div className="w-full rounded-lg mb-6">
-        <div className="flex flex-wrap gap-8">
-          {/* 컴포넌트 이미지 영역 수정 */}
-          <div className="flex flex-col">
-             <h2 className="text-[20px] font-semibold mb-4 text-white">
-                {componentData.fileLinks?.fbx || 
-                 (componentData.fileLinks?.source?.toLowerCase()?.endsWith(".fbx"))
+        <div className="flex flex-wrap lg:flex-nowrap gap-8">
+          {/* 컴포넌트 이미지 / 썸네일 영역 */}
+          <div className="flex flex-col shrink-0">
+            <div className="flex items-center justify-between mb-4 gap-4">
+              <h2 className="text-[20px] font-semibold text-white">
+                {hasFbxPreview
                   ? "3D 프리뷰"
+                  : isVcPlugin
+                  ? "동영상 썸네일"
                   : "썸네일"}
               </h2>
+
+              <div className="flex items-center gap-2">
+                {/* 썸네일 다운로드 버튼 */}
+                {!hasFbxPreview && !isPlaceholder && componentData.thumbnailImage && (
+                  <button
+                    onClick={handleThumbnailDownload}
+                    disabled={isDownloadingThumbnail}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                      bg-cyan-950/70 hover:bg-cyan-900/90 text-cyan-300 hover:text-cyan-200
+                      border border-cyan-500/40 hover:border-cyan-400
+                      transition-all duration-200 shadow-md shadow-cyan-950/40"
+                    title={isVcPlugin ? "썸네일 동영상 다운로드" : "썸네일 이미지 다운로드"}
+                  >
+                    <IoDownloadOutline className="w-4 h-4" />
+                    <span>
+                      {isDownloadingThumbnail
+                        ? "다운로드 중..."
+                        : isVcPlugin
+                        ? "동영상 썸네일 다운로드"
+                        : "썸네일 다운로드"}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 썸네일 카드 뷰어 */}
             <div
-              className="relative bg-gray-900 h-[360px] w-[360px] rounded-md shadow-lg overflow-hidden
-              border border-gray-700/30 backdrop-blur-sm"
+              className={`group relative bg-gray-900 rounded-lg shadow-xl overflow-hidden
+              border border-gray-700/50 backdrop-blur-sm transition-all duration-300 ${
+                isWideThumbnail
+                  ? "w-full max-w-[560px] h-[315px] sm:w-[560px]"
+                  : "w-[360px] h-[360px]"
+              }`}
             >
-              {componentData.fileLinks?.fbx || 
-               (componentData.fileLinks?.source?.toLowerCase()?.endsWith(".fbx")) ? (
+              {hasFbxPreview ? (
                 <div className="relative w-full h-full">
                   <FbxViewer
                     key={componentData.fileLinks?.fbx || componentData.fileLinks?.source}
                     fbxUrl={componentData.fileLinks?.fbx || componentData.fileLinks?.source || ""}
                   />
-                  <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-1 rounded-md text-xs text-gray-300 z-10">
+                  <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-xs px-2 py-1 rounded text-xs text-gray-300 z-10 border border-gray-700/40">
                     마우스 좌클릭: 회전 | 우클릭: 이동 | 휠: 확대/축소
                   </div>
                 </div>
-              ) : (componentData.thumbnailImage === "/images/ic-vc.png" || 
-                   componentData.thumbnailImage === "/images/ic-ns.png" || 
-                   componentData.thumbnailImage === "/images/ic-etc.png" ||
-                   componentData.thumbnailImage === "/uploads/thumbnails/ic-vc.png" || 
-                   componentData.thumbnailImage === "/uploads/thumbnails/ic-ns.png" || 
-                   componentData.thumbnailImage === "/uploads/thumbnails/ic-etc.png") ? (
+              ) : isPlaceholder ? (
                 <ThumbnailPlaceholder type={componentData.type} name={componentData.fileName} />
               ) : isVideoThumbnail(componentData.thumbnailImage) ? (
                 <VideoThumbnail
                   src={`${process.env.NEXT_PUBLIC_API_URL}${componentData.thumbnailImage}`}
                   alt={`${componentData.fileName} 동영상 썸네일`}
                   alwaysPlay={true}
+                  controls={true}
                 />
               ) : (
                 <Image
@@ -346,21 +416,75 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
           </div>
 
           {/* 주요 기능 영역 */}
-          <div className="flex flex-col flex-1">
+          <div className="flex flex-col flex-1 min-w-[300px]">
             <div className="flex flex-col h-full">
               <div className="flex-1">
-                <h2 className="text-[18px] font-semibold mb-4 text-white">
-                  주요 기능
-                </h2>
-                {user?.role === "admin" && isEditing ? (
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-[20px] font-semibold text-white">
+                    주요 기능
+                  </h2>
+                  {(user?.role === "admin" || user?.role === "developer") && (
+                    <div className="flex items-center gap-2">
+                      {isEditingFeatures ? (
+                        <>
+                          <button
+                            onClick={handleSaveFeatures}
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg
+                              bg-blue-600 hover:bg-blue-500 text-white
+                              transition-all duration-200 shadow-md"
+                          >
+                            저장
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsEditingFeatures(false);
+                              if (componentData) {
+                                setFeatures(
+                                  Array.isArray(componentData.mainFeatures)
+                                    ? componentData.mainFeatures.join("\n")
+                                    : componentData.mainFeatures || ""
+                                );
+                              }
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg
+                              bg-gray-700 hover:bg-gray-600 text-gray-200
+                              transition-all duration-200"
+                          >
+                            취소
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setIsEditingFeatures(true)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                            bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white
+                            border border-gray-600/50 hover:border-gray-500
+                            transition-all duration-200 shadow-md"
+                        >
+                          <IoPencil className="w-3.5 h-3.5" />
+                          <span>주요 기능 수정</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {isEditingFeatures ? (
                   <textarea
-                    className="w-full h-[360px] bg-[#A7A7A7] resize-none px-[12px] py-[8px] rounded-md mb-4 text-white"
+                    className={`w-full bg-[#1e293b] border border-cyan-500/50 resize-none px-[16px] py-[12px] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-normal leading-relaxed ${
+                      isWideThumbnail ? "h-[315px]" : "h-[360px]"
+                    }`}
                     value={features}
                     onChange={(e) => setFeatures(e.target.value)}
+                    placeholder="주요 기능 내용을 줄바꿈으로 나누어 작성해 주세요..."
                   />
                 ) : (
-                  <div className="w-full h-[360px] px-[12px] py-[8px] rounded-md mb-4 text-white overflow-y-auto border-gray-700 border-[1px] bg-gray-800 whitespace-pre-wrap">
-                    {features}
+                  <div
+                    className={`w-full px-[16px] py-[12px] rounded-lg text-gray-200 overflow-y-auto border border-gray-700/60 bg-gray-800/80 backdrop-blur-sm whitespace-pre-wrap leading-relaxed ${
+                      isWideThumbnail ? "h-[315px]" : "h-[360px]"
+                    }`}
+                  >
+                    {features || "등록된 주요 기능 설명이 없습니다."}
                   </div>
                 )}
               </div>

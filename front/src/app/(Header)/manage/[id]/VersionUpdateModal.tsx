@@ -7,6 +7,7 @@ import Image from "next/image";
 import VideoThumbnail, { isVideoThumbnail } from "../../../_components/common/VideoThumbnail";
 import FbxThumbnailGenerator, { FbxThumbnailGeneratorRef } from "../../../_components/common/FbxThumbnailGenerator";
 import ThumbnailPlaceholder from "../../../_components/common/ThumbnailPlaceholder";
+import { useAlertStore } from "@/app/stores/alertStore";
 
 const isSupportedVideoFile = (file: File) =>
   ["video/mp4", "video/webm"].includes(file.type) && /\.(mp4|webm)$/i.test(file.name);
@@ -116,14 +117,16 @@ const VersionUpdateModal = ({
 
   // 모달이 열릴 때 자동으로 다음 버전 계산 및 상태 초기화
   useEffect(() => {
-    if (isOpen && initialData?.version) {
-      const nextVersion = incrementVersion(initialData.version);
-      setFormData((prev) => ({
-        ...prev,
-        componentName: initialData.fileName || "",
+    if (isOpen) {
+      const nextVersion = initialData?.version ? incrementVersion(initialData.version) : "1.0.0";
+      setFormData({
+        componentName: initialData?.fileName || "",
         version: nextVersion,
-        modelType: initialData.modelType || "component",
-      }));
+        description: initialData?.description || "",
+        mainFeatures: Array.isArray(initialData?.mainFeatures) ? initialData.mainFeatures.join("\n") : initialData?.mainFeatures || "",
+        recommendedEnvironment: initialData?.recommendedEnvironment || "",
+        modelType: initialData?.modelType || "component",
+      });
 
       // 파일 상태 초기화
       setFiles({});
@@ -153,27 +156,20 @@ const VersionUpdateModal = ({
         setIconPreview(null);
       }
     }
-  }, [
-    isOpen,
-    initialData?.version,
-    incrementVersion,
-    initialData?.thumbnailImage,
-    initialData?.fileLinks?.icon,
-    initialData?.fileName,
-    initialData?.modelType,
-  ]);
+  }, [isOpen]);
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    const { showAlert } = useAlertStore.getState();
     if (file) {
       if (componentType === "vc_plugin" && !isSupportedVideoFile(file)) {
-        alert("VC PlugIn 썸네일은 MP4 또는 WebM 동영상만 등록할 수 있습니다.");
+        showAlert("VC PlugIn 썸네일은 MP4 또는 WebM 동영상만 등록할 수 있습니다.", { title: "형식 오류", type: "warning" });
         e.target.value = "";
         return;
       }
 
       if (componentType !== "vc_plugin" && !file.type.startsWith("image/")) {
-        alert("썸네일은 이미지 파일만 등록할 수 있습니다.");
+        showAlert("썸네일은 이미지 파일만 등록할 수 있습니다.", { title: "형식 오류", type: "warning" });
         e.target.value = "";
         return;
       }
@@ -198,9 +194,10 @@ const VersionUpdateModal = ({
   // 제출 함수 (신규 등록과 동일한 방식)
   const onSubmit = async (submittedFiles: typeof files) => {
     const accessToken = getAccessToken();
+    const { showAlert, showToast } = useAlertStore.getState();
 
     if (!accessToken) {
-      alert("로그인이 필요한 서비스입니다.");
+      showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
       return;
     }
 
@@ -208,6 +205,7 @@ const VersionUpdateModal = ({
       const formDataToSend = new FormData();
 
       // 기본 데이터 추가
+      formDataToSend.append("type", componentType);
       formDataToSend.append("componentName", formData.componentName);
       formDataToSend.append("version", formData.version);
       formDataToSend.append("description", formData.description);
@@ -219,20 +217,6 @@ const VersionUpdateModal = ({
 
       // features 추가 (한 블록으로 전송)
       formDataToSend.append("features", formData.mainFeatures);
-
-      // 새 썸네일이 선택된 경우 추가
-      console.log("썸네일 처리:", {
-        hasThumbnail: !!submittedFiles.thumbnail,
-        thumbnailType: submittedFiles.thumbnail
-          ? submittedFiles.thumbnail.constructor.name
-          : "none",
-        thumbnailName: submittedFiles.thumbnail
-          ? submittedFiles.thumbnail.name
-          : "none",
-        thumbnailSize: submittedFiles.thumbnail
-          ? submittedFiles.thumbnail.size
-          : "none",
-      });
 
       if (submittedFiles.thumbnail) {
         formDataToSend.append("thumbnail", submittedFiles.thumbnail);
@@ -249,15 +233,7 @@ const VersionUpdateModal = ({
         formDataToSend.append("sourceFile", submittedFiles.source);
       }
 
-      // 아이콘 파일 처리
-      if (useExistingIcon && existingFiles.icon) {
-        // 기존 Icon 파일 사용 시 경로 전송
-        formDataToSend.append("useExistingIcon", "true");
-        formDataToSend.append("existingIconPath", existingFiles.icon);
-      } else if (submittedFiles.icon) {
-        // 새 Icon 파일 선택 시
-        formDataToSend.append("iconFile", submittedFiles.icon);
-      }
+
 
       // FBX 파일 처리 (VC Model)
       if (useExistingFbx && existingFiles.fbx) {
@@ -279,14 +255,14 @@ const VersionUpdateModal = ({
       );
 
       if (response.status === 401) {
-        alert("인증이 만료되었습니다. 다시 로그인해주세요.");
+        showAlert("인증이 만료되었습니다. 다시 로그인해주세요.", { title: "인증 오류", type: "error" });
         return;
       }
 
       const data = await response.json();
 
       if (data.success) {
-        alert("버전이 업데이트되었습니다.");
+        showToast("버전이 업데이트되었습니다.", "success");
         handleClose();
 
         // 최신 버전 페이지로 리다이렉션
@@ -296,11 +272,11 @@ const VersionUpdateModal = ({
           onSuccess();
         }
       } else {
-        alert(data.message || "버전 업데이트에 실패했습니다.");
+        showAlert(data.message || "버전 업데이트에 실패했습니다.", { title: "업데이트 실패", type: "error" });
       }
     } catch (error) {
       console.error("버전 업데이트 중 오류 발생:", error);
-      alert("버전 업데이트 중 오류가 발생했습니다.");
+      showAlert("버전 업데이트 중 오류가 발생했습니다.", { title: "오류 발생", type: "error" });
     }
   };
 
@@ -308,14 +284,15 @@ const VersionUpdateModal = ({
     e.preventDefault();
 
     const accessToken = getAccessToken();
+    const { showAlert } = useAlertStore.getState();
 
     if (!accessToken) {
-      alert("로그인이 필요한 서비스입니다.");
+      showAlert("로그인이 필요한 서비스입니다.", { title: "접근 제한", type: "warning" });
       return;
     }
 
     if (!files.source && !useExistingSource) {
-      alert("소스/실행 파일은 필수입니다.");
+      showAlert("소스/실행 파일은 필수입니다.", { title: "필수 입력 누락", type: "warning" });
       return;
     }
 
@@ -383,105 +360,35 @@ const VersionUpdateModal = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              버전
-            </label>
-            <input
-              type="text"
-              value={formData.version}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, version: e.target.value }))
-              }
-              className="w-full px-3 py-2 bg-gray-700 rounded-md text-white"
-              placeholder="예: 1.0.0"
-            />
-          </div>
-
-
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              주요 기능(줄바꿈으로 구분)
-            </label>
-            <textarea
-              value={formData.mainFeatures}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  mainFeatures: e.target.value,
-                }))
-              }
-              className="w-full px-3 py-2 bg-gray-700 rounded-md text-white h-24 resize-none"
-              placeholder="주요 기능을 입력하세요"
-            />
-          </div>
-
-
-          {/* 기존 썸네일 미리보기 섹션 - 기존 소스 파일 사용 시 */}
-          {useExistingSource && !files.fbx && initialData?.thumbnailImage && (
-            <div className="mb-6 bg-gray-800 rounded-lg p-4">
-              <h3 className="text-white font-semibold mb-4 flex items-center">
-                기존 썸네일 미리보기
-              </h3>
-
-              <div className="flex items-center justify-center">
-                <div className="relative w-64 h-64 bg-gray-700 rounded-lg overflow-hidden border border-gray-600">
-                  {!isPlaceholderThumbnail(initialData.thumbnailImage) ? (
-                    isVideoThumbnail(initialData.thumbnailImage) ? (
-                      <VideoThumbnail
-                        src={
-                          initialData.thumbnailImage.startsWith("http")
-                            ? initialData.thumbnailImage
-                            : `${process.env.NEXT_PUBLIC_API_URL}${initialData.thumbnailImage}`
-                        }
-                        alt="기존 썸네일"
-                      />
-                    ) : (
-                      <Image
-                        src={
-                          initialData.thumbnailImage.startsWith("http")
-                            ? initialData.thumbnailImage
-                            : `${process.env.NEXT_PUBLIC_API_URL}${initialData.thumbnailImage}`
-                        }
-                        alt="기존 썸네일"
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                    )
-                  ) : (
-                    <ThumbnailPlaceholder type={componentType} name={formData.componentName} />
-                  )}
-                </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* 1. 기본 정보 그룹 */}
+          <div className="bg-gray-800/60 p-4 rounded-xl border border-gray-700/60 space-y-4">
+            <h3 className="text-cyan-400 font-semibold text-sm flex items-center gap-2 border-b border-gray-700/60 pb-2">
+              <span>기본 정보</span>
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                  컴포넌트 이름 <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.componentName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, componentName: e.target.value })
+                  }
+                  className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                  placeholder="컴포넌트 이름을 입력하세요"
+                />
+                <p className="text-gray-400 text-[11px] mt-1">
+                  이름을 변경하시면 해당 컴포넌트의 모든 버전 이름이 함께 변경됩니다.
+                </p>
               </div>
 
-              <p className="text-gray-400 text-sm mt-2 text-center">
-                💡 기존 파일을 사용하므로 기존 썸네일이 유지됩니다.
-              </p>
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                컴포넌트 이름 (필수)
-              </label>
-              <input
-                type="text"
-                value={formData.componentName}
-                onChange={(e) =>
-                  setFormData({ ...formData, componentName: e.target.value })
-                }
-                className="w-full px-3 py-2 bg-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="컴포넌트 이름을 입력하세요"
-              />
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  버전 (필수)
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                  업데이트 버전 <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -489,55 +396,74 @@ const VersionUpdateModal = ({
                   onChange={(e) =>
                     setFormData({ ...formData, version: e.target.value })
                   }
-                  className="w-full px-3 py-2 bg-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-cyan-500 font-mono transition-colors"
                   placeholder="예: 1.0.1"
                 />
               </div>
             </div>
 
+            {/* 모델 타입 (VC Model 전용) */}
+            {componentType === "vc_model" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                  모델 타입
+                </label>
+                <select
+                  value={formData.modelType}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, modelType: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white focus:border-cyan-500 outline-none transition-colors"
+                >
+                  <option value="component">컴포넌트</option>
+                  <option value="layout">레이아웃</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* 2. 파일 첨부 그룹 */}
+          <div className="bg-gray-800/60 p-4 rounded-xl border border-gray-700/60 space-y-4">
+            <h3 className="text-cyan-400 font-semibold text-sm flex items-center gap-2 border-b border-gray-700/60 pb-2">
+              <span>파일 첨부</span>
+            </h3>
+
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                {componentType === "vc_model" ? "VCMX 파일 (필수)" : componentType === "vc_plugin" ? "설치파일 (필수)" : "파일 (필수, 모든 확장자)"}
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                {componentType === "vc_model" ? "VCMX 파일 (필수)" : componentType === "vc_plugin" ? "설치파일 (필수)" : "파일 (필수)"}
               </label>
               {existingFiles.source && (
-                <>
-                  <div className="mb-2 text-sm text-gray-400">
-                    현재 파일: {existingFiles.source.split("/").pop()}
-                  </div>
-                  <div className="mb-2">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={useExistingSource}
-                        onChange={(e) => {
-                          setUseExistingSource(e.target.checked);
-                          if (e.target.checked) {
-                            // 체크박스가 체크되면 선택된 파일 제거
-                            setFiles((prev) => ({ ...prev, source: undefined }));
-                            // 파일 선택창 초기화
-                            if (sourceFileInputRef.current) {
-                              sourceFileInputRef.current.value = "";
-                            }
-                            // 기존 썸네일 미리보기 복원
-                            if (initialData?.thumbnailImage && !isPlaceholderThumbnail(initialData.thumbnailImage)) {
-                              const thumbnailUrl =
-                                initialData.thumbnailImage.startsWith("http")
-                                  ? initialData.thumbnailImage
-                                  : `${process.env.NEXT_PUBLIC_API_URL}${initialData.thumbnailImage}`;
-                              setThumbnailPreview(thumbnailUrl);
-                            } else {
-                              setThumbnailPreview(null);
-                            }
+                <div className="mb-2.5 p-2.5 bg-gray-900/80 rounded-lg border border-gray-700/70 flex items-center justify-between">
+                  <span className="text-xs text-gray-400 truncate">
+                    현재 파일: <strong className="text-gray-200 font-mono">{`${initialData?.fileName || '파일'}_v${initialData?.version || '1.0.0'}.${existingFiles.source.split('.').pop() || 'exe'}`}</strong>
+                  </span>
+                  <label className="flex items-center space-x-2 cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={useExistingSource}
+                      onChange={(e) => {
+                        setUseExistingSource(e.target.checked);
+                        if (e.target.checked) {
+                          setFiles((prev) => ({ ...prev, source: undefined }));
+                          if (sourceFileInputRef.current) {
+                            sourceFileInputRef.current.value = "";
                           }
-                        }}
-                        className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
-                      />
-                      <span className="text-sm text-gray-300">
-                        기존 파일 사용
-                      </span>
-                    </label>
-                  </div>
-                </>
+                          if (initialData?.thumbnailImage && !isPlaceholderThumbnail(initialData.thumbnailImage)) {
+                            const thumbnailUrl =
+                              initialData.thumbnailImage.startsWith("http")
+                                ? initialData.thumbnailImage
+                                : `${process.env.NEXT_PUBLIC_API_URL}${initialData.thumbnailImage}`;
+                            setThumbnailPreview(thumbnailUrl);
+                          } else {
+                            setThumbnailPreview(null);
+                          }
+                        }
+                      }}
+                      className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500"
+                    />
+                    <span className="text-xs text-cyan-300 font-medium">기존 파일 사용</span>
+                  </label>
+                </div>
               )}
               <input
                 ref={sourceFileInputRef}
@@ -547,250 +473,46 @@ const VersionUpdateModal = ({
                   if (file) {
                     const ext = file.name.split('.').pop()?.toLowerCase();
                     if (componentType === "vc_model" && ext !== "vcmx") {
-                      alert("VC Model의 소스 파일은 .vcmx 확장자만 가능합니다.");
+                      useAlertStore.getState().showAlert("VC Model의 소스 파일은 .vcmx 확장자만 가능합니다.", { title: "형식 오류", type: "warning" });
                       e.target.value = "";
                       return;
                     }
                     
                     setFiles((prev) => ({ ...prev, source: file }));
                     setUseExistingSource(false);
-                    // 새 소스 선택 시에도 사용자가 썸네일을 따로 올리지 않으면 기존 썸네일 유지
                     setAutoGeneratedThumbnail(null);
                   }
                 }}
-                className="w-full px-3 py-2 bg-gray-700 rounded-md text-white"
+                className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white text-sm"
               />
             </div>
 
-            {/* 썸네일 설정 섹션 (NS/etc Model은 제외) */}
-            {componentType !== "ns_model" && componentType !== "etc" && (
-              <div className="mb-6 bg-gray-800 rounded-lg p-4 mt-4">
-                <h3 className="text-white font-semibold mb-4 flex items-center justify-between">
-                  <span>썸네일 설정</span>
-                  {componentType === "vc_plugin" && (
-                    <span className="bg-red-500/20 border border-red-500/60 text-red-400 text-xs px-3 py-1 rounded-full font-bold animate-pulse">
-                      동영상 썸네일 필수 (MP4 / WebM)
-                    </span>
-                  )}
-                </h3>
-
-                {componentType === "vc_plugin" && (
-                  <div className="mb-5 p-4 bg-cyan-950/90 border-2 border-cyan-400 rounded-xl flex items-start gap-3 shadow-[0_0_20px_rgba(6,182,212,0.25)]">
-                    <div className="text-xs leading-relaxed">
-                      <div className="font-bold text-cyan-300 text-sm flex items-center gap-2 mb-1">
-                        <span>[필수] VC PlugIn 동영상 썸네일 안내</span>
-                        <span className="bg-cyan-400 text-black px-1.5 py-0.5 rounded text-[10px] font-extrabold uppercase">Required</span>
-                      </div>
-                      <p className="text-cyan-100/90">
-                        VC PlugIn 업데이트 시에는 <strong className="text-white underline underline-offset-2 decoration-cyan-400 font-bold">MP4 또는 WebM 동영상 썸네일</strong>을 업로드하셔야 정상 반영됩니다. (새 썸네일을 올리지 않으면 기존 동영상 썸네일이 유지됩니다)
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* 썸네일 결과 (또는 기본 아이콘 / 3D 뷰어) */}
-                  <div className="flex flex-col items-center justify-center bg-gray-800/50 rounded-xl border border-gray-700 p-2">
-                    <div className="relative w-full aspect-square max-w-[300px] bg-gray-900 rounded-2xl flex flex-col items-center justify-center border border-gray-600 overflow-hidden shadow-inner">
-                      {thumbnailPreview ? (
-                        <>
-                          {isVideoThumbnail(thumbnailPreview) || (files.thumbnail && isSupportedVideoFile(files.thumbnail)) ? (
-                            <VideoThumbnail
-                              src={thumbnailPreview}
-                              alt="썸네일"
-                            />
-                          ) : (
-                            <Image
-                              src={thumbnailPreview}
-                              alt="썸네일"
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (thumbnailPreview?.startsWith("blob:")) {
-                                URL.revokeObjectURL(thumbnailPreview);
-                              }
-                              setThumbnailPreview("");
-                              setFiles((prev) => ({
-                                ...prev,
-                                thumbnail: undefined,
-                              }));
-                            }}
-                            className="absolute top-2 right-2 bg-red-500/80 text-white rounded-full w-7 h-7 flex items-center justify-center hover:bg-red-500 transition-colors shadow-lg backdrop-blur-sm z-30"
-                          >
-                            ✕
-                          </button>
-                        </>
-                      ) : (files.fbx || (useExistingFbx && existingFiles.fbx)) ? (
-                        <div className="w-full h-full relative">
-                          <FbxThumbnailGenerator
-                            ref={fbxGenRef}
-                            fbxFile={files.fbx}
-                            fbxUrl={useExistingFbx && existingFiles.fbx ? `${process.env.NEXT_PUBLIC_API_URL}${existingFiles.fbx}` : null}
-                            onThumbnailGenerated={(dataUrl: string) => {
-                              setAutoGeneratedThumbnail(dataUrl);
-                            }}
-                          />
-                          {autoGeneratedThumbnail && (
-                            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 p-2">
-                              <div className="relative w-full h-full">
-                               <Image 
-                                 src={autoGeneratedThumbnail} 
-                                 fill
-                                 className="object-cover border-2 border-cyan-500 rounded-lg" 
-                                 alt="생성된 썸네일"
-                                 unoptimized
-                               />
-                              </div>
-                               <button
-                                 type="button"
-                                 onClick={() => {
-                                   setAutoGeneratedThumbnail(null);
-                                   setFiles(prev => ({ ...prev, thumbnail: undefined }));
-                                 }}
-                                 className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-red-500/90 text-white rounded-full px-3 py-1 text-xs hover:bg-red-500 transition-colors shadow-lg whitespace-nowrap"
-                               >
-                                 ✕ 다시 촬영
-                               </button>
-                            </div>
-                          )}
-                          {!autoGeneratedThumbnail && (
-                            <div className="absolute bottom-2 right-2 z-20">
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (fbxGenRef.current) {
-                                    const dataUrl = await fbxGenRef.current.generateThumbnail();
-                                    if (dataUrl) {
-                                      setAutoGeneratedThumbnail(dataUrl);
-                                      const arr = dataUrl.split(',');
-                                      const mime = arr[0].match(/:(.*?);/)?.[1];
-                                      const bstr = atob(arr[1]);
-                                      let n = bstr.length;
-                                      const u8arr = new Uint8Array(n);
-                                      while (n--) {
-                                        u8arr[n] = bstr.charCodeAt(n);
-                                      }
-                                      const file = new File([u8arr], `thumbnail_${Date.now()}.png`, { type: mime });
-                                      setFiles(prev => ({ ...prev, thumbnail: file }));
-                                    }
-                                  }
-                                }}
-                                className="bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] px-2 py-1 rounded shadow-lg border border-cyan-400/50 flex items-center gap-1 transition-all active:scale-95"
-                              >
-                                📸 캡처
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="w-full h-full relative">
-                          <ThumbnailPlaceholder type={componentType} name={initialData?.version} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 오른쪽: 직접 썸네일 업로드 섹션 */}
-                  <div className="flex flex-col justify-center">
-                    <h4 className="text-white font-medium mb-2 text-base flex items-center gap-2">
-                      <span>직접 썸네일 설정</span>
-                      {componentType === "vc_plugin" ? (
-                        <span className="text-red-400 text-xs font-bold bg-red-950/80 border border-red-500/50 px-2 py-0.5 rounded">
-                          동영상 (MP4 / WebM)
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 text-xs font-normal ml-1">(선택항목)</span>
-                      )}
-                    </h4>
-                    <p className="text-gray-400 text-xs mb-4 leading-relaxed">
-                      {componentType === "vc_plugin"
-                        ? "새 동영상 썸네일을 업로드하려면 MP4 또는 WebM 파일을 선택하세요. (미선택 시 기존 썸네일 유지)"
-                        : `직접 이미지를 업로드하지 않으면 상단의 ${(files.fbx || (useExistingFbx && existingFiles.fbx)) ? '캡처본' : '기본 아이콘'}이 썸네일로 사용됩니다.`}
-                    </p>
-                    
-                    <div className="relative">
-                      <input
-                        type="file"
-                        id="update-thumbnail-upload-new"
-                        name="thumbnail"
-                        accept={componentType === "vc_plugin" ? "video/mp4,video/webm" : "image/*"}
-                        onChange={handleThumbnailChange}
-                        className="hidden"
-                      />
-                      <label 
-                        htmlFor="update-thumbnail-upload-new"
-                        className={`w-full cursor-pointer p-3 rounded-lg border transition-all text-xs flex items-center justify-between group ${
-                          componentType === "vc_plugin" && !files.thumbnail
-                            ? "bg-cyan-950/40 border-cyan-500/80 hover:bg-cyan-900/50 text-cyan-200"
-                            : "bg-gray-900 hover:bg-gray-750 text-gray-300 border-gray-700/50"
-                        }`}
-                      >
-                        <span className="truncate">{files.thumbnail ? files.thumbnail.name : (componentType === "vc_plugin" ? '동영상 파일 선택 (MP4, WebM)' : '파일을 선택하세요')}</span>
-                        <span className="bg-cyan-600 group-hover:bg-cyan-500 px-2 py-1 rounded text-[10px] text-white shrink-0 ml-2 font-medium">파일 찾기</span>
-                      </label>
-                    </div>
-                    <p className="text-gray-500 text-[10px] mt-2">
-                      {componentType === "vc_plugin" ? "💡 MP4, WebM 동영상 권장" : "💡 1:1 비율 권장"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 모델 타입 (VC Model 전용) */}
-            {componentType === "vc_model" && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  모델 타입
-                </label>
-                <select
-                  value={formData.modelType}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, modelType: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 bg-gray-700 rounded-md text-white border border-gray-600 focus:border-cyan-500 outline-none transition-all"
-                >
-                  <option value="component">컴포넌트</option>
-                  <option value="layout">레이아웃</option>
-                </select>
-              </div>
-            )}
-
             {/* FBX 파일 (VC Model 전용) */}
             {componentType === "vc_model" && (
-              <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+              <div className="pt-2">
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">
                   FBX 파일 (선택)
                 </label>
                 {existingFiles.fbx && (
-                  <>
-                    <div className="mb-2 text-sm text-gray-400">
-                      현재 파일: {existingFiles.fbx.split("/").pop()}
-                    </div>
-                    <div className="mb-2">
-                      <label className="flex items-center space-x-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={useExistingFbx}
-                          onChange={(e) => {
-                            setUseExistingFbx(e.target.checked);
-                            if (e.target.checked) {
-                              setFiles((prev) => ({ ...prev, fbx: undefined }));
-                            }
-                          }}
-                          className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500 focus:ring-2"
-                        />
-                        <span className="text-sm text-gray-300 group-hover:text-white transition-colors">
-                          기존 FBX 파일 사용
-                        </span>
-                      </label>
-                    </div>
-                  </>
+                  <div className="mb-2 p-2 bg-gray-900/80 rounded-lg border border-gray-700 flex items-center justify-between">
+                    <span className="text-xs text-gray-400 truncate">
+                      현재 FBX: <strong className="text-gray-200 font-mono">{`${initialData?.fileName || '파일'}_v${initialData?.version || '1.0.0'}.fbx`}</strong>
+                    </span>
+                    <label className="flex items-center space-x-2 cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={useExistingFbx}
+                        onChange={(e) => {
+                          setUseExistingFbx(e.target.checked);
+                          if (e.target.checked) {
+                            setFiles((prev) => ({ ...prev, fbx: undefined }));
+                          }
+                        }}
+                        className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500"
+                      />
+                      <span className="text-xs text-cyan-300">기존 FBX 사용</span>
+                    </label>
+                  </div>
                 )}
                 <input
                   type="file"
@@ -800,7 +522,7 @@ const VersionUpdateModal = ({
                     if (file) {
                       const ext = file.name.split('.').pop()?.toLowerCase();
                       if (ext !== "fbx") {
-                        alert("FBX 파일은 .fbx 확장자만 가능합니다.");
+                        useAlertStore.getState().showAlert("FBX 파일은 .fbx 확장자만 가능합니다.", { title: "형식 오류", type: "warning" });
                         e.target.value = "";
                         return;
                       }
@@ -811,28 +533,206 @@ const VersionUpdateModal = ({
                       setAutoGeneratedThumbnail(null);
                     }
                   }}
-                  className="w-full px-3 py-2 bg-gray-700 rounded-md text-white border border-gray-600 focus:border-cyan-500 outline-none transition-all"
+                  className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white text-sm"
                 />
-                <p className="text-xs text-gray-400 mt-2">
-                  💡 FBX 파일을 업로드하면 3D 뷰어 기능이 활성화됩니다.
-                </p>
               </div>
             )}
           </div>
 
-          <div className="flex justify-end gap-3 mt-8">
+          {/* 3. 썸네일 설정 그룹 (NS/etc Model 제외) */}
+          {componentType !== "ns_model" && componentType !== "etc" && (
+            <div className="bg-gray-800/60 p-4 rounded-xl border border-gray-700/60 space-y-4">
+              <h3 className="text-cyan-400 font-semibold text-sm flex items-center justify-between border-b border-gray-700/60 pb-2">
+                <span>썸네일 설정</span>
+                {componentType === "vc_plugin" && (
+                  <span className="bg-cyan-500/20 border border-cyan-500/60 text-cyan-300 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                    동영상 썸네일 (MP4 / WebM)
+                  </span>
+                )}
+              </h3>
+
+              {componentType === "vc_plugin" && (
+                <div className="p-3 bg-cyan-950/80 border border-cyan-500/40 rounded-lg text-xs leading-relaxed text-cyan-200">
+                  VC PlugIn 업데이트 시 새로운 썸네일을 첨부하지 않으면 <strong className="text-white">직전 최신 버전의 동영상 썸네일</strong>이 그대로 유지됩니다.
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                {/* 썸네일 미리보기 영역 */}
+                <div className="flex flex-col items-center justify-center bg-gray-900/80 rounded-xl border border-gray-700 p-3">
+                  <div className="relative w-full aspect-square max-w-[240px] bg-gray-950 rounded-lg flex flex-col items-center justify-center border border-gray-700 overflow-hidden">
+                    {thumbnailPreview ? (
+                      <>
+                        {isVideoThumbnail(thumbnailPreview) || (files.thumbnail && isSupportedVideoFile(files.thumbnail)) ? (
+                          <VideoThumbnail
+                            src={thumbnailPreview}
+                            alt="썸네일"
+                          />
+                        ) : (
+                          <Image
+                            src={thumbnailPreview}
+                            alt="썸네일"
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (thumbnailPreview?.startsWith("blob:")) {
+                              URL.revokeObjectURL(thumbnailPreview);
+                            }
+                            setThumbnailPreview("");
+                            setFiles((prev) => ({
+                              ...prev,
+                              thumbnail: undefined,
+                            }));
+                          }}
+                          className="absolute top-2 right-2 bg-red-500/80 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-500 transition-colors shadow-lg z-30"
+                        >
+                          ✕
+                        </button>
+                      </>
+                    ) : (files.fbx || (useExistingFbx && existingFiles.fbx)) ? (
+                      <div className="w-full h-full relative">
+                        <FbxThumbnailGenerator
+                          ref={fbxGenRef}
+                          fbxFile={files.fbx}
+                          fbxUrl={useExistingFbx && existingFiles.fbx ? `${process.env.NEXT_PUBLIC_API_URL}${existingFiles.fbx}` : null}
+                          onThumbnailGenerated={(dataUrl: string) => {
+                            setAutoGeneratedThumbnail(dataUrl);
+                          }}
+                        />
+                        {autoGeneratedThumbnail && (
+                          <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 p-2">
+                            <div className="relative w-full h-full">
+                             <Image 
+                               src={autoGeneratedThumbnail} 
+                               fill
+                               className="object-cover border-2 border-cyan-500 rounded-lg" 
+                               alt="생성된 썸네일"
+                               unoptimized
+                             />
+                            </div>
+                             <button
+                               type="button"
+                               onClick={() => {
+                                 setAutoGeneratedThumbnail(null);
+                                 setFiles(prev => ({ ...prev, thumbnail: undefined }));
+                               }}
+                               className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-red-500/90 text-white rounded-full px-3 py-1 text-xs hover:bg-red-500 transition-colors shadow-lg whitespace-nowrap"
+                             >
+                               ✕ 다시 촬영
+                             </button>
+                          </div>
+                        )}
+                        {!autoGeneratedThumbnail && (
+                          <div className="absolute bottom-2 right-2 z-20">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (fbxGenRef.current) {
+                                  const dataUrl = await fbxGenRef.current.generateThumbnail();
+                                  if (dataUrl) {
+                                    setAutoGeneratedThumbnail(dataUrl);
+                                    const arr = dataUrl.split(',');
+                                    const mime = arr[0].match(/:(.*?);/)?.[1];
+                                    const bstr = atob(arr[1]);
+                                    let n = bstr.length;
+                                    const u8arr = new Uint8Array(n);
+                                    while (n--) {
+                                      u8arr[n] = bstr.charCodeAt(n);
+                                    }
+                                    const file = new File([u8arr], `thumbnail_${Date.now()}.png`, { type: mime });
+                                    setFiles(prev => ({ ...prev, thumbnail: file }));
+                                  }
+                                }
+                              }}
+                              className="bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] px-2 py-1 rounded shadow-lg border border-cyan-400/50 flex items-center gap-1 transition-all"
+                            >
+                              화면 캡처
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-full h-full relative">
+                        <ThumbnailPlaceholder type={componentType} name={initialData?.version} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 썸네일 파일 업로드 */}
+                <div className="flex flex-col justify-center space-y-2">
+                  <label className="block text-sm font-medium text-gray-300">
+                    새 썸네일 업로드
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="update-thumbnail-upload-new"
+                      name="thumbnail"
+                      accept={componentType === "vc_plugin" ? "video/mp4,video/webm" : "image/*"}
+                      onChange={handleThumbnailChange}
+                      className="hidden"
+                    />
+                    <label 
+                      htmlFor="update-thumbnail-upload-new"
+                      className="w-full cursor-pointer p-3 rounded-lg border border-gray-700 bg-gray-900 hover:bg-gray-800 text-gray-300 transition-colors text-xs flex items-center justify-between group"
+                    >
+                      <span className="truncate">
+                        {files.thumbnail ? files.thumbnail.name : (componentType === "vc_plugin" ? "동영상 선택 (MP4, WebM)" : "이미지 선택")}
+                      </span>
+                      <span className="bg-cyan-600 group-hover:bg-cyan-500 px-2.5 py-1 rounded text-[11px] text-white shrink-0 font-medium">파일 선택</span>
+                    </label>
+                  </div>
+                  <p className="text-gray-400 text-[11px]">
+                    {componentType === "vc_plugin" ? "MP4, WebM 동영상 썸네일 지원" : "이미지 썸네일 지원"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 4. 상세 내용 그룹 */}
+          <div className="bg-gray-800/60 p-4 rounded-xl border border-gray-700/60 space-y-4">
+            <h3 className="text-cyan-400 font-semibold text-sm flex items-center gap-2 border-b border-gray-700/60 pb-2">
+              <span>상세 내용</span>
+            </h3>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                주요 기능 (줄바꿈으로 구분)
+              </label>
+              <textarea
+                value={formData.mainFeatures}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    mainFeatures: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white h-24 resize-none focus:outline-none focus:border-cyan-500 text-sm leading-relaxed"
+                placeholder="주요 기능 내용을 줄바꿈으로 작성해 주세요..."
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
             <button
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-lg border border-gray-600/50 bg-gray-800/50 text-gray-300 hover:bg-gray-700 hover:text-white transition-all font-medium backdrop-blur-sm disabled:opacity-50"
+              className="px-5 py-2 rounded-lg border border-gray-600/50 bg-gray-800/50 text-gray-300 hover:bg-gray-700 hover:text-white transition-all font-medium text-sm disabled:opacity-50"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-lg bg-cyan-600/90 hover:bg-cyan-500 border border-cyan-400/50 text-white font-medium shadow-[0_0_15px_rgba(8,145,178,0.3)] transition-all disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 border border-cyan-400/50 text-white font-medium text-sm shadow-[0_0_15px_rgba(8,145,178,0.3)] transition-all disabled:opacity-50 flex items-center gap-2"
             >
               {isSubmitting ? (
                 <>
@@ -840,7 +740,7 @@ const VersionUpdateModal = ({
                   <span>업로드 중...</span>
                 </>
               ) : (
-                "등록"
+                "새 버전 업로드"
               )}
             </button>
           </div>
