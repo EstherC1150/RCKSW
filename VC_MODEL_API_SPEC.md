@@ -6,7 +6,7 @@
 
 ## 1. 공통 사항 (Common Specifications)
 
-- **Base URL**: `http://<서버_도메인_또는_IP>:8180`
+- **Base URL**: `https://back.rck.dscloud.biz:8180`
 - **인증 헤더 (Authentication Header)**:
   - `X-API-Key: <발급받은_API_KEY>` (모든 API 요청 시 필수)
 - **표기 기준 (Requirement Status)**:
@@ -137,7 +137,7 @@ graph TD
 
 ### 6.1 최초 등록 (POST)
 ```bash
-curl -X POST "http://<서버_도메인_또는_IP>:8180/api/components" \
+curl -X POST "https://back.rck.dscloud.biz:8180/api/components" \
   -H "X-API-Key: YOUR_API_KEY_HERE" \
   -F "type=vc_model" \
   -F "modelType=component" \
@@ -150,7 +150,7 @@ curl -X POST "http://<서버_도메인_또는_IP>:8180/api/components" \
 
 ### 6.2 버전 업데이트 (PATCH)
 ```bash
-curl -X PATCH "http://<서버_도메인_또는_IP>:8180/api/components/105" \
+curl -X PATCH "https://back.rck.dscloud.biz:8180/api/components/105" \
   -H "X-API-Key: YOUR_API_KEY_HERE" \
   -F "version=1.1.0" \
   -F "description=V1.1.0 버전 업데이트" \
@@ -159,6 +159,6 @@ curl -X PATCH "http://<서버_도메인_또는_IP>:8180/api/components/105" \
 
 ### 6.3 최신 목록 조회 (GET)
 ```bash
-curl -X GET "http://<서버_도메인_또는_IP>:8180/api/components/all_update?type=vc_model" \
+curl -X GET "https://back.rck.dscloud.biz:8180/api/components/all_update?type=vc_model" \
   -H "X-API-Key: YOUR_API_KEY_HERE"
 ```
