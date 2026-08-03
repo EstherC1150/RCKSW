@@ -20,6 +20,43 @@ const isSupportedVideoThumbnail = (file) => {
   );
 };
 
+// features 파싱 및 \r/줄바꿈/공백 정제 헬퍼 함수
+const parseAndSanitizeFeatures = (rawFeatures) => {
+  if (rawFeatures === undefined || rawFeatures === null) return "[]";
+  
+  let list = [];
+  
+  if (Array.isArray(rawFeatures)) {
+    list = rawFeatures;
+  } else if (typeof rawFeatures === "string") {
+    const trimmed = rawFeatures.trim();
+    if (!trimmed) return "[]";
+
+    if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          list = parsed;
+        } else {
+          list = [parsed];
+        }
+      } catch (e) {
+        list = trimmed.split(/\r?\n/);
+      }
+    } else {
+      list = trimmed.split(/\r?\n/);
+    }
+  } else {
+    list = [String(rawFeatures)];
+  }
+
+  const sanitized = list
+    .map((item) => (typeof item === "string" ? item.replace(/\r/g, "").trim() : String(item || "").trim()))
+    .filter((item) => item !== "");
+
+  return JSON.stringify(sanitized);
+};
+
 // 파일 타입과 확장자에 따라 저장 경로(카테고리)를 결정하는 헬퍼 함수
 const getPathByCategory = (type, originalName, fieldName) => {
   const ext = path.extname(originalName).toLowerCase();
@@ -211,18 +248,7 @@ exports.createComponent = async (req, res) => {
     }
 
     const rawFeatures = features ?? req.body.main_features ?? req.body.mainFeatures;
-    let featuresString = "[]";
-    if (Array.isArray(rawFeatures)) {
-      const filtered = rawFeatures.filter((item) => item !== undefined && item !== null && String(item).trim() !== "");
-      featuresString = JSON.stringify(filtered);
-    } else if (typeof rawFeatures === "string" && rawFeatures.trim() !== "") {
-      const trimmed = rawFeatures.trim();
-      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-        featuresString = trimmed;
-      } else {
-        featuresString = JSON.stringify([trimmed]);
-      }
-    }
+    const featuresString = parseAndSanitizeFeatures(rawFeatures);
 
     // 파일은 선택사항 (단독 생성되는 경우도 고려)
     const finalComponentName = componentName || "";
@@ -968,19 +994,7 @@ const updateComponentVersion = async (req, res) => {
     let featuresString;
     try {
       if (rawFeatures !== undefined && rawFeatures !== null) {
-        if (Array.isArray(rawFeatures)) {
-          const filtered = rawFeatures.filter((item) => item !== undefined && item !== null && String(item).trim() !== "");
-          featuresString = JSON.stringify(filtered);
-        } else if (typeof rawFeatures === "string" && rawFeatures.trim() !== "") {
-          const trimmed = rawFeatures.trim();
-          if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-            featuresString = trimmed;
-          } else {
-            featuresString = JSON.stringify([trimmed]);
-          }
-        } else {
-          featuresString = "[]";
-        }
+        featuresString = parseAndSanitizeFeatures(rawFeatures);
       } else {
         featuresString = originalFile.main_features || "[]";
       }
@@ -1754,20 +1768,8 @@ const updateComponentInfo = async (req, res) => {
     const rawFeatures = features !== undefined ? features : mainFeatures;
 
     let featuresString;
-    if (rawFeatures !== undefined) {
-      if (typeof rawFeatures === "string") {
-        if (rawFeatures.startsWith("[") || rawFeatures.startsWith("{")) {
-          featuresString = rawFeatures;
-        } else {
-          // 줄바꿈(엔터)을 그대로 배열 항목으로 저장하여 빈 줄 및 줄바꿈 보존
-          const lines = rawFeatures.split("\n");
-          featuresString = JSON.stringify(lines);
-        }
-      } else if (Array.isArray(rawFeatures)) {
-        featuresString = JSON.stringify(rawFeatures);
-      } else {
-        featuresString = "[]";
-      }
+    if (rawFeatures !== undefined && rawFeatures !== null) {
+      featuresString = parseAndSanitizeFeatures(rawFeatures);
     } else {
       featuresString = currentFile.main_features || "[]";
     }
