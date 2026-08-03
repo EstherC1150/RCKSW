@@ -260,8 +260,8 @@ const LibraryList = forwardRef(function LibraryList(
 
   return (
     <div className="flex-1 flex flex-col w-full mt-[20px] h-full overflow-hidden">
-      {/* 헤더 */}
-      <div className="flex bg-input border border-input-border w-full h-[48px] sticky top-0 z-20 rounded-t-lg mt-2 font-medium">
+      {/* 헤더 (우측 스크롤바 영역 보정 패딩 pr-[15px] 추가하여 어긋남 100% 원천 해결) */}
+      <div className="flex bg-input border border-input-border w-full h-[48px] sticky top-0 z-20 rounded-t-lg mt-2 font-medium pr-[15px]">
         <div className="flex font-[600] items-center justify-center flex-[1.5] text-white">
           <input
             type="checkbox"
@@ -289,8 +289,8 @@ const LibraryList = forwardRef(function LibraryList(
         ))}
       </div>
 
-      {/* 리스트 */}
-      <div className="flex-1 overflow-y-auto">
+      {/* 리스트 (스크롤바 공간 고정) */}
+      <div className="flex-1 overflow-y-scroll [scrollbar-gutter:stable]">
         {libraryList.length > 0 ? (
           libraryList.map((item, index) => (
             <div

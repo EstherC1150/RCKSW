@@ -494,13 +494,15 @@ module.exports = {
       f.component_id,
       f.source_file_link,
       f.icon_file_link,
+      f.fbx_file_link,
+      f.vcmx_file_link,
       c.name as category_name
     FROM files f
     LEFT JOIN categories c ON f.category_id = c.id
     WHERE f.component_id = @component_id
     AND f.id != @file_id
     AND f.is_active = 1
-    ORDER BY f.updated_at DESC
+    ORDER BY f.created_at DESC, f.id DESC
   `,
 
   // 컴포넌트의 최신 버전 정보 조회

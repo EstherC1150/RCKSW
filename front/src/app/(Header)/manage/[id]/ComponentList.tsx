@@ -201,49 +201,45 @@ const ComponentList = ({
         </div>
       </div>
 
-      <div className="rounded-lg overflow-hidden border border-gray-600">
-        <div className="max-h-[300px] overflow-y-auto">
-          <table className="w-full">
-            <thead className="sticky h-[40px] top-0 bg-gray-800 text-white">
+      <div className="rounded-xl overflow-hidden border border-gray-700/60 bg-gray-900/60 backdrop-blur-md shadow-xl">
+        <div className="max-h-[320px] overflow-y-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead className="sticky top-0 bg-gray-800/90 backdrop-blur-md text-gray-300 font-medium z-10 border-b border-gray-700">
               <tr>
-                <th className="p-3">선택</th>
-                <th className="p-3">파일명</th>
-                <th className="p-3">버전</th>
-                <th className="p-3">날짜</th>
-                <th className="p-3">다운로드</th>
+                <th className="py-3 pl-6 pr-4 text-left whitespace-nowrap">파일명</th>
+                <th className="py-3 px-3 text-center w-24 whitespace-nowrap">버전</th>
+                <th className="py-3 px-3 text-center w-32 whitespace-nowrap">업데이트 날짜</th>
+                <th className="py-3 px-6 text-center w-64 min-w-[260px] whitespace-nowrap">다운로드</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-800">
               {allVersions.map((file) => (
                 <tr
                   key={file.id}
-                  className={`text-center text-white bg-gray-700 hover:bg-gray-600 transition-colors ${
-                    file.isCurrent ? "bg-gray-600" : ""
+                  className={`text-gray-200 transition-colors ${
+                    file.isCurrent
+                      ? "bg-blue-950/40 border-l-4 border-l-blue-500 text-white font-medium"
+                      : "bg-gray-800/40 hover:bg-gray-800/80"
                   }`}
                 >
-                  <td className="p-3">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
                   <td
-                    className="p-3 cursor-pointer hover:text-blue-400 flex items-center justify-center"
+                    className="py-3 pl-6 pr-4 text-left cursor-pointer hover:text-blue-300 transition-colors truncate"
                     onClick={() =>
                       !file.isCurrent && onRelatedComponentClick(file)
                     }
                   >
-                    {file.fileName}
-                    {file.isCurrent && (
-                      <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-blue-600 rounded-full">
-                        현재
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <span>{file.fileName}</span>
+                      {file.isCurrent && (
+                        <span className="px-2 py-0.5 text-[11px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full">
+                          현재 선택됨
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="p-3">{file.version}</td>
-                  <td className="p-3">{formatDate(file.updatedAt)}</td>
-                  <td className="p-3">
+                  <td className="py-3 px-4 text-center font-mono text-xs">{file.version}</td>
+                  <td className="py-3 px-4 text-center text-xs text-gray-400">{formatDate(file.updatedAt)}</td>
+                  <td className="py-3 px-4 text-center">
                     <div className="flex items-center justify-center gap-2">
                       {file.fileLinks.source && (
                         <button
@@ -255,13 +251,10 @@ const ComponentList = ({
                               `${file.fileName}_${file.version}${file.fileLinks.source ? "." + file.fileLinks.source.split(".").pop() : ""}`
                             )
                           }
-                          className="px-3 py-1 text-sm rounded-md
-                            bg-gradient-to-r from-blue-600 to-blue-700
-                            hover:from-blue-700 hover:to-blue-800
-                            transition-all duration-200 ease-in-out
-                            shadow-sm shadow-blue-500/20"
+                          className="px-3 py-1.5 text-xs font-medium rounded-lg
+                            bg-blue-600 hover:bg-blue-500 text-white
+                            transition-all duration-200 shadow-md shadow-blue-950/40"
                         >
-                          {/* 컴포넌트 타입별 다운로드 문구 분기 */}
                           {componentData.type === "vc_model" ? (
                             "VCMX 다운로드"
                           ) : componentData.type === "vc_plugin" ? (
@@ -282,11 +275,9 @@ const ComponentList = ({
                               `${file.fileName}_${file.version}${file.fileLinks.fbx ? "." + file.fileLinks.fbx.split(".").pop() : ""}`
                             )
                           }
-                          className="px-3 py-1 text-sm rounded-md
-                            bg-gradient-to-r from-cyan-600 to-cyan-700
-                            hover:from-cyan-700 hover:to-cyan-800
-                            transition-all duration-200 ease-in-out
-                            shadow-sm shadow-cyan-500/20"
+                          className="px-3 py-1.5 text-xs font-medium rounded-lg
+                            bg-indigo-600 hover:bg-indigo-500 text-white
+                            transition-all duration-200 shadow-md shadow-indigo-950/40"
                         >
                           FBX 다운로드
                         </button>

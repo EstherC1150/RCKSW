@@ -358,9 +358,9 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                     onClick={handleThumbnailDownload}
                     disabled={isDownloadingThumbnail}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
-                      bg-cyan-950/70 hover:bg-cyan-900/90 text-cyan-300 hover:text-cyan-200
-                      border border-cyan-500/40 hover:border-cyan-400
-                      transition-all duration-200 shadow-md shadow-cyan-950/40"
+                      bg-blue-950/70 hover:bg-blue-900/90 text-blue-300 hover:text-blue-200
+                      border border-blue-500/40 hover:border-blue-400
+                      transition-all duration-200 shadow-md shadow-blue-950/40"
                     title={isVcPlugin ? "썸네일 동영상 다운로드" : "썸네일 이미지 다운로드"}
                   >
                     <IoDownloadOutline className="w-4 h-4" />
@@ -471,7 +471,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
 
                 {isEditingFeatures ? (
                   <textarea
-                    className={`w-full bg-[#1e293b] border border-cyan-500/50 resize-none px-[16px] py-[12px] rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-normal leading-relaxed ${
+                    className={`w-full bg-gray-900 border border-cyan-500/50 resize-none px-4 py-3 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-normal leading-relaxed text-sm ${
                       isWideThumbnail ? "h-[315px]" : "h-[360px]"
                     }`}
                     value={features}
@@ -480,11 +480,13 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                   />
                 ) : (
                   <div
-                    className={`w-full px-[16px] py-[12px] rounded-lg text-gray-200 overflow-y-auto border border-gray-700/60 bg-gray-800/80 backdrop-blur-sm whitespace-pre-wrap leading-relaxed ${
+                    className={`w-full px-4 py-4 rounded-xl text-gray-200 overflow-y-auto border border-gray-700/60 bg-gray-900/80 backdrop-blur-md whitespace-pre-wrap leading-relaxed text-sm ${
                       isWideThumbnail ? "h-[315px]" : "h-[360px]"
                     }`}
                   >
-                    {features || "등록된 주요 기능 설명이 없습니다."}
+                    {features && features.trim()
+                      ? features
+                      : "등록된 주요 기능 설명이 없습니다."}
                   </div>
                 )}
               </div>
