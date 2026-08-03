@@ -138,6 +138,8 @@ const ComponentList = ({
     return `${year}.${month}.${day}`;
   };
 
+  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+
   const handleFileDownload = async (
     e: React.MouseEvent,
     fileId: number,
@@ -145,6 +147,10 @@ const ComponentList = ({
     fileName: string
   ) => {
     e.stopPropagation();
+    const key = `${fileId}_${fileType}`;
+    if (downloadingKey) return;
+    setDownloadingKey(key);
+
     try {
       // 백엔드 API를 통해 다운로드 (카운트 증가됨)
       const response = await fetch(
@@ -174,6 +180,8 @@ const ComponentList = ({
         title: "다운로드 실패",
         type: "error",
       });
+    } finally {
+      setDownloadingKey(null);
     }
   };
 
@@ -239,49 +247,67 @@ const ComponentList = ({
                   </td>
                   <td className="py-3 px-4 text-center font-mono text-xs">{file.version}</td>
                   <td className="py-3 px-4 text-center text-xs text-gray-400">{formatDate(file.updatedAt)}</td>
-                  <td className="py-3 px-4 text-center">
+                  <td className="py-3 px-6 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      {file.fileLinks.source && (
-                        <button
-                          onClick={(e) =>
-                            handleFileDownload(
-                              e,
-                              file.id,
-                              "source",
-                              `${file.fileName}_${file.version}${file.fileLinks.source ? "." + file.fileLinks.source.split(".").pop() : ""}`
-                            )
-                          }
-                          className="px-3 py-1.5 text-xs font-medium rounded-lg
-                            bg-blue-600 hover:bg-blue-500 text-white
-                            transition-all duration-200 shadow-md shadow-blue-950/40"
-                        >
-                          {componentData.type === "vc_model" ? (
-                            "VCMX 다운로드"
-                          ) : componentData.type === "vc_plugin" ? (
-                            "dll 파일 다운로드"
-                          ) : (
-                            "파일 다운로드"
-                          )}
-                        </button>
-                      )}
+                      {file.fileLinks.source && (() => {
+                        const key = `${file.id}_source`;
+                        const isLoading = downloadingKey === key;
+                        return (
+                          <button
+                            onClick={(e) =>
+                              handleFileDownload(
+                                e,
+                                file.id,
+                                "source",
+                                `${file.fileName}_${file.version}${file.fileLinks.source ? "." + file.fileLinks.source.split(".").pop() : ""}`
+                              )
+                            }
+                            disabled={!!downloadingKey}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                              bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900/60 disabled:text-gray-400 text-white
+                              transition-all duration-200 shadow-md shadow-blue-950/40 disabled:cursor-not-allowed"
+                          >
+                            {isLoading ? (
+                              <>
+                                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span>다운로드 중...</span>
+                              </>
+                            ) : (
+                              componentData.type === "vc_model" ? "VCMX 다운로드" : "파일 다운로드"
+                            )}
+                          </button>
+                        );
+                      })()}
 
-                      {file.fileLinks.fbx && componentData.type === "vc_model" && (
-                        <button
-                          onClick={(e) =>
-                            handleFileDownload(
-                              e,
-                              file.id,
-                              "fbx",
-                              `${file.fileName}_${file.version}${file.fileLinks.fbx ? "." + file.fileLinks.fbx.split(".").pop() : ""}`
-                            )
-                          }
-                          className="px-3 py-1.5 text-xs font-medium rounded-lg
-                            bg-indigo-600 hover:bg-indigo-500 text-white
-                            transition-all duration-200 shadow-md shadow-indigo-950/40"
-                        >
-                          FBX 다운로드
-                        </button>
-                      )}
+                      {file.fileLinks.fbx && componentData.type === "vc_model" && (() => {
+                        const key = `${file.id}_fbx`;
+                        const isLoading = downloadingKey === key;
+                        return (
+                          <button
+                            onClick={(e) =>
+                              handleFileDownload(
+                                e,
+                                file.id,
+                                "fbx",
+                                `${file.fileName}_${file.version}${file.fileLinks.fbx ? "." + file.fileLinks.fbx.split(".").pop() : ""}`
+                              )
+                            }
+                            disabled={!!downloadingKey}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                              bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/60 disabled:text-gray-400 text-white
+                              transition-all duration-200 shadow-md shadow-indigo-950/40 disabled:cursor-not-allowed"
+                          >
+                            {isLoading ? (
+                              <>
+                                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span>다운로드 중...</span>
+                              </>
+                            ) : (
+                              "FBX 다운로드"
+                            )}
+                          </button>
+                        );
+                      })()}
                     </div>
                   </td>
                 </tr>
