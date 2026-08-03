@@ -363,7 +363,7 @@ const VersionUpdateModal = ({
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 1. 기본 정보 그룹 */}
           <div className="bg-gray-800/60 p-4 rounded-xl border border-gray-700/60 space-y-4">
-            <h3 className="text-cyan-400 font-semibold text-sm flex items-center gap-2 border-b border-gray-700/60 pb-2">
+            <h3 className="text-blue-400 font-semibold text-sm flex items-center gap-2 border-b border-gray-700/60 pb-2">
               <span>기본 정보</span>
             </h3>
             
@@ -378,7 +378,7 @@ const VersionUpdateModal = ({
                   onChange={(e) =>
                     setFormData({ ...formData, componentName: e.target.value })
                   }
-                  className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 transition-colors"
                   placeholder="컴포넌트 이름을 입력하세요"
                 />
                 <p className="text-gray-400 text-[11px] mt-1">
@@ -396,7 +396,7 @@ const VersionUpdateModal = ({
                   onChange={(e) =>
                     setFormData({ ...formData, version: e.target.value })
                   }
-                  className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-cyan-500 font-mono transition-colors"
+                  className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-blue-500 font-mono transition-colors"
                   placeholder="예: 1.0.1"
                 />
               </div>
@@ -413,7 +413,7 @@ const VersionUpdateModal = ({
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, modelType: e.target.value }))
                   }
-                  className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white focus:border-cyan-500 outline-none transition-colors"
+                  className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white focus:border-blue-500 outline-none transition-colors"
                 >
                   <option value="component">컴포넌트</option>
                   <option value="layout">레이아웃</option>
@@ -424,7 +424,7 @@ const VersionUpdateModal = ({
 
           {/* 2. 파일 첨부 그룹 */}
           <div className="bg-gray-800/60 p-4 rounded-xl border border-gray-700/60 space-y-4">
-            <h3 className="text-cyan-400 font-semibold text-sm flex items-center gap-2 border-b border-gray-700/60 pb-2">
+            <h3 className="text-blue-400 font-semibold text-sm flex items-center gap-2 border-b border-gray-700/60 pb-2">
               <span>파일 첨부</span>
             </h3>
 
