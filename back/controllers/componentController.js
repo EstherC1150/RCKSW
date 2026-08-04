@@ -60,7 +60,15 @@ const parseAndSanitizeFeatures = (rawFeatures) => {
 // main_features 파싱 헬퍼 함수 (안전하게 string[] 배열로 반환)
 const safeParseMainFeatures = (mainFeaturesData) => {
   if (!mainFeaturesData) return [];
-  if (Array.isArray(mainFeaturesData)) return mainFeaturesData;
+  if (Array.isArray(mainFeaturesData)) {
+    return mainFeaturesData
+      .flatMap((item) =>
+        typeof item === "string"
+          ? item.replace(/\r/g, "").split("\n").map((s) => s.trim()).filter(Boolean)
+          : String(item || "").trim()
+      )
+      .filter(Boolean);
+  }
   if (typeof mainFeaturesData === "string") {
     const trimmed = mainFeaturesData.trim();
     if (!trimmed) return [];
@@ -68,7 +76,13 @@ const safeParseMainFeatures = (mainFeaturesData) => {
       try {
         const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) {
-          return parsed.map((item) => (typeof item === "string" ? item.replace(/\r/g, "").trim() : String(item || "").trim())).filter(Boolean);
+          return parsed
+            .flatMap((item) =>
+              typeof item === "string"
+                ? item.replace(/\r/g, "").split("\n").map((s) => s.trim()).filter(Boolean)
+                : String(item || "").trim()
+            )
+            .filter(Boolean);
         }
         return [String(parsed)];
       } catch (e) {
