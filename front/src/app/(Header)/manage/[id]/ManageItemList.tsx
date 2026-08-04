@@ -105,6 +105,19 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
 
     const [year, month, day] = datePart.split("-");
     return `${year}.${month}.${day}`;
+  const formatFeaturesText = (raw: any): string => {
+    if (!raw) return "";
+    if (Array.isArray(raw)) {
+      return raw
+        .flatMap((item) => (typeof item === "string" ? item.split("\n") : [String(item)]))
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join("\n");
+    }
+    if (typeof raw === "string") {
+      return raw;
+    }
+    return String(raw);
   };
 
   useEffect(() => {
@@ -123,11 +136,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
         if (result.success) {
           setComponentData(result.data);
           setDescription(result.data.description || "");
-          setFeatures(
-            Array.isArray(result.data.mainFeatures)
-              ? result.data.mainFeatures.join("\n")
-              : result.data.mainFeatures || ""
-          );
+          setFeatures(formatFeaturesText(result.data.mainFeatures));
         }
       } catch (err) {
         setError(
@@ -439,11 +448,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                             onClick={() => {
                               setIsEditingFeatures(false);
                               if (componentData) {
-                                setFeatures(
-                                  Array.isArray(componentData.mainFeatures)
-                                    ? componentData.mainFeatures.join("\n")
-                                    : componentData.mainFeatures || ""
-                                );
+                                setFeatures(formatFeaturesText(componentData.mainFeatures));
                               }
                             }}
                             className="px-3 py-1.5 text-xs font-medium rounded-lg
@@ -480,13 +485,21 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                   />
                 ) : (
                   <div
-                    className={`w-full px-4 py-4 rounded-xl text-gray-200 overflow-y-auto border border-gray-700/60 bg-gray-900/80 backdrop-blur-md whitespace-pre-wrap leading-relaxed text-sm ${
+                    className={`w-full px-4 py-4 rounded-xl text-gray-200 overflow-y-auto border border-gray-700/60 bg-gray-900/80 backdrop-blur-md text-sm leading-relaxed ${
                       isWideThumbnail ? "h-[315px]" : "h-[360px]"
                     }`}
                   >
-                    {features && features.trim()
-                      ? features
-                      : "등록된 주요 기능 설명이 없습니다."}
+                    {features && features.trim() ? (
+                      <div className="space-y-1.5 whitespace-pre-wrap break-words">
+                        {features.split("\n").map((line, idx) => (
+                          <div key={idx} className="min-h-[1.4em]">
+                            {line}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      "등록된 주요 기능 설명이 없습니다."
+                    )}
                   </div>
                 )}
               </div>
