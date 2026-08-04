@@ -109,45 +109,39 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
 
   const formatFeaturesText = (raw: any): string => {
     if (!raw) return "";
-    let list: any[] = [];
+    let text = "";
 
     if (Array.isArray(raw)) {
-      list = raw;
+      text = raw.join("\n");
     } else if (typeof raw === "string") {
       const trimmed = raw.trim();
       if (!trimmed) return "";
-      if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+      if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
         try {
           const parsed = JSON.parse(trimmed);
           if (Array.isArray(parsed)) {
-            list = parsed;
+            text = parsed.join("\n");
           } else {
-            list = [String(parsed)];
+            text = String(parsed);
           }
         } catch (e) {
-          list = [trimmed];
+          text = raw;
         }
       } else {
-        list = [trimmed];
+        text = raw;
       }
     } else {
-      list = [String(raw)];
+      text = String(raw);
     }
 
-    return list
-      .flatMap((item) => {
-        if (typeof item !== "string") return [String(item || "").trim()];
-        let str = item.replace(/\r/g, "").replace(/^["']|["']$/g, "").trim();
-        if (!str) return [];
+    text = text.replace(/\r/g, "");
 
-        // 불릿 기호(● 또는 •)가 포함되어 있는데 줄바꿈(\n)이 없거나 뭉쳐있는 경우 불릿 앞에서 자동 개행
-        if ((str.includes("●") || str.includes("•")) && !str.includes("\n")) {
-          str = str.replace(/([●•])/g, "\n$1").trim();
-        }
+    // 구 데이터에 불릿 기호(●, •)가 뭉쳐있는데 \n이 전혀 없는 경우에만 불릿 보정
+    if ((text.includes("●") || text.includes("•")) && !text.includes("\n")) {
+      text = text.replace(/([●•])/g, "\n$1").trim();
+    }
 
-        return str.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-      })
-      .join("\n");
+    return text;
   };
 
   useEffect(() => {
@@ -515,21 +509,13 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                   />
                 ) : (
                   <div
-                    className={`w-full px-4 py-4 rounded-xl text-gray-200 overflow-y-auto border border-gray-700/60 bg-gray-900/80 backdrop-blur-md text-sm leading-relaxed ${
+                    className={`w-full px-4 py-4 rounded-xl text-gray-200 overflow-y-auto border border-gray-700/60 bg-gray-900/80 backdrop-blur-md text-sm leading-relaxed whitespace-pre-wrap break-words ${
                       isWideThumbnail ? "h-[315px]" : "h-[360px]"
                     }`}
                   >
-                    {features && features.trim() ? (
-                      <div className="space-y-1.5 whitespace-pre-wrap break-words">
-                        {features.split("\n").map((line, idx) => (
-                          <div key={idx} className="min-h-[1.4em]">
-                            {line}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      "등록된 주요 기능 설명이 없습니다."
-                    )}
+                    {features && features.trim()
+                      ? features
+                      : "등록된 주요 기능 설명이 없습니다."}
                   </div>
                 )}
               </div>

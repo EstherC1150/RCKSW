@@ -20,85 +20,75 @@ const isSupportedVideoThumbnail = (file) => {
   );
 };
 
-// features 파싱 및 \r/줄바꿈/공백 정제 헬퍼 함수
+// features 파싱 및 \r 정제 헬퍼 함수 (사용자가 입력한 엔터/줄바꿈/빈줄 텍스트 그대로 원본 100% 보존)
 const parseAndSanitizeFeatures = (rawFeatures) => {
   if (rawFeatures === undefined || rawFeatures === null) return "[]";
   
-  let list = [];
-  
+  let text = "";
   if (Array.isArray(rawFeatures)) {
-    list = rawFeatures;
+    text = rawFeatures.join("\n");
   } else if (typeof rawFeatures === "string") {
-    const trimmed = rawFeatures.trim();
-    if (!trimmed) return "[]";
+    text = rawFeatures;
+  } else {
+    text = String(rawFeatures);
+  }
 
+  const trimmed = text.trim();
+  if (!trimmed) return "[]";
+
+  if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        text = parsed.join("\n");
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // \r 문자 제거 (줄바꿈 \n 및 사용자의 빈줄 띄어쓰기 100% 원본 보존)
+  text = text.replace(/\r/g, "");
+
+  return JSON.stringify([text]);
+};
+
+// main_features 파싱 헬퍼 함수 (원문 텍스트 100% 복원)
+const safeParseMainFeatures = (mainFeaturesData) => {
+  if (!mainFeaturesData) return [];
+  
+  let text = "";
+  if (Array.isArray(mainFeaturesData)) {
+    text = mainFeaturesData.join("\n");
+  } else if (typeof mainFeaturesData === "string") {
+    const trimmed = mainFeaturesData.trim();
+    if (!trimmed) return [];
     if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
       try {
         const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) {
-          list = parsed;
+          text = parsed.join("\n");
         } else {
-          list = [parsed];
+          text = String(parsed);
         }
       } catch (e) {
-        list = trimmed.split(/\r?\n/);
+        text = trimmed;
       }
     } else {
-      list = trimmed.split(/\r?\n/);
+      text = trimmed;
     }
   } else {
-    list = [String(rawFeatures)];
+    text = String(mainFeaturesData);
   }
 
-  const sanitized = list
-    .map((item) => (typeof item === "string" ? item.replace(/\r/g, "").trim() : String(item || "").trim()))
-    .filter((item) => item !== "");
+  text = text.replace(/\r/g, "");
 
-  return JSON.stringify(sanitized);
-};
-
-// main_features 파싱 헬퍼 함수 (안전하게 string[] 배열로 반환)
-const safeParseMainFeatures = (mainFeaturesData) => {
-  if (!mainFeaturesData) return [];
-  
-  let rawList = [];
-  if (Array.isArray(mainFeaturesData)) {
-    rawList = mainFeaturesData;
-  } else if (typeof mainFeaturesData === "string") {
-    const trimmed = mainFeaturesData.trim();
-    if (!trimmed) return [];
-    if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          rawList = parsed;
-        } else {
-          rawList = [String(parsed)];
-        }
-      } catch (e) {
-        rawList = [trimmed];
-      }
-    } else {
-      rawList = [trimmed];
-    }
-  } else {
-    rawList = [String(mainFeaturesData)];
+  // 구 데이터에 불릿 기호(●, •)가 뭉쳐있는데 \n이 전혀 없는 경우에만 불릿 보정
+  if ((text.includes("●") || text.includes("•")) && !text.includes("\n")) {
+    text = text.replace(/([●•])/g, "\n$1").trim();
   }
 
-  const resultList = rawList.flatMap((item) => {
-    if (typeof item !== "string") return [String(item || "").trim()];
-    let str = item.replace(/\r/g, "").trim();
-    if (!str) return [];
-
-    // 불릿 기호(● 또는 •)가 포함되어 있는데 줄바꿈(\n)이 없거나 뭉쳐있는 경우 불릿 앞에서 자동 개행
-    if ((str.includes("●") || str.includes("•")) && !str.includes("\n")) {
-      str = str.replace(/([●•])/g, "\n$1").trim();
-    }
-
-    return str.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-  });
-
-  return resultList;
+  return [text];
 };
 
 // 파일 타입과 확장자에 따라 저장 경로(카테고리)를 결정하는 헬퍼 함수
