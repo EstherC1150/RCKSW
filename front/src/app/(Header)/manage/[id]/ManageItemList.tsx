@@ -109,17 +109,35 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
 
   const formatFeaturesText = (raw: any): string => {
     if (!raw) return "";
+    let list: string[] = [];
+
     if (Array.isArray(raw)) {
-      return raw
-        .flatMap((item) => (typeof item === "string" ? item.split("\n") : [String(item)]))
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .join("\n");
+      list = raw.flatMap((item) => (typeof item === "string" ? item.split("\n") : [String(item)]));
+    } else if (typeof raw === "string") {
+      const trimmed = raw.trim();
+      if (!trimmed) return "";
+      if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            list = parsed.flatMap((item) => (typeof item === "string" ? item.split("\n") : [String(item)]));
+          } else {
+            list = [String(parsed)];
+          }
+        } catch (e) {
+          list = trimmed.split("\n");
+        }
+      } else {
+        list = trimmed.split("\n");
+      }
+    } else {
+      list = [String(raw)];
     }
-    if (typeof raw === "string") {
-      return raw;
-    }
-    return String(raw);
+
+    return list
+      .map((s) => s.replace(/\r/g, "").replace(/^["']|["']$/g, "").trim())
+      .filter(Boolean)
+      .join("\n");
   };
 
   useEffect(() => {

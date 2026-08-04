@@ -80,11 +80,44 @@ const VersionUpdateModal = ({
     return parts.join(".");
   }, []);
 
+const formatFeaturesText = (raw: any): string => {
+  if (!raw) return "";
+  let list: string[] = [];
+
+  if (Array.isArray(raw)) {
+    list = raw.flatMap((item) => (typeof item === "string" ? item.split("\n") : [String(item)]));
+  } else if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          list = parsed.flatMap((item) => (typeof item === "string" ? item.split("\n") : [String(item)]));
+        } else {
+          list = [String(parsed)];
+        }
+      } catch (e) {
+        list = trimmed.split("\n");
+      }
+    } else {
+      list = trimmed.split("\n");
+    }
+  } else {
+    list = [String(raw)];
+  }
+
+  return list
+    .map((s) => s.replace(/\r/g, "").replace(/^["']|["']$/g, "").trim())
+    .filter(Boolean)
+    .join("\n");
+};
+
   const [formData, setFormData] = useState({
     componentName: initialData?.fileName || "",
     version: initialData?.version || "",
     description: initialData?.description || "",
-    mainFeatures: initialData?.mainFeatures?.join("\n") || "",
+    mainFeatures: formatFeaturesText(initialData?.mainFeatures),
     recommendedEnvironment: initialData?.recommendedEnvironment || "",
     modelType: initialData?.modelType || "component",
   });
@@ -123,7 +156,7 @@ const VersionUpdateModal = ({
         componentName: initialData?.fileName || "",
         version: nextVersion,
         description: initialData?.description || "",
-        mainFeatures: Array.isArray(initialData?.mainFeatures) ? initialData.mainFeatures.join("\n") : initialData?.mainFeatures || "",
+        mainFeatures: formatFeaturesText(initialData?.mainFeatures),
         recommendedEnvironment: initialData?.recommendedEnvironment || "",
         modelType: initialData?.modelType || "component",
       });
