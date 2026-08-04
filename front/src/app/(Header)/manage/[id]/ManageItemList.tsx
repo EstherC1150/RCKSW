@@ -109,10 +109,10 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
 
   const formatFeaturesText = (raw: any): string => {
     if (!raw) return "";
-    let list: string[] = [];
+    let list: any[] = [];
 
     if (Array.isArray(raw)) {
-      list = raw.flatMap((item) => (typeof item === "string" ? item.split("\n") : [String(item)]));
+      list = raw;
     } else if (typeof raw === "string") {
       const trimmed = raw.trim();
       if (!trimmed) return "";
@@ -120,23 +120,33 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
         try {
           const parsed = JSON.parse(trimmed);
           if (Array.isArray(parsed)) {
-            list = parsed.flatMap((item) => (typeof item === "string" ? item.split("\n") : [String(item)]));
+            list = parsed;
           } else {
             list = [String(parsed)];
           }
         } catch (e) {
-          list = trimmed.split("\n");
+          list = [trimmed];
         }
       } else {
-        list = trimmed.split("\n");
+        list = [trimmed];
       }
     } else {
       list = [String(raw)];
     }
 
     return list
-      .map((s) => s.replace(/\r/g, "").replace(/^["']|["']$/g, "").trim())
-      .filter(Boolean)
+      .flatMap((item) => {
+        if (typeof item !== "string") return [String(item || "").trim()];
+        let str = item.replace(/\r/g, "").replace(/^["']|["']$/g, "").trim();
+        if (!str) return [];
+
+        // 불릿 기호(● 또는 •)가 포함되어 있는데 줄바꿈(\n)이 없거나 뭉쳐있는 경우 불릿 앞에서 자동 개행
+        if ((str.includes("●") || str.includes("•")) && !str.includes("\n")) {
+          str = str.replace(/([●•])/g, "\n$1").trim();
+        }
+
+        return str.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+      })
       .join("\n");
   };
 

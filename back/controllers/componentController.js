@@ -60,41 +60,45 @@ const parseAndSanitizeFeatures = (rawFeatures) => {
 // main_features 파싱 헬퍼 함수 (안전하게 string[] 배열로 반환)
 const safeParseMainFeatures = (mainFeaturesData) => {
   if (!mainFeaturesData) return [];
+  
+  let rawList = [];
   if (Array.isArray(mainFeaturesData)) {
-    return mainFeaturesData
-      .flatMap((item) =>
-        typeof item === "string"
-          ? item.replace(/\r/g, "").split("\n").map((s) => s.trim()).filter(Boolean)
-          : String(item || "").trim()
-      )
-      .filter(Boolean);
-  }
-  if (typeof mainFeaturesData === "string") {
+    rawList = mainFeaturesData;
+  } else if (typeof mainFeaturesData === "string") {
     const trimmed = mainFeaturesData.trim();
     if (!trimmed) return [];
     if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
       try {
         const parsed = JSON.parse(trimmed);
         if (Array.isArray(parsed)) {
-          return parsed
-            .flatMap((item) =>
-              typeof item === "string"
-                ? item.replace(/\r/g, "").split("\n").map((s) => s.trim()).filter(Boolean)
-                : String(item || "").trim()
-            )
-            .filter(Boolean);
+          rawList = parsed;
+        } else {
+          rawList = [String(parsed)];
         }
-        return [String(parsed)];
       } catch (e) {
-        // JSON 파싱 실패 시 아래로 이동
+        rawList = [trimmed];
       }
+    } else {
+      rawList = [trimmed];
     }
-    if (trimmed.includes("\n")) {
-      return trimmed.split(/\r?\n/).map((s) => s.replace(/\r/g, "").trim()).filter(Boolean);
-    }
-    return trimmed.split(",").map((s) => s.replace(/\r/g, "").trim()).filter(Boolean);
+  } else {
+    rawList = [String(mainFeaturesData)];
   }
-  return [String(mainFeaturesData)];
+
+  const resultList = rawList.flatMap((item) => {
+    if (typeof item !== "string") return [String(item || "").trim()];
+    let str = item.replace(/\r/g, "").trim();
+    if (!str) return [];
+
+    // 불릿 기호(● 또는 •)가 포함되어 있는데 줄바꿈(\n)이 없거나 뭉쳐있는 경우 불릿 앞에서 자동 개행
+    if ((str.includes("●") || str.includes("•")) && !str.includes("\n")) {
+      str = str.replace(/([●•])/g, "\n$1").trim();
+    }
+
+    return str.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  });
+
+  return resultList;
 };
 
 // 파일 타입과 확장자에 따라 저장 경로(카테고리)를 결정하는 헬퍼 함수
