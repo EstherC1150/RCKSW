@@ -57,6 +57,32 @@ const parseAndSanitizeFeatures = (rawFeatures) => {
   return JSON.stringify(sanitized);
 };
 
+// main_features 파싱 헬퍼 함수 (안전하게 string[] 배열로 반환)
+const safeParseMainFeatures = (mainFeaturesData) => {
+  if (!mainFeaturesData) return [];
+  if (Array.isArray(mainFeaturesData)) return mainFeaturesData;
+  if (typeof mainFeaturesData === "string") {
+    const trimmed = mainFeaturesData.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => (typeof item === "string" ? item.replace(/\r/g, "").trim() : String(item || "").trim())).filter(Boolean);
+        }
+        return [String(parsed)];
+      } catch (e) {
+        // JSON 파싱 실패 시 아래로 이동
+      }
+    }
+    if (trimmed.includes("\n")) {
+      return trimmed.split(/\r?\n/).map((s) => s.replace(/\r/g, "").trim()).filter(Boolean);
+    }
+    return trimmed.split(",").map((s) => s.replace(/\r/g, "").trim()).filter(Boolean);
+  }
+  return [String(mainFeaturesData)];
+};
+
 // 파일 타입과 확장자에 따라 저장 경로(카테고리)를 결정하는 헬퍼 함수
 const getPathByCategory = (type, originalName, fieldName) => {
   const ext = path.extname(originalName).toLowerCase();
@@ -657,24 +683,7 @@ const getFileDetail = async (req, res) => {
       else thumbnailPath = "/images/ic-etc.png";
     }
 
-    let mainFeatures = [];
-    try {
-      if (file.main_features) {
-        if (
-          file.main_features.startsWith("[") ||
-          file.main_features.startsWith("{")
-        ) {
-          mainFeatures = JSON.parse(file.main_features);
-        } else {
-          mainFeatures = file.main_features
-            .split(",")
-            .map((item) => item.trim());
-        }
-      }
-    } catch (error) {
-      console.warn("main_features 파싱 실패:", file.main_features);
-      mainFeatures = file.main_features ? [file.main_features] : [];
-    }
+    const mainFeatures = safeParseMainFeatures(file.main_features);
 
     // component_id를 숫자로 변환
     const componentId = parseInt(file.component_id) || null;
@@ -696,11 +705,7 @@ const getFileDetail = async (req, res) => {
         createdAt: relatedFile.created_at,
         updatedAt: relatedFile.updated_at || relatedFile.created_at,
         description: relatedFile.description,
-        mainFeatures: relatedFile.main_features
-          ? typeof relatedFile.main_features === "string"
-            ? relatedFile.main_features.split(",").map((item) => item.trim())
-            : relatedFile.main_features
-          : [],
+        mainFeatures: safeParseMainFeatures(relatedFile.main_features),
         recommendedEnvironment: relatedFile.recommended_environment,
         componentId: relatedFile.component_id,
         categoryName: relatedFile.category_name,
@@ -1453,17 +1458,6 @@ const getAllFiles = async (req, res) => {
 
     // 응답 데이터 가공
     const files = result.recordset.map((file) => {
-      // main_features JSON 파싱
-      let mainFeatures = [];
-      try {
-        if (file.main_features) {
-          mainFeatures = JSON.parse(file.main_features);
-        }
-      } catch (error) {
-        console.warn("main_features 파싱 실패:", file.main_features);
-        mainFeatures = file.main_features ? [file.main_features] : [];
-      }
-
       return {
         id: file.id,
         file_name: file.file_name,
@@ -1481,7 +1475,7 @@ const getAllFiles = async (req, res) => {
         type: file.type,
         model_type: file.model_type,
         description: file.description,
-        main_features: mainFeatures,
+        main_features: safeParseMainFeatures(file.main_features),
         recommended_environment: file.recommended_environment,
         sub_category_id: file.sub_category_id,
         is_active: file.is_active,
@@ -1523,17 +1517,6 @@ const getAllLatestFiles = async (req, res) => {
 
     // 응답 데이터 가공
     const files = result.recordset.map((file) => {
-      // main_features JSON 파싱
-      let mainFeatures = [];
-      try {
-        if (file.main_features) {
-          mainFeatures = JSON.parse(file.main_features);
-        }
-      } catch (error) {
-        console.warn("main_features 파싱 실패:", file.main_features);
-        mainFeatures = file.main_features ? [file.main_features] : [];
-      }
-
       return {
         id: file.id,
         file_name: file.file_name,
@@ -1551,7 +1534,7 @@ const getAllLatestFiles = async (req, res) => {
         type: file.type,
         model_type: file.model_type,
         description: file.description,
-        main_features: mainFeatures,
+        main_features: safeParseMainFeatures(file.main_features),
         recommended_environment: file.recommended_environment,
         sub_category_id: file.sub_category_id,
         is_active: file.is_active,
