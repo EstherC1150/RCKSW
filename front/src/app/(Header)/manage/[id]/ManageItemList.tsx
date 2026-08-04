@@ -105,6 +105,8 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
 
     const [year, month, day] = datePart.split("-");
     return `${year}.${month}.${day}`;
+  };
+
   const formatFeaturesText = (raw: any): string => {
     if (!raw) return "";
     if (Array.isArray(raw)) {
