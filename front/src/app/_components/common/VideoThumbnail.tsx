@@ -21,10 +21,31 @@ const VideoThumbnail = ({
 }: VideoThumbnailProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  // 미디어 프래그먼트(#t=0.001)로 대용량 동영상 전체 다운로드 없이 첫 프레임 미리보기 로딩 강제
+  const videoSrc =
+    src && !src.includes("#") && !src.startsWith("blob:") && !src.startsWith("data:")
+      ? `${src}#t=0.001`
+      : src;
 
   useEffect(() => {
+    setHasError(false);
     const video = videoRef.current;
     if (!video) return;
+
+    // 대용량 동영상 첫 프레임 썸네일 디코딩 강제 렌더링
+    const handleLoadedMetadata = () => {
+      if (!alwaysPlay && video.paused && video.currentTime === 0) {
+        try {
+          video.currentTime = 0.001;
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
 
     if (alwaysPlay) {
       video.muted = true;
@@ -33,6 +54,10 @@ const VideoThumbnail = ({
         .then(() => setIsPlaying(true))
         .catch(() => setIsPlaying(false));
     }
+
+    return () => {
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+    };
   }, [alwaysPlay, src]);
 
   const handleLoadedData = () => {
@@ -46,7 +71,7 @@ const VideoThumbnail = ({
   };
 
   const playPreview = () => {
-    if (!previewOnHover || !videoRef.current) return;
+    if (!previewOnHover || !videoRef.current || hasError) return;
 
     const video = videoRef.current;
     video.muted = true;
@@ -57,20 +82,24 @@ const VideoThumbnail = ({
   };
 
   const stopPreview = () => {
-    if (!previewOnHover || !videoRef.current) return;
+    if (!previewOnHover || !videoRef.current || hasError) return;
 
     // 항상 재생 모드가 아닌 경우 마우스가 떠나면 정지
     if (!alwaysPlay) {
       const video = videoRef.current;
       video.pause();
-      video.currentTime = 0;
+      try {
+        video.currentTime = 0.001;
+      } catch (e) {
+        // ignore
+      }
       setIsPlaying(false);
     }
   };
 
   const togglePlayback = (event: React.MouseEvent<HTMLVideoElement>) => {
     event.stopPropagation();
-    if (!videoRef.current || controls) return;
+    if (!videoRef.current || controls || hasError) return;
 
     const video = videoRef.current;
     if (video.paused) {
@@ -82,6 +111,15 @@ const VideoThumbnail = ({
     }
   };
 
+  if (hasError) {
+    return (
+      <div className={`relative h-full w-full bg-gray-900 flex flex-col items-center justify-center text-gray-400 p-2 text-xs text-center ${className}`}>
+        <span className="text-2xl mb-1">🎬</span>
+        <span>동영상 미리보기</span>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`relative h-full w-full ${className}`}
@@ -90,15 +128,16 @@ const VideoThumbnail = ({
     >
       <video
         ref={videoRef}
-        src={src}
+        src={videoSrc}
         aria-label={alt}
         muted
         loop
         playsInline
         autoPlay={alwaysPlay}
-        preload="auto"
+        preload="metadata"
         controls={controls}
         onLoadedData={handleLoadedData}
+        onError={() => setHasError(true)}
         onClick={togglePlayback}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
@@ -114,6 +153,11 @@ const VideoThumbnail = ({
 };
 
 export const isVideoThumbnail = (url?: string | null) =>
-  Boolean(url && /\.(mp4|webm)(?:[?#].*)?$/i.test(url));
+  Boolean(
+    url &&
+      (url.startsWith("blob:") ||
+        url.startsWith("data:video/") ||
+        /\.(mp4|webm|mov|mkv|avi)(?:[?#].*)?$/i.test(url))
+  );
 
 export default VideoThumbnail;

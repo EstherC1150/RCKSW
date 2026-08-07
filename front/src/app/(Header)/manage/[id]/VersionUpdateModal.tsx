@@ -10,7 +10,11 @@ import ThumbnailPlaceholder from "../../../_components/common/ThumbnailPlacehold
 import { useAlertStore } from "@/app/stores/alertStore";
 
 const isSupportedVideoFile = (file: File) =>
-  ["video/mp4", "video/webm"].includes(file.type) && /\.(mp4|webm)$/i.test(file.name);
+  Boolean(
+    file &&
+      (file.type?.startsWith("video/") ||
+        /\.(mp4|webm|mov|mkv|avi)$/i.test(file.name))
+  );
 
 const isPlaceholderThumbnail = (url?: string) => {
   if (!url) return true;
@@ -369,18 +373,19 @@ const formatFeaturesText = (raw: any): string => {
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {/* 업로드 중 로딩 오버레이 (화면 중앙 fixed 배치) */}
+      {isSubmitting && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center z-[100] p-6 text-center">
+          <div className="w-14 h-14 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_20px_rgba(6,182,212,0.6)]" />
+          <h4 className="text-white font-bold text-lg mb-2">버전 정보를 서버로 업로드하는 중입니다...</h4>
+          <p className="text-cyan-200 text-xs leading-relaxed max-w-sm">
+            파일 크기에 따라 소요 시간이 길어질 수 있습니다.<br />
+            업로드가 완료될 때까지 창을 닫거나 새로고침하지 마세요.
+          </p>
+        </div>
+      )}
+
       <div className="bg-gray-800 rounded-2xl p-6 w-[600px] max-h-[85vh] overflow-y-auto relative shadow-2xl">
-        {/* 업로드 중 로딩 오버레이 */}
-        {isSubmitting && (
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center z-50 p-6 text-center">
-            <div className="w-14 h-14 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_20px_rgba(6,182,212,0.6)]" />
-            <h4 className="text-white font-bold text-lg mb-2">버전 정보를 서버로 업로드하는 중입니다...</h4>
-            <p className="text-cyan-200 text-xs leading-relaxed max-w-sm">
-              파일 크기에 따라 소요 시간이 길어질 수 있습니다.<br />
-              업로드가 완료될 때까지 창을 닫거나 새로고침하지 마세요.
-            </p>
-          </div>
-        )}
 
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-white">새 버전 등록</h2>
