@@ -57,16 +57,18 @@ export const FileDownloadButton = ({
   return (
     <div
       onClick={handleDownload}
-      className={`px-2 py-1 text-sm rounded cursor-pointer
-        ${isLoading ? "bg-gray-500" : "bg-gray-700 hover:bg-gray-600"}`}
+      className={`px-3 py-1.5 text-xs rounded font-medium cursor-pointer transition-all flex items-center justify-center gap-1.5 whitespace-nowrap
+        ${isLoading ? "bg-cyan-700 text-white cursor-wait opacity-90" : "bg-gray-700 hover:bg-gray-600 text-white"}`}
     >
       {isLoading ? (
-        "다운로드 중..."
+        <>
+          <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+          <span>다운로드 중...</span>
+        </>
       ) : (
         <>
           {fileType === "source" ? (
-            componentType === "vc_model" ? "VCMX" :
-            componentType === "vc_plugin" ? "dll 파일" : "파일"
+            componentType === "vc_model" ? "VCMX" : "파일"
           ) : fileType === "fbx" ? (
             "FBX"
           ) : fileType === "icon" ? (
@@ -113,7 +115,8 @@ export const DownloadOptions = ({
   return (
     <div
       ref={optionsRef}
-      className="absolute bottom-1/2 left-1/2 transform -translate-x-1/2 translate-y-1/2 mb-2 right-0 bg-gray-800 rounded-md shadow-lg p-2 min-w-[100px] z-[10]"
+      className="absolute bottom-1/2 left-1/2 transform -translate-x-1/2 translate-y-1/2 mb-2 right-0 bg-gray-800 rounded-lg shadow-xl p-2 min-w-[125px] border border-gray-700 z-[10]"
+      onClick={(e) => e.stopPropagation()}
     >
       <div className="flex flex-col gap-2">
         {/* 타입별로 노출할 버튼 필터링 */}
