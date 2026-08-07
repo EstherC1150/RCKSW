@@ -376,7 +376,7 @@ const formatFeaturesText = (raw: any): string => {
             <div className="w-14 h-14 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_20px_rgba(6,182,212,0.6)]" />
             <h4 className="text-white font-bold text-lg mb-2">버전 정보를 서버로 업로드하는 중입니다...</h4>
             <p className="text-cyan-200 text-xs leading-relaxed max-w-sm">
-              대용량 파일 전송 시 수 초 정도 소요될 수 있습니다.<br />
+              파일 크기에 따라 소요 시간이 길어질 수 있습니다.<br />
               업로드가 완료될 때까지 창을 닫거나 새로고침하지 마세요.
             </p>
           </div>
