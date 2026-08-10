@@ -8,15 +8,20 @@ export const FileDownloadButton = ({
   fileId,
   fileType,
   componentType,
+  onDownloadStart,
+  onDownloadEnd,
 }: {
   fileId: number;
   fileType: "icon" | "source" | "fbx";
   componentType?: string;
+  onDownloadStart?: (fileId: number) => void;
+  onDownloadEnd?: (fileId: number) => void;
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleDownload = async () => {
     setIsLoading(true);
+    onDownloadStart?.(fileId);
 
     try {
       const response = await fetch(
@@ -51,6 +56,7 @@ export const FileDownloadButton = ({
       console.error("Download error:", err);
     } finally {
       setIsLoading(false);
+      onDownloadEnd?.(fileId);
     }
   };
 
@@ -88,11 +94,15 @@ export const DownloadOptions = ({
   fileId,
   onClose,
   componentType,
+  onDownloadStart,
+  onDownloadEnd,
 }: {
   fileLinks: { source?: string; icon?: string; fbx?: string };
   fileId: number;
   onClose: () => void;
   componentType?: string;
+  onDownloadStart?: (fileId: number) => void;
+  onDownloadEnd?: (fileId: number) => void;
 }) => {
   const optionsRef = useRef<HTMLDivElement>(null);
 
@@ -121,10 +131,22 @@ export const DownloadOptions = ({
       <div className="flex flex-col gap-2">
         {/* 타입별로 노출할 버튼 필터링 */}
         {fileLinks.fbx && componentType === "vc_model" && (
-          <FileDownloadButton fileId={fileId} fileType="fbx" componentType={componentType} />
+          <FileDownloadButton
+            fileId={fileId}
+            fileType="fbx"
+            componentType={componentType}
+            onDownloadStart={onDownloadStart}
+            onDownloadEnd={onDownloadEnd}
+          />
         )}
         {fileLinks.source && (
-          <FileDownloadButton fileId={fileId} fileType="source" componentType={componentType} />
+          <FileDownloadButton
+            fileId={fileId}
+            fileType="source"
+            componentType={componentType}
+            onDownloadStart={onDownloadStart}
+            onDownloadEnd={onDownloadEnd}
+          />
         )}
       </div>
     </div>
@@ -135,13 +157,19 @@ export const DownloadOptions = ({
 export const DownloadIconButton = ({
   item,
   isActive,
+  isDownloading = false,
   onClick,
   onClose,
+  onDownloadStart,
+  onDownloadEnd,
 }: {
   item: { id: number; type?: string; fileLinks: { source?: string; icon?: string; fbx?: string } };
   isActive: boolean;
+  isDownloading?: boolean;
   onClick: (e: React.MouseEvent) => void;
   onClose: () => void;
+  onDownloadStart?: (fileId: number) => void;
+  onDownloadEnd?: (fileId: number) => void;
 }) => {
   const buttonRef = useRef<HTMLDivElement>(null);
 
@@ -149,16 +177,23 @@ export const DownloadIconButton = ({
     <div className="flex font-[600] items-center justify-center flex-[2] relative">
       <div
         ref={buttonRef}
-        className="w-[24px] h-[24px] relative cursor-pointer"
+        className="w-[24px] h-[24px] relative cursor-pointer flex items-center justify-center"
         onClick={onClick}
+        title={isDownloading ? "다운로드 진행 중..." : "다운로드 옵션"}
       >
-        <Image src="/images/ic-download-white.png" alt="download" fill />
+        {isDownloading ? (
+          <span className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin shrink-0" />
+        ) : (
+          <Image src="/images/ic-download-white.png" alt="download" fill />
+        )}
         {isActive && (
           <DownloadOptions
             fileLinks={item.fileLinks}
             fileId={item.id}
             onClose={onClose}
             componentType={item.type}
+            onDownloadStart={onDownloadStart}
+            onDownloadEnd={onDownloadEnd}
           />
         )}
       </div>

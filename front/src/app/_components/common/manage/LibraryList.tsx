@@ -54,7 +54,16 @@ const LibraryList = forwardRef(function LibraryList(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeDownloadId, setActiveDownloadId] = useState<number | null>(null);
+  const [downloadingIds, setDownloadingIds] = useState<number[]>([]);
   const { setSearch } = useSearchStore();
+
+  const handleDownloadStart = (id: number) => {
+    setDownloadingIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const handleDownloadEnd = (id: number) => {
+    setDownloadingIds((prev) => prev.filter((itemId) => itemId !== id));
+  };
   const { getAccessToken } = useUserStore();
   // 전체 선택 체크박스 ref
   const selectAllRef = useRef<HTMLInputElement>(null);
@@ -387,8 +396,11 @@ const LibraryList = forwardRef(function LibraryList(
                     },
                   }}
                   isActive={activeDownloadId === item.id}
+                  isDownloading={downloadingIds.includes(item.id)}
                   onClick={(e) => handleDownloadClick(item.id, e)}
                   onClose={handleCloseDownloadOptions}
+                  onDownloadStart={handleDownloadStart}
+                  onDownloadEnd={handleDownloadEnd}
                 />
               </div>
             </div>
