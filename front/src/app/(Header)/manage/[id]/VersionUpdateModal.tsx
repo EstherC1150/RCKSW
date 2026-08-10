@@ -6,8 +6,8 @@ import useUserStore from "@/app/stores/UserStore";
 import Image from "next/image";
 import VideoThumbnail, { isVideoThumbnail } from "../../../_components/common/VideoThumbnail";
 import FbxThumbnailGenerator, { FbxThumbnailGeneratorRef } from "../../../_components/common/FbxThumbnailGenerator";
-import ThumbnailPlaceholder from "../../../_components/common/ThumbnailPlaceholder";
 import { useAlertStore } from "@/app/stores/alertStore";
+import { authenticatedFetch } from "@/app/utils/api";
 
 const isSupportedVideoFile = (file: File) =>
   Boolean(
