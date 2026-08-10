@@ -389,7 +389,7 @@ const LibraryList = forwardRef(function LibraryList(
                     id: item.id,
                     type: type, // 컴포넌트 타입 전달
                     fileLinks: {
-                      source: item.source_file_link,
+                      source: item.source_file_link || item.vcmx_file_link,
                       icon: item.icon_file_link,
                       fbx: item.fbx_file_link,
                     },

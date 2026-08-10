@@ -560,15 +560,15 @@ const downloadFile = async (req, res) => {
     let fileName;
 
     if (fileType === "source") {
-      if (!file.source_file_link) {
+      const sourceLink = file.source_file_link || file.vcmx_file_link;
+      if (!sourceLink) {
         return res.status(404).json({ success: false, message: "소스 파일이 존재하지 않습니다." });
       }
-      const sourceLink = file.source_file_link.startsWith('/') ? file.source_file_link.substring(1) : file.source_file_link;
-      filePath = path.join(__dirname, "..", sourceLink);
+      const rawLink = sourceLink.startsWith('/') ? sourceLink.substring(1) : sourceLink;
+      filePath = path.join(__dirname, "..", rawLink);
       // 파일명을 파일명_버전 형식으로 변경
-      const originalFileName = path.basename(file.source_file_link);
+      const originalFileName = path.basename(sourceLink);
       const fileExtension = path.extname(originalFileName);
-      const fileNameWithoutExt = path.basename(originalFileName, fileExtension);
       fileName = `${file.file_name}_${file.version}${fileExtension}`;
     } else if (fileType === "fbx") {
       if (!file.fbx_file_link) {
@@ -591,13 +591,6 @@ const downloadFile = async (req, res) => {
       const iconFileName = path.basename(iconLink);
       const fileExtension = path.extname(iconFileName);
       fileName = `${file.file_name}_${file.version}_thumbnail${fileExtension}`;
-
-      console.log("썸네일/아이콘 파일 다운로드 시도:", {
-        fileId,
-        fileName,
-        filePath,
-        iconLink: iconOrThumbLink,
-      });
     } else {
       return res.status(400).json({
         success: false,
@@ -606,24 +599,24 @@ const downloadFile = async (req, res) => {
     }
 
     try {
-      const normalizedPath = path.normalize(filePath);
-      console.log("정규화된 경로:", normalizedPath);
+      let normalizedPath = path.normalize(filePath);
 
-      // 파일 존재 확인
+      // 파일 존재 확인 및 레거시/대체 경로 자동 탐색
       if (!fsSync.existsSync(normalizedPath)) {
-        throw new Error(`파일을 찾을 수 없습니다: ${normalizedPath}`);
+        const fileNameOnly = path.basename(normalizedPath);
+        const altPaths = [
+          path.join(__dirname, "..", "uploads", fileNameOnly),
+          path.join(__dirname, "..", "uploads", "source", fileNameOnly),
+          path.join(__dirname, "..", "uploads", "vcmx", fileNameOnly),
+        ];
+        const found = altPaths.find((p) => fsSync.existsSync(p));
+        if (found) {
+          normalizedPath = found;
+        } else {
+          throw new Error(`파일을 찾을 수 없습니다: ${normalizedPath}`);
+        }
       }
 
-      const stats = await fs.stat(normalizedPath);
-      console.log("파일 정보:", {
-        size: stats.size,
-        isFile: stats.isFile(),
-        isDirectory: stats.isDirectory(),
-        mode: stats.mode,
-        actualPath: normalizedPath,
-      });
-
-      // 실제 파일 경로로 업데이트
       filePath = normalizedPath;
     } catch (error) {
       console.error("파일 접근 오류:", {
