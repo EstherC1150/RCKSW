@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import React, { useState, useEffect, useRef } from "react";
+import { useAlertStore } from "@/app/stores/alertStore";
 
 // 파일 다운로드 헬퍼 함수
 export const downloadFileHelper = async (
@@ -11,6 +12,8 @@ export const downloadFileHelper = async (
   onEnd?: (fileId: number) => void
 ) => {
   onStart?.(fileId);
+  const { showAlert } = useAlertStore.getState();
+
   try {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/api/components/download/${fileId}/${fileType}`,
@@ -20,16 +23,22 @@ export const downloadFileHelper = async (
     );
 
     if (!response.ok) {
-      throw new Error("다운로드에 실패했습니다.");
+      const errorJson = await response.json().catch(() => null);
+      throw new Error(errorJson?.message || "다운로드에 실패했습니다.");
     }
 
     const blob = await response.blob();
     const contentDisposition = response.headers.get("content-disposition");
-    const fileName = contentDisposition
-      ? decodeURIComponent(
-          contentDisposition.split("filename=")[1].replace(/"/g, "")
-        )
-      : `download.${fileType}`;
+    let fileName = `download.${fileType}`;
+
+    if (contentDisposition && contentDisposition.includes("filename=")) {
+      try {
+        const rawFileName = contentDisposition.split("filename=")[1].replace(/"/g, "").trim();
+        fileName = decodeURIComponent(rawFileName);
+      } catch (e) {
+        // ignore decode error
+      }
+    }
 
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -42,6 +51,10 @@ export const downloadFileHelper = async (
     link.remove();
   } catch (err) {
     console.error("Download error:", err);
+    showAlert(
+      err instanceof Error ? err.message : "파일 다운로드 중 오류가 발생했습니다.",
+      { title: "다운로드 실패", type: "error" }
+    );
   } finally {
     onEnd?.(fileId);
   }
@@ -196,7 +209,7 @@ export const DownloadIconButton = ({
       onClick(e);
     } else {
       // 다운로드 파일이 1개뿐인 경우 (VC PlugIn, NS PlugIn, NS Model, etc) 바로 다운로드 실행
-      const targetFileType = item.fileLinks.fbx ? "fbx" : "source";
+      const targetFileType = item.fileLinks.source ? "source" : item.fileLinks.fbx ? "fbx" : "source";
       if (item.fileLinks.source || item.fileLinks.fbx) {
         downloadFileHelper(item.id, targetFileType, onDownloadStart, onDownloadEnd);
       }
