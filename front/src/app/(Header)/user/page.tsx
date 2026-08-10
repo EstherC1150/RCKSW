@@ -86,13 +86,8 @@ const UserManagementPage = () => {
         return;
       }
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users?search=${searchInput}&type=${searchType}&page=${currentPage}&limit=${limit}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+      const response = await authenticatedFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/users?search=${searchInput}&type=${searchType}&page=${currentPage}&limit=${limit}`
       );
 
       if (response.status === 401) {

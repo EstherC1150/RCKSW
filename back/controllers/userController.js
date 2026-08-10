@@ -444,6 +444,53 @@ const deleteUsers = async (req, res) => {
   }
 };
 
+const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken: token } = req.body;
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Refresh Token이 필요합니다.",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    const result = await mssql.query("getUserById", { id: decoded.id });
+
+    if (!result.recordset || result.recordset.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: "사용자를 찾을 수 없습니다.",
+      });
+    }
+
+    const user = result.recordset[0];
+    const newAccessToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "24h",
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      accessToken: newAccessToken,
+    });
+  } catch (error) {
+    console.error("토큰 갱신 에러:", error);
+    res.status(401).json({
+      success: false,
+      message: "유효하지 않거나 만료된 Refresh Token입니다.",
+    });
+  }
+};
+
 module.exports = {
   getUsers,
   checkEmail,
@@ -453,4 +500,5 @@ module.exports = {
   updateMyProfile,
   updateUser,
   deleteUsers,
+  refreshToken,
 };

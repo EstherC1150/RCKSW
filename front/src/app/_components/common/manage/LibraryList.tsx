@@ -16,6 +16,7 @@ import VideoThumbnail, { isVideoThumbnail } from "../VideoThumbnail";
 import { DownloadIconButton } from "./DownloadButton";
 import useUserStore from "@/app/stores/UserStore";
 import { useAlertStore } from "@/app/stores/alertStore";
+import { authenticatedFetch } from "@/app/utils/api";
 
 type ApiResponse = {
   files: Omit<TLibrary, "selected">[];
@@ -163,15 +164,13 @@ const LibraryList = forwardRef(function LibraryList(
     });
 
     if (!confirmed) return false;
-    const accessToken = getAccessToken();
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/components`,
         {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
           body: JSON.stringify({ ids: selectedIds }),
         }

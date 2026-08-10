@@ -3,6 +3,50 @@
 import Image from "next/image";
 import React, { useState, useEffect, useRef } from "react";
 
+// 파일 다운로드 헬퍼 함수
+export const downloadFileHelper = async (
+  fileId: number,
+  fileType: "icon" | "source" | "fbx",
+  onStart?: (fileId: number) => void,
+  onEnd?: (fileId: number) => void
+) => {
+  onStart?.(fileId);
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/components/download/${fileId}/${fileType}`,
+      {
+        method: "GET",
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("다운로드에 실패했습니다.");
+    }
+
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get("content-disposition");
+    const fileName = contentDisposition
+      ? decodeURIComponent(
+          contentDisposition.split("filename=")[1].replace(/"/g, "")
+        )
+      : `download.${fileType}`;
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+
+    window.URL.revokeObjectURL(url);
+    link.remove();
+  } catch (err) {
+    console.error("Download error:", err);
+  } finally {
+    onEnd?.(fileId);
+  }
+};
+
 // 파일 다운로드 버튼 컴포넌트
 export const FileDownloadButton = ({
   fileId,
@@ -21,43 +65,8 @@ export const FileDownloadButton = ({
 
   const handleDownload = async () => {
     setIsLoading(true);
-    onDownloadStart?.(fileId);
-
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/components/download/${fileId}/${fileType}`,
-        {
-          method: "GET",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("다운로드에 실패했습니다.");
-      }
-
-      const blob = await response.blob();
-      const contentDisposition = response.headers.get("content-disposition");
-      const fileName = contentDisposition
-        ? decodeURIComponent(
-            contentDisposition.split("filename=")[1].replace(/"/g, "")
-          )
-        : `download.${fileType}`;
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-
-      window.URL.revokeObjectURL(url);
-      link.remove();
-    } catch (err) {
-      console.error("Download error:", err);
-    } finally {
-      setIsLoading(false);
-      onDownloadEnd?.(fileId);
-    }
+    await downloadFileHelper(fileId, fileType, onDownloadStart, onDownloadEnd);
+    setIsLoading(false);
   };
 
   return (
@@ -173,20 +182,47 @@ export const DownloadIconButton = ({
 }) => {
   const buttonRef = useRef<HTMLDivElement>(null);
 
+  // 멀티 파일 옵션 유무 (VC Model 타입이고 FBX와 source가 모두 있을 때만 팝업 표시)
+  const hasMultipleFiles = Boolean(
+    item.type === "vc_model" && item.fileLinks.fbx && item.fileLinks.source
+  );
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isDownloading) return;
+
+    if (hasMultipleFiles) {
+      // 다운로드 파일이 여러 개(FBX + VCMX)인 경우 옵션 팝업 띄움
+      onClick(e);
+    } else {
+      // 다운로드 파일이 1개뿐인 경우 (VC PlugIn, NS PlugIn, NS Model, etc) 바로 다운로드 실행
+      const targetFileType = item.fileLinks.fbx ? "fbx" : "source";
+      if (item.fileLinks.source || item.fileLinks.fbx) {
+        downloadFileHelper(item.id, targetFileType, onDownloadStart, onDownloadEnd);
+      }
+    }
+  };
+
   return (
     <div className="flex font-[600] items-center justify-center flex-[2] relative">
       <div
         ref={buttonRef}
         className="w-[24px] h-[24px] relative cursor-pointer flex items-center justify-center"
-        onClick={onClick}
-        title={isDownloading ? "다운로드 진행 중..." : "다운로드 옵션"}
+        onClick={handleClick}
+        title={
+          isDownloading
+            ? "다운로드 진행 중..."
+            : hasMultipleFiles
+            ? "다운로드 옵션 선택"
+            : "다운로드"
+        }
       >
         {isDownloading ? (
           <span className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin shrink-0" />
         ) : (
           <Image src="/images/ic-download-white.png" alt="download" fill />
         )}
-        {isActive && (
+        {isActive && hasMultipleFiles && (
           <DownloadOptions
             fileLinks={item.fileLinks}
             fileId={item.id}

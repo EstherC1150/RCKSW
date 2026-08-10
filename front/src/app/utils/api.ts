@@ -1,4 +1,5 @@
 import useUserStore from "@/app/stores/UserStore";
+import { useAlertStore } from "@/app/stores/alertStore";
 
 export const authenticatedFetch = async (
   url: string,
@@ -8,10 +9,11 @@ export const authenticatedFetch = async (
   const accessToken = store.getAccessToken();
 
   if (!accessToken) {
+    handleSessionExpired();
     throw new Error("인증 토큰이 없습니다.");
   }
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     ...options,
     headers: {
       ...options.headers,
@@ -25,7 +27,7 @@ export const authenticatedFetch = async (
     if (refreshToken) {
       try {
         const refreshResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`,
+          `${process.env.NEXT_PUBLIC_API_URL}/api/users/refresh`,
           {
             method: "POST",
             headers: {
@@ -40,23 +42,40 @@ export const authenticatedFetch = async (
           store.updateTokens({ accessToken: newAccessToken });
 
           // 새 토큰으로 원래 요청 재시도
-          return fetch(url, {
+          response = await fetch(url, {
             ...options,
             headers: {
               ...options.headers,
               Authorization: `Bearer ${newAccessToken}`,
             },
           });
+
+          if (response.ok) {
+            return response;
+          }
         }
       } catch (error) {
         console.error("토큰 갱신 실패:", error);
       }
     }
 
-    // 토큰 갱신 실패 시 로그아웃
-    store.clearAll();
-    throw new Error("인증이 만료되었습니다.");
+    // 토큰 갱신 실패 또는 401 재발생 시 로그아웃 & 로그인 페이지 리다이렉트
+    handleSessionExpired();
+    throw new Error("인증이 만료되었습니다. 다시 로그인해 주세요.");
   }
 
   return response;
+};
+
+const handleSessionExpired = () => {
+  const store = useUserStore.getState();
+  store.clearAll();
+
+  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    useAlertStore.getState().showAlert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.", {
+      title: "세션 만료",
+      type: "warning",
+    });
+    window.location.href = "/login";
+  }
 };

@@ -13,6 +13,7 @@ import ComponentModal from "@/app/(Header)/manage/ComponentModal";
 import { TComponentFormData } from "@/app/_types/manage/manage.types";
 import useUserStore from "@/app/stores/UserStore";
 import { useAlertStore } from "@/app/stores/alertStore";
+import { authenticatedFetch } from "@/app/utils/api";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // 카테고리 타입 정의
@@ -121,11 +122,8 @@ const ComponentPageLayout = ({
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
-      const response = await fetch(`${apiUrl}/api/components`, {
+      const response = await authenticatedFetch(`${apiUrl}/api/components`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
         body: formDataToSend,
       });
 
@@ -137,11 +135,6 @@ const ComponentPageLayout = ({
         // 컴포넌트 목록 새로고침
         refreshList();
       } else {
-        // 토큰 만료 등의 인증 오류 처리
-        if (response.status === 401) {
-          showAlert("인증이 만료되었습니다. 다시 로그인해주세요.", { title: "인증 오류", type: "error" });
-          return;
-        }
         showAlert(data.message || `${typeName} 등록에 실패했습니다.`, { title: "등록 실패", type: "error" });
       }
     } catch (err) {

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import useUserStore from "@/app/stores/UserStore"; // 인증 토큰 가져오기 위한 import
 import { useAlertStore } from "@/app/stores/alertStore";
+import { authenticatedFetch } from "@/app/utils/api";
 
 interface Category {
   id: number;
@@ -81,13 +82,12 @@ const CategoryEditModal = ({
       }
 
       try {
-        const response = await fetch(
+        const response = await authenticatedFetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/categories`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify({ name: newCategoryName }),
           }
@@ -124,13 +124,12 @@ const CategoryEditModal = ({
       }
 
       try {
-        const response = await fetch(
+        const response = await authenticatedFetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/categories/${editingCategoryId}`,
           {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify({ name: editingCategoryName }),
           }
@@ -182,13 +181,10 @@ const CategoryEditModal = ({
     }
 
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/categories/${id}`,
         {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
         }
       );
 
@@ -339,13 +335,10 @@ const CategoryEditModal = ({
     }
 
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/categories/subCategories/${id}`,
         {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
         }
       );
 
@@ -538,13 +531,12 @@ const CategoryEditModal = ({
     }
 
     try {
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/components/bulk-move`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
             fileIds: selectedFiles,

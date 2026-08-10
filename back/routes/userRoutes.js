@@ -27,6 +27,9 @@ router.post("/signup", userController.signup);
 // 사용자 인증 및 JWT 토큰 발급
 router.post("/login", userController.login);
 
+// 토큰 갱신 엔드포인트
+router.post("/refresh", userController.refreshToken);
+
 // 사용자 프로필 조회
 // verifyToken: JWT 토큰 검증
 router.get("/profile", verifyToken, userController.getProfile);

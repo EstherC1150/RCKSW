@@ -280,21 +280,13 @@ const formatFeaturesText = (raw: any): string => {
         formDataToSend.append("fbxFile", submittedFiles.fbx);
       }
 
-      const response = await fetch(
+      const response = await authenticatedFetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/components/${componentId}`,
         {
           method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
           body: formDataToSend,
         }
       );
-
-      if (response.status === 401) {
-        showAlert("인증이 만료되었습니다. 다시 로그인해주세요.", { title: "인증 오류", type: "error" });
-        return;
-      }
 
       const data = await response.json();
 
