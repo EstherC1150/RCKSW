@@ -24,6 +24,7 @@ export type TLibrary = {
   updated_at: string;
   download_count: number;
   source_file_link: string;
+  vcmx_file_link?: string;
   icon_file_link?: string;
   fbx_file_link?: string;
   thumbnail_image: string;
