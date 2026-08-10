@@ -12,51 +12,20 @@ export const downloadFileHelper = async (
   onEnd?: (fileId: number) => void
 ) => {
   onStart?.(fileId);
-  const { showAlert } = useAlertStore.getState();
-
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/components/download/${fileId}/${fileType}`,
-      {
-        method: "GET",
-      }
-    );
-
-    if (!response.ok) {
-      const errorJson = await response.json().catch(() => null);
-      throw new Error(errorJson?.message || "다운로드에 실패했습니다.");
-    }
-
-    const blob = await response.blob();
-    const contentDisposition = response.headers.get("content-disposition");
-    let fileName = `download.${fileType}`;
-
-    if (contentDisposition && contentDisposition.includes("filename=")) {
-      try {
-        const rawFileName = contentDisposition.split("filename=")[1].replace(/"/g, "").trim();
-        fileName = decodeURIComponent(rawFileName);
-      } catch (e) {
-        // ignore decode error
-      }
-    }
-
-    const url = window.URL.createObjectURL(blob);
+    const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/components/download/${fileId}/${fileType}`;
+    
     const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
+    link.href = downloadUrl;
     document.body.appendChild(link);
     link.click();
-
-    window.URL.revokeObjectURL(url);
-    link.remove();
+    document.body.removeChild(link);
   } catch (err) {
     console.error("Download error:", err);
-    showAlert(
-      err instanceof Error ? err.message : "파일 다운로드 중 오류가 발생했습니다.",
-      { title: "다운로드 실패", type: "error" }
-    );
   } finally {
-    onEnd?.(fileId);
+    setTimeout(() => {
+      onEnd?.(fileId);
+    }, 1200);
   }
 };
 

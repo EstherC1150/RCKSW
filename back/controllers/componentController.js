@@ -601,15 +601,26 @@ const downloadFile = async (req, res) => {
     try {
       let normalizedPath = path.normalize(filePath);
 
-      // 파일 존재 확인 및 레거시/대체 경로 자동 탐색
+      // 파일 존재 확인 및 uploads 하위 전체 서브 폴더 재귀적 자동 탐색
       if (!fsSync.existsSync(normalizedPath)) {
         const fileNameOnly = path.basename(normalizedPath);
-        const altPaths = [
-          path.join(__dirname, "..", "uploads", fileNameOnly),
-          path.join(__dirname, "..", "uploads", "source", fileNameOnly),
-          path.join(__dirname, "..", "uploads", "vcmx", fileNameOnly),
-        ];
-        const found = altPaths.find((p) => fsSync.existsSync(p));
+
+        const findFileRecursive = (dir) => {
+          if (!fsSync.existsSync(dir)) return null;
+          const entries = fsSync.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              const result = findFileRecursive(fullPath);
+              if (result) return result;
+            } else if (entry.name === fileNameOnly) {
+              return fullPath;
+            }
+          }
+          return null;
+        };
+
+        const found = findFileRecursive(path.join(__dirname, "..", "uploads"));
         if (found) {
           normalizedPath = found;
         } else {
