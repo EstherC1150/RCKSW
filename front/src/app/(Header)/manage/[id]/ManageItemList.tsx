@@ -212,44 +212,14 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
     if (!componentData?.thumbnailImage) return;
     setIsDownloadingThumbnail(true);
     try {
-      const isVideo = isVideoThumbnail(componentData.thumbnailImage);
-      const ext = componentData.thumbnailImage.split(".").pop() || (isVideo ? "mp4" : "png");
-      const downloadFileName = `${componentData.fileName}_v${componentData.version}_thumbnail.${ext}`;
-
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
       const downloadUrl = `${apiUrl}/api/components/download/${componentData.id}/thumbnail`;
 
-      const response = await fetch(downloadUrl, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/octet-stream",
-        },
-      });
-
-      if (!response.ok) {
-        // Direct file fetch fallback
-        const fileRes = await fetch(`${apiUrl}${componentData.thumbnailImage}`);
-        if (!fileRes.ok) throw new Error("썸네일 파일을 다운로드할 수 없습니다.");
-        const blob = await fileRes.blob();
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = downloadFileName;
-        document.body.appendChild(link);
-        link.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(link);
-      } else {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = downloadFileName;
-        document.body.appendChild(link);
-        link.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(link);
-      }
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
       console.error("썸네일 다운로드 중 오류:", error);
       useAlertStore.getState().showAlert("썸네일 다운로드에 실패했습니다.", {
@@ -257,7 +227,9 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
         type: "error",
       });
     } finally {
-      setIsDownloadingThumbnail(false);
+      setTimeout(() => {
+        setIsDownloadingThumbnail(false);
+      }, 1200);
     }
   };
 
@@ -390,20 +362,27 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                   <button
                     onClick={handleThumbnailDownload}
                     disabled={isDownloadingThumbnail}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                    className="flex items-center justify-center gap-1.5 whitespace-nowrap min-w-[165px] px-3 py-1.5 text-xs font-medium rounded-lg
                       bg-blue-950/70 hover:bg-blue-900/90 text-blue-300 hover:text-blue-200
                       border border-blue-500/40 hover:border-blue-400
-                      transition-all duration-200 shadow-md shadow-blue-950/40"
+                      transition-all duration-200 shadow-md shadow-blue-950/40 disabled:cursor-not-allowed"
                     title={isVcPlugin ? "썸네일 동영상 다운로드" : "썸네일 이미지 다운로드"}
                   >
-                    <IoDownloadOutline className="w-4 h-4" />
-                    <span>
-                      {isDownloadingThumbnail
-                        ? "다운로드 중..."
-                        : isVcPlugin
-                        ? "동영상 썸네일 다운로드"
-                        : "썸네일 다운로드"}
-                    </span>
+                    {isDownloadingThumbnail ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-blue-300 border-t-transparent rounded-full animate-spin shrink-0" />
+                        <span>다운로드 중...</span>
+                      </>
+                    ) : (
+                      <>
+                        <IoDownloadOutline className="w-4 h-4 shrink-0" />
+                        <span>
+                          {isVcPlugin
+                            ? "동영상 썸네일 다운로드"
+                            : "썸네일 다운로드"}
+                        </span>
+                      </>
+                    )}
                   </button>
                 )}
               </div>
