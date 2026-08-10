@@ -38,7 +38,10 @@ const parseAndSanitizeFeatures = (rawFeatures) => {
 
   if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
     try {
-      const parsed = JSON.parse(trimmed);
+      const sanitized = trimmed.replace(/[\u0000-\u001F]+/g, (match) => {
+        return match.replace(/\r/g, "\\r").replace(/\n/g, "\\n").replace(/\t/g, "\\t");
+      });
+      const parsed = JSON.parse(sanitized);
       if (Array.isArray(parsed)) {
         text = parsed.join("\n");
       }
@@ -65,7 +68,10 @@ const safeParseMainFeatures = (mainFeaturesData) => {
     if (!trimmed) return [];
     if ((trimmed.startsWith("[") && trimmed.endsWith("]")) || (trimmed.startsWith("{") && trimmed.endsWith("}"))) {
       try {
-        const parsed = JSON.parse(trimmed);
+        const sanitized = trimmed.replace(/[\u0000-\u001F]+/g, (match) => {
+          return match.replace(/\r/g, "\\r").replace(/\n/g, "\\n").replace(/\t/g, "\\t");
+        });
+        const parsed = JSON.parse(sanitized);
         if (Array.isArray(parsed)) {
           text = parsed.join("\n");
         } else {
@@ -522,7 +528,7 @@ const getFiles = async (req, res) => {
           ...file,
           updated_at: file.updated_at || file.created_at,
           thumbnail_image: thumbnailPath,
-          main_features: JSON.parse(file.main_features || "[]"),
+          main_features: safeParseMainFeatures(file.main_features),
           download_count: file.total_download_count || file.download_count || 0,
         };
       }),
