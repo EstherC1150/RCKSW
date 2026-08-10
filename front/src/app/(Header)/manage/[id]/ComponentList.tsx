@@ -143,8 +143,7 @@ const ComponentList = ({
   const handleFileDownload = async (
     e: React.MouseEvent,
     fileId: number,
-    fileType: string,
-    fileName: string
+    fileType: string
   ) => {
     e.stopPropagation();
     const key = `${fileId}_${fileType}`;
@@ -152,27 +151,11 @@ const ComponentList = ({
     setDownloadingKey(key);
 
     try {
-      // 백엔드 API를 통해 다운로드 (카운트 증가됨)
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/components/download/${fileId}/${fileType}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/octet-stream",
-          },
-        }
-      );
-
-      if (!response.ok) throw new Error("다운로드에 실패했습니다.");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/components/download/${fileId}/${fileType}`;
       const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName; // 파일 이름 설정
+      link.href = downloadUrl;
       document.body.appendChild(link);
       link.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
     } catch (error) {
       console.error("파일 다운로드 중 오류 발생:", error);
@@ -181,7 +164,9 @@ const ComponentList = ({
         type: "error",
       });
     } finally {
-      setDownloadingKey(null);
+      setTimeout(() => {
+        setDownloadingKey(null);
+      }, 1200);
     }
   };
 
@@ -217,7 +202,7 @@ const ComponentList = ({
                 <th className="py-3 pl-6 pr-4 text-left whitespace-nowrap">파일명</th>
                 <th className="py-3 px-3 text-center w-24 whitespace-nowrap">버전</th>
                 <th className="py-3 px-3 text-center w-32 whitespace-nowrap">업데이트 날짜</th>
-                <th className="py-3 px-6 text-center w-64 min-w-[260px] whitespace-nowrap">다운로드</th>
+                <th className="py-3 px-6 text-center min-w-[290px] whitespace-nowrap">다운로드</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
@@ -258,18 +243,17 @@ const ComponentList = ({
                               handleFileDownload(
                                 e,
                                 file.id,
-                                "source",
-                                `${file.fileName}_${file.version}${file.fileLinks.source ? "." + file.fileLinks.source.split(".").pop() : ""}`
+                                "source"
                               )
                             }
                             disabled={!!downloadingKey}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                            className="flex items-center justify-center gap-1.5 min-w-[135px] whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg
                               bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900/60 disabled:text-gray-400 text-white
                               transition-all duration-200 shadow-md shadow-blue-950/40 disabled:cursor-not-allowed"
                           >
                             {isLoading ? (
                               <>
-                                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
                                 <span>다운로드 중...</span>
                               </>
                             ) : (
@@ -288,18 +272,17 @@ const ComponentList = ({
                               handleFileDownload(
                                 e,
                                 file.id,
-                                "fbx",
-                                `${file.fileName}_${file.version}${file.fileLinks.fbx ? "." + file.fileLinks.fbx.split(".").pop() : ""}`
+                                "fbx"
                               )
                             }
                             disabled={!!downloadingKey}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
+                            className="flex items-center justify-center gap-1.5 min-w-[135px] whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg
                               bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/60 disabled:text-gray-400 text-white
                               transition-all duration-200 shadow-md shadow-indigo-950/40 disabled:cursor-not-allowed"
                           >
                             {isLoading ? (
                               <>
-                                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
                                 <span>다운로드 중...</span>
                               </>
                             ) : (
