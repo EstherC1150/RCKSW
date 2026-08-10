@@ -199,10 +199,10 @@ const ComponentList = ({
           <table className="w-full text-sm border-collapse">
             <thead className="sticky top-0 bg-gray-800/90 backdrop-blur-md text-gray-300 font-medium z-10 border-b border-gray-700">
               <tr>
-                <th className="py-3 pl-6 pr-4 text-left whitespace-nowrap">파일명</th>
-                <th className="py-3 px-3 text-center w-24 whitespace-nowrap">버전</th>
-                <th className="py-3 px-3 text-center w-32 whitespace-nowrap">업데이트 날짜</th>
-                <th className="py-3 px-6 text-center min-w-[290px] whitespace-nowrap">다운로드</th>
+                <th className="py-3.5 pl-6 pr-4 text-left font-semibold whitespace-nowrap w-[35%]">파일명</th>
+                <th className="py-3.5 px-4 text-center font-semibold whitespace-nowrap w-[15%]">버전</th>
+                <th className="py-3.5 px-4 text-center font-semibold whitespace-nowrap w-[20%]">업데이트 날짜</th>
+                <th className="py-3.5 px-6 text-center font-semibold whitespace-nowrap w-[30%] min-w-[300px]">다운로드</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
@@ -216,7 +216,7 @@ const ComponentList = ({
                   }`}
                 >
                   <td
-                    className="py-3 pl-6 pr-4 text-left cursor-pointer hover:text-blue-300 transition-colors truncate"
+                    className="py-3.5 pl-6 pr-4 text-left cursor-pointer hover:text-blue-300 transition-colors truncate"
                     onClick={() =>
                       !file.isCurrent && onRelatedComponentClick(file)
                     }
@@ -224,16 +224,16 @@ const ComponentList = ({
                     <div className="flex items-center gap-2">
                       <span>{file.fileName}</span>
                       {file.isCurrent && (
-                        <span className="px-2 py-0.5 text-[11px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full">
+                        <span className="px-2 py-0.5 text-[11px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full shrink-0">
                           현재 선택됨
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-center font-mono text-xs">{file.version}</td>
-                  <td className="py-3 px-4 text-center text-xs text-gray-400">{formatDate(file.updatedAt)}</td>
-                  <td className="py-3 px-6 text-center">
-                    <div className="flex items-center justify-center gap-2">
+                  <td className="py-3.5 px-4 text-center font-mono text-xs">{file.version}</td>
+                  <td className="py-3.5 px-4 text-center text-xs text-gray-400">{formatDate(file.updatedAt)}</td>
+                  <td className="py-3.5 px-6 text-center min-w-[300px]">
+                    <div className="flex items-center justify-center gap-3">
                       {file.fileLinks.source && (() => {
                         const key = `${file.id}_source`;
                         const isLoading = downloadingKey === key;
@@ -247,7 +247,7 @@ const ComponentList = ({
                               )
                             }
                             disabled={!!downloadingKey}
-                            className="flex items-center justify-center gap-1.5 min-w-[135px] whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg
+                            className="flex items-center justify-center gap-1.5 min-w-[130px] whitespace-nowrap px-4 py-1.5 text-xs font-medium rounded-lg
                               bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900/60 disabled:text-gray-400 text-white
                               transition-all duration-200 shadow-md shadow-blue-950/40 disabled:cursor-not-allowed"
                           >
@@ -276,7 +276,7 @@ const ComponentList = ({
                               )
                             }
                             disabled={!!downloadingKey}
-                            className="flex items-center justify-center gap-1.5 min-w-[135px] whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg
+                            className="flex items-center justify-center gap-1.5 min-w-[130px] whitespace-nowrap px-4 py-1.5 text-xs font-medium rounded-lg
                               bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/60 disabled:text-gray-400 text-white
                               transition-all duration-200 shadow-md shadow-indigo-950/40 disabled:cursor-not-allowed"
                           >
