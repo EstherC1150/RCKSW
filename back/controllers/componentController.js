@@ -649,14 +649,17 @@ const downloadFile = async (req, res) => {
 
     await mysql.query("incrementDownloadCount", { id: fileId });
 
+    const stats = fsSync.statSync(filePath);
+
+    res.setHeader("Content-Length", stats.size);
     res.setHeader("Content-Type", "application/octet-stream");
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="${encodeURIComponent(fileName)}"`
     );
-    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+    res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Disposition");
 
-    const fileStream = fsSync.createReadStream(filePath);
+    const fileStream = fsSync.createReadStream(filePath, { highWaterMark: 1024 * 1024 });
     fileStream.pipe(res);
   } catch (error) {
     console.error("파일 다운로드 에러:", error);
