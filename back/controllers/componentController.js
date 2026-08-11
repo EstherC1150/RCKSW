@@ -1800,10 +1800,15 @@ const updateComponentInfo = async (req, res) => {
   }
 };
 
-// 외부 연동용 최신 버전 6개 필드만 경량 조회 API
+// 외부 연동용 최신 버전 경량 조회 API (type, model_type 파라미터 필터링 지원)
 const getExternalLatestFiles = async (req, res) => {
   try {
-    const result = await mysql.query("getExternalLatestFiles", {});
+    const { type = "", model_type = "" } = req.query;
+
+    const result = await mysql.query("getExternalLatestFiles", {
+      type: type || "",
+      model_type: model_type || "",
+    });
 
     if (!result || !result.recordset) {
       return res.status(500).json({
@@ -1816,6 +1821,7 @@ const getExternalLatestFiles = async (req, res) => {
       file_name: file.file_name,
       version: file.version,
       type: file.type,
+      model_type: file.model_type || null,
       category_id: file.category_id,
       sub_category_id: file.sub_category_id,
       vcmx_file_link: file.vcmx_file_link,

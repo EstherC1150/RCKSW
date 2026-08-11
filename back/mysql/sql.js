@@ -788,13 +788,14 @@ module.exports = {
     ORDER BY created_at DESC
   `,
 
-  // 외부 연동전용 최신 버전 6개 필드만 경량 조회 API용
+  // 외부 연동전용 최신 버전 경량 조회 API용 (model_type 포함)
   getExternalLatestFiles: `
     WITH RankedFiles AS (
       SELECT 
         f.file_name,
         f.version,
         f.type,
+        f.model_type,
         f.category_id,
         f.sub_category_id,
         f.vcmx_file_link,
@@ -806,11 +807,14 @@ module.exports = {
         ) as rn
       FROM files f
       WHERE f.is_active = 1
+        AND (@type = '' OR f.type = @type)
+        AND (@model_type = '' OR f.model_type = @model_type)
     )
     SELECT 
       file_name,
       version,
       type,
+      model_type,
       category_id,
       sub_category_id,
       ISNULL(NULLIF(vcmx_file_link, ''), source_file_link) AS vcmx_file_link
