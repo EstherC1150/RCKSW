@@ -1820,7 +1820,6 @@ const getExternalLatestFiles = async (req, res) => {
     const files = result.recordset.map((file) => ({
       file_name: file.file_name,
       version: file.version,
-      type: file.type,
       model_type: file.model_type || null,
       category_id: file.category_id,
       sub_category_id: file.sub_category_id,
