@@ -1800,13 +1800,13 @@ const updateComponentInfo = async (req, res) => {
   }
 };
 
-// 외부 연동용 최신 버전 경량 조회 API (type, model_type 파라미터 필터링 지원)
+// 외부 연동용 최신 버전 경량 조회 API (기본적으로 type='vc_model' 대상 조회)
 const getExternalLatestFiles = async (req, res) => {
   try {
-    const { type = "", model_type = "" } = req.query;
+    const { type = "vc_model", model_type = "" } = req.query;
 
     const result = await mysql.query("getExternalLatestFiles", {
-      type: type || "",
+      type: type || "vc_model",
       model_type: model_type || "",
     });
 
