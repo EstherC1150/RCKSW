@@ -788,6 +788,37 @@ module.exports = {
     ORDER BY created_at DESC
   `,
 
+  // 외부 연동전용 최신 버전 6개 필드만 경량 조회 API용
+  getExternalLatestFiles: `
+    WITH RankedFiles AS (
+      SELECT 
+        f.file_name,
+        f.version,
+        f.type,
+        f.category_id,
+        f.sub_category_id,
+        f.vcmx_file_link,
+        f.source_file_link,
+        f.component_id,
+        ROW_NUMBER() OVER (
+          PARTITION BY f.component_id 
+          ORDER BY f.updated_at DESC, f.created_at DESC, f.id DESC
+        ) as rn
+      FROM files f
+      WHERE f.is_active = 1
+    )
+    SELECT 
+      file_name,
+      version,
+      type,
+      category_id,
+      sub_category_id,
+      ISNULL(NULLIF(vcmx_file_link, ''), source_file_link) AS vcmx_file_link
+    FROM RankedFiles 
+    WHERE rn = 1
+    ORDER BY file_name ASC
+  `,
+
   // 컴포넌트 전체 그룹의 이름을 업데이트 (동기화)
   // @component_id: 컴포넌트 그룹 ID
   // @file_name: 새로운 파일 이름

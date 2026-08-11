@@ -15,6 +15,9 @@ router.get("/all", componentController.getAllFiles);
 // 모든 파일 최신 버전 정보 조회 (외부 API용 - 인증 없음)
 router.get("/all_update", componentController.getAllLatestFiles);
 
+// 외부 연동전용 최신 버전 6개 필드만 경량 조회 (인증 없음)
+router.get("/external", componentController.getExternalLatestFiles);
+
 // VCMX 파일 일괄 다운로드 (구체적인 라우트를 먼저 배치)
 router.get("/download/bulk/vcmx", componentController.downloadAllVcmxFiles);
 

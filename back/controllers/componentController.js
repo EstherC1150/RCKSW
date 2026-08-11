@@ -1800,6 +1800,43 @@ const updateComponentInfo = async (req, res) => {
   }
 };
 
+// 외부 연동용 최신 버전 6개 필드만 경량 조회 API
+const getExternalLatestFiles = async (req, res) => {
+  try {
+    const result = await mysql.query("getExternalLatestFiles", {});
+
+    if (!result || !result.recordset) {
+      return res.status(500).json({
+        success: false,
+        message: "외부 최신 파일 정보를 조회할 수 없습니다.",
+      });
+    }
+
+    const files = result.recordset.map((file) => ({
+      file_name: file.file_name,
+      version: file.version,
+      type: file.type,
+      category_id: file.category_id,
+      sub_category_id: file.sub_category_id,
+      vcmx_file_link: file.vcmx_file_link,
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "외부 연동용 최신 버전 파일 정보 조회 성공",
+      total_count: files.length,
+      data: files,
+    });
+  } catch (error) {
+    console.error("외부 최신 파일 정보 조회 에러:", error);
+    res.status(500).json({
+      success: false,
+      message: "외부 최신 파일 정보 조회 중 오류가 발생했습니다.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createComponent: exports.createComponent,
   getFiles,
@@ -1811,5 +1848,6 @@ module.exports = {
   downloadAllVcmxFiles, // vc에서 접근 파일 다운 - 추가
   getAllFiles, // vc에서 접근 - 새로 추가
   getAllLatestFiles, // vc에서 접근 - 최신 버전만
+  getExternalLatestFiles, // 외부 API 연동용 (경량 6개 필드)
   bulkMoveFiles, // 파일 일괄 이동 - 새로 추가
 };
