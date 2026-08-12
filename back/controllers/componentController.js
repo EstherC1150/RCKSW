@@ -1800,8 +1800,8 @@ const updateComponentInfo = async (req, res) => {
   }
 };
 
-// 외부 연동용 최신 버전 경량 조회 API (기본적으로 type='vc_model' 대상 조회)
-const getExternalLatestFiles = async (req, res) => {
+// Visual Components 소프트웨어 외부 연동/동기화 전용 최신 버전 경량 조회 API (기본적으로 type='vc_model' 대상 조회)
+const getVcSyncFiles = async (req, res) => {
   try {
     const { type = "vc_model", model_type = "" } = req.query;
 
@@ -1813,7 +1813,7 @@ const getExternalLatestFiles = async (req, res) => {
     if (!result || !result.recordset) {
       return res.status(500).json({
         success: false,
-        message: "외부 최신 파일 정보를 조회할 수 없습니다.",
+        message: "VC 연동 최신 파일 정보를 조회할 수 없습니다.",
       });
     }
 
@@ -1828,15 +1828,15 @@ const getExternalLatestFiles = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "외부 연동용 최신 버전 파일 정보 조회 성공",
+      message: "Visual Components 동기화용 최신 버전 파일 정보 조회 성공",
       total_count: files.length,
       data: files,
     });
   } catch (error) {
-    console.error("외부 최신 파일 정보 조회 에러:", error);
+    console.error("VC 동기화 최신 파일 정보 조회 에러:", error);
     res.status(500).json({
       success: false,
-      message: "외부 최신 파일 정보 조회 중 오류가 발생했습니다.",
+      message: "VC 동기화 최신 파일 정보 조회 중 오류가 발생했습니다.",
       error: error.message,
     });
   }
@@ -1853,6 +1853,7 @@ module.exports = {
   downloadAllVcmxFiles, // vc에서 접근 파일 다운 - 추가
   getAllFiles, // vc에서 접근 - 새로 추가
   getAllLatestFiles, // vc에서 접근 - 최신 버전만
-  getExternalLatestFiles, // 외부 API 연동용 (경량 6개 필드)
+  getVcSyncFiles, // Visual Components 외부 연동/동기화 전용 (GET /api/components/vc-sync)
+  getExternalLatestFiles: getVcSyncFiles, // 하위 호환용
   bulkMoveFiles, // 파일 일괄 이동 - 새로 추가
 };
