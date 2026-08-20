@@ -69,7 +69,7 @@ const LibraryList = forwardRef(function LibraryList(
   // 전체 선택 체크박스 ref
   const selectAllRef = useRef<HTMLInputElement>(null);
 
-  const itemsPerPage = 4;
+  const itemsPerPage = 10;
 
   // 전체 선택 상태 계산
   const allSelected =
