@@ -9,6 +9,7 @@ type VideoThumbnailProps = {
   controls?: boolean;
   previewOnHover?: boolean;
   alwaysPlay?: boolean; // 맨 위/첫 번째 동영상 카드 자동 재생 여부
+  onClick?: (event: React.MouseEvent) => void;
 };
 
 const VideoThumbnail = ({
@@ -18,6 +19,7 @@ const VideoThumbnail = ({
   controls = false,
   previewOnHover = true,
   alwaysPlay = false,
+  onClick,
 }: VideoThumbnailProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -68,25 +70,12 @@ const VideoThumbnail = ({
     }
   };
 
-  const togglePlayback = (event: React.MouseEvent<HTMLVideoElement>) => {
-    event.stopPropagation();
-    if (!videoRef.current || controls) return;
-
-    const video = videoRef.current;
-    if (video.paused) {
-      video.muted = true;
-      void video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-    } else {
-      video.pause();
-      setIsPlaying(false);
-    }
-  };
-
   return (
     <div
       className={`relative h-full w-full ${className}`}
       onMouseEnter={playPreview}
       onMouseLeave={stopPreview}
+      onClick={onClick}
     >
       <video
         ref={videoRef}
@@ -99,16 +88,10 @@ const VideoThumbnail = ({
         preload="auto"
         controls={controls}
         onLoadedData={handleLoadedData}
-        onClick={togglePlayback}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         className="h-full w-full object-cover"
       />
-      {!controls && (
-        <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/20 text-2xl text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          {isPlaying ? "Ⅱ" : "▶"}
-        </span>
-      )}
     </div>
   );
 };
