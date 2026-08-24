@@ -1960,7 +1960,7 @@ const deleteComponentVersion = async (req, res) => {
       isLastVersion,
       nextVersionId,
       message: isLastVersion
-        ? "마지막 버전이 삭제되어 컴포넌트가 목록에서 제거되었습니다."
+        ? "마지막 버전이 삭제되어 파일이 목록에서 제거되었습니다."
         : `${file.file_name} (${file.version}) 버전이 성공적으로 삭제되었습니다.`,
     });
   } catch (error) {

@@ -169,9 +169,9 @@ const LibraryList = forwardRef(function LibraryList(
     const { showConfirm, showAlert, showToast } = useAlertStore.getState();
 
     const confirmed = await showConfirm(
-      `선택한 ${selectedIds.length}개 컴포넌트(포함된 모든 버전 및 파일)를 완전히 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`,
+      `선택한 ${selectedIds.length}개 파일(포함된 모든 버전 및 파일)을 완전히 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`,
       {
-        title: "컴포넌트 일괄 삭제 확인",
+        title: "일괄 삭제 확인",
         type: "warning",
         confirmText: "전체 삭제",
         cancelText: "취소",

@@ -184,11 +184,11 @@ const ComponentList = ({
 
     const isOnlyOneVersion = allVersions.length <= 1;
     const confirmMsg = isOnlyOneVersion
-      ? `⚠️ "${file.fileName} (v${file.version})" 버전은 이 컴포넌트의 유일한 버전입니다.\n\n삭제 시 컴포넌트 전체가 목록에서 완전히 삭제됩니다.\n계속 진행하시겠습니까?`
+      ? `⚠️ "${file.fileName} (v${file.version})" 버전은 이 파일의 유일한 버전입니다.\n\n삭제 시 파일 전체가 목록에서 완전히 삭제됩니다.\n계속 진행하시겠습니까?`
       : `"${file.fileName} (v${file.version})" 버전을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`;
 
     const confirmed = await useAlertStore.getState().showConfirm(confirmMsg, {
-      title: isOnlyOneVersion ? "마지막 버전 및 컴포넌트 삭제" : "버전 삭제 확인",
+      title: isOnlyOneVersion ? "마지막 버전 및 파일 삭제" : "버전 삭제 확인",
       type: "warning",
       confirmText: "삭제",
       cancelText: "취소",
