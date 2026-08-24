@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import VersionUpdateModal from "./VersionUpdateModal";
 import useUserStore from "@/app/stores/UserStore";
 import { useAlertStore } from "@/app/stores/alertStore";
+import { authenticatedFetch } from "@/app/utils/api";
+import { IoTrashOutline } from "react-icons/io5";
 
 interface FileLinks {
   source: string | null;
@@ -54,6 +56,8 @@ interface ComponentListProps {
   onRelatedComponentClick: (file: RelatedFile) => void;
   refreshKey?: number;
   onRefresh?: () => void;
+  onLastVersionDeleted?: () => void;
+  onCurrentVersionDeleted?: (nextId: number) => void;
 }
 
 const ComponentList = ({
@@ -61,6 +65,8 @@ const ComponentList = ({
   onRelatedComponentClick,
   refreshKey,
   onRefresh,
+  onLastVersionDeleted,
+  onCurrentVersionDeleted,
 }: ComponentListProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user } = useUserStore();
@@ -139,6 +145,7 @@ const ComponentList = ({
   };
 
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const handleFileDownload = async (
     e: React.MouseEvent,
@@ -167,6 +174,66 @@ const ComponentList = ({
       setTimeout(() => {
         setDownloadingKey(null);
       }, 1200);
+    }
+  };
+
+  // 단일 버전 삭제 핸들러
+  const handleDeleteVersion = async (e: React.MouseEvent, file: VersionItem) => {
+    e.stopPropagation();
+    if (deletingId) return;
+
+    const isOnlyOneVersion = allVersions.length <= 1;
+    const confirmMsg = isOnlyOneVersion
+      ? `⚠️ "${file.fileName} (v${file.version})" 버전은 이 컴포넌트의 유일한 버전입니다.\n\n삭제 시 컴포넌트 전체가 목록에서 완전히 삭제됩니다.\n계속 진행하시겠습니까?`
+      : `"${file.fileName} (v${file.version})" 버전을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`;
+
+    const confirmed = await useAlertStore.getState().showConfirm(confirmMsg, {
+      title: isOnlyOneVersion ? "마지막 버전 및 컴포넌트 삭제" : "버전 삭제 확인",
+      type: "warning",
+      confirmText: "삭제",
+      cancelText: "취소",
+    });
+
+    if (!confirmed) return;
+
+    setDeletingId(file.id);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
+      const response = await authenticatedFetch(`${apiUrl}/api/components/version/${file.id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "버전 삭제에 실패했습니다.");
+      }
+
+      useAlertStore.getState().showAlert(result.message || "버전이 삭제되었습니다.", {
+        title: "삭제 완료",
+        type: "success",
+      });
+
+      if (result.isLastVersion) {
+        if (onLastVersionDeleted) {
+          onLastVersionDeleted();
+        }
+      } else if (file.isCurrent && result.nextVersionId) {
+        if (onCurrentVersionDeleted) {
+          onCurrentVersionDeleted(result.nextVersionId);
+        }
+      } else {
+        if (onRefresh) {
+          onRefresh();
+        }
+      }
+    } catch (err: any) {
+      console.error("버전 삭제 오류:", err);
+      useAlertStore.getState().showAlert(err.message || "버전 삭제 중 오류가 발생했습니다.", {
+        title: "오류 발생",
+        type: "error",
+      });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -199,10 +266,13 @@ const ComponentList = ({
           <table className="w-full text-sm border-collapse">
             <thead className="sticky top-0 bg-gray-800/90 backdrop-blur-md text-gray-300 font-medium z-10 border-b border-gray-700">
               <tr>
-                <th className="py-3.5 pl-6 pr-4 text-left font-semibold whitespace-nowrap w-[35%]">파일명</th>
-                <th className="py-3.5 px-4 text-center font-semibold whitespace-nowrap w-[15%]">버전</th>
-                <th className="py-3.5 px-4 text-center font-semibold whitespace-nowrap w-[20%]">업데이트 날짜</th>
-                <th className="py-3.5 px-6 text-center font-semibold whitespace-nowrap w-[30%] min-w-[300px]">다운로드</th>
+                <th className="py-3.5 pl-6 pr-4 text-left font-semibold whitespace-nowrap">파일명</th>
+                <th className="py-3.5 px-4 text-center font-semibold whitespace-nowrap w-[12%]">버전</th>
+                <th className="py-3.5 px-4 text-center font-semibold whitespace-nowrap w-[16%]">업데이트 날짜</th>
+                <th className="py-3.5 px-6 text-center font-semibold whitespace-nowrap min-w-[280px]">다운로드</th>
+                {(user?.role === "admin" || user?.role === "developer") && (
+                  <th className="py-3.5 px-4 text-center font-semibold whitespace-nowrap w-[10%]">관리</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800">
@@ -232,7 +302,7 @@ const ComponentList = ({
                   </td>
                   <td className="py-3.5 px-4 text-center font-mono text-xs">{file.version}</td>
                   <td className="py-3.5 px-4 text-center text-xs text-gray-400">{formatDate(file.updatedAt)}</td>
-                  <td className="py-3.5 px-6 text-center min-w-[300px]">
+                  <td className="py-3.5 px-6 text-center min-w-[280px]">
                     <div className="flex items-center justify-center gap-3">
                       {file.fileLinks.source && (() => {
                         const key = `${file.id}_source`;
@@ -293,6 +363,26 @@ const ComponentList = ({
                       })()}
                     </div>
                   </td>
+                  {(user?.role === "admin" || user?.role === "developer") && (
+                    <td className="py-3.5 px-4 text-center">
+                      <button
+                        onClick={(e) => handleDeleteVersion(e, file)}
+                        disabled={deletingId === file.id}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
+                          bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300
+                          border border-red-500/30 hover:border-red-500/60
+                          transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={`${file.version} 버전 삭제`}
+                      >
+                        {deletingId === file.id ? (
+                          <span className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                        ) : (
+                          <IoTrashOutline className="w-4 h-4" />
+                        )}
+                        <span>삭제</span>
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

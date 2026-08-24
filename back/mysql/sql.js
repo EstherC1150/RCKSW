@@ -864,4 +864,29 @@ module.exports = {
       updated_at = GETDATE()
     WHERE id = @id
   `,
+
+  // 컴포넌트의 모든 활성 버전 파일 목록 조회
+  // @component_id: 컴포넌트 ID
+  getFilesByComponentId: `
+    SELECT 
+      id,
+      file_name,
+      version,
+      thumbnail_image,
+      source_file_link,
+      icon_file_link,
+      fbx_file_link,
+      vcmx_file_link,
+      created_at,
+      updated_at
+    FROM files
+    WHERE component_id = @component_id AND is_active = 1
+    ORDER BY created_at DESC, id DESC
+  `,
+
+  // 단일 파일(버전) 삭제
+  // @id: 파일 ID
+  deleteFileById: `
+    DELETE FROM files WHERE id = @id
+  `,
 };

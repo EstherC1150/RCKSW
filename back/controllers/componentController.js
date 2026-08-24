@@ -1842,6 +1842,137 @@ const getVcSyncFiles = async (req, res) => {
   }
 };
 
+// 특정 컴포넌트 버전 단일 삭제 (개발자 / 관리자 전용)
+const deleteComponentVersion = async (req, res) => {
+  try {
+    const { fileId } = req.params;
+    const targetFileId = parseInt(fileId, 10);
+
+    if (!targetFileId) {
+      return res.status(400).json({
+        success: false,
+        message: "유효하지 않은 파일 ID입니다.",
+      });
+    }
+
+    // 1. 해당 파일 정보 조회
+    const fileResult = await mysql.query("getFileDetail", { id: targetFileId });
+    if (!fileResult || fileResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "삭제할 파일 버전을 찾을 수 없습니다.",
+      });
+    }
+
+    const file = fileResult.recordset[0];
+    const componentId = file.component_id;
+
+    // 2. 같은 컴포넌트의 모든 활성 버전 파일 조회
+    let allFiles = [];
+    if (componentId) {
+      const allFilesResult = await mysql.query("getFilesByComponentId", {
+        component_id: componentId,
+      });
+      allFiles = allFilesResult.recordset || [];
+    }
+
+    // 파일 물리 삭제 대상 경로 수집
+    const filesToDelete = [
+      file.thumbnail_image,
+      file.source_file_link,
+      file.fbx_file_link,
+      file.vcmx_file_link,
+    ].filter((filePath) => filePath && filePath.trim() !== "");
+
+    // 3. 마지막 버전인지 여부 판단
+    const isLastVersion = allFiles.length <= 1;
+
+    if (isLastVersion) {
+      // 3-A. 마지막 남은 버전인 경우: 컴포넌트 전체 삭제 처리
+      if (componentId) {
+        try {
+          await mysql.query("deleteComponents", {
+            component_ids: String(componentId),
+          });
+        } catch (error) {
+          console.warn("components 테이블 삭제 무시:", error.message);
+        }
+      }
+
+      await mysql.query("deleteFileById", { id: targetFileId });
+
+      // SSE 알림 전송 (컴포넌트 삭제)
+      try {
+        sendComponentDelete(componentId || targetFileId);
+      } catch (sseError) {
+        console.warn("SSE 컴포넌트 삭제 알림 실패:", sseError.message);
+      }
+    } else {
+      // 3-B. 여러 버전 중 특정 버전 하나만 삭제
+      await mysql.query("deleteFileById", { id: targetFileId });
+
+      // SSE 알림 전송 (컴포넌트 업데이트)
+      try {
+        sendComponentUpdate(componentId || targetFileId);
+      } catch (sseError) {
+        console.warn("SSE 컴포넌트 업데이트 알림 실패:", sseError.message);
+      }
+    }
+
+    // 4. 물리 파일 삭제 (기본 템플릿/공용 이미지 제외)
+    for (const filePath of filesToDelete) {
+      if (
+        filePath.startsWith("/images/") ||
+        filePath.includes("ic-vc.png") ||
+        filePath.includes("ic-ns.png") ||
+        filePath.includes("ic-etc.png")
+      ) {
+        continue;
+      }
+
+      try {
+        const fullPath = path.join(__dirname, "..", filePath);
+        try {
+          await fs.access(fullPath);
+          await fs.unlink(fullPath);
+          console.log("버전 파일 삭제 성공:", fullPath);
+        } catch (accessErr) {
+          if (accessErr.code !== "ENOENT") {
+            throw accessErr;
+          }
+        }
+      } catch (fileErr) {
+        console.error("물리 파일 삭제 실패:", filePath, fileErr.message);
+      }
+    }
+
+    // 5. 다음 최신 버전 ID 산출 (현재 보고 있는 버전을 삭제했을 때 이동할 타겟)
+    let nextVersionId = null;
+    if (!isLastVersion) {
+      const remainingFiles = allFiles.filter((f) => f.id !== targetFileId);
+      if (remainingFiles.length > 0) {
+        nextVersionId = remainingFiles[0].id;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      isLastVersion,
+      nextVersionId,
+      message: isLastVersion
+        ? "마지막 버전이 삭제되어 컴포넌트가 목록에서 제거되었습니다."
+        : `${file.file_name} (${file.version}) 버전이 성공적으로 삭제되었습니다.`,
+    });
+  } catch (error) {
+    console.error("컴포넌트 버전 삭제 중 오류:", error);
+    return res.status(500).json({
+      success: false,
+      message: "버전 삭제 중 서버 오류가 발생했습니다.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createComponent: exports.createComponent,
   getFiles,
@@ -1850,6 +1981,7 @@ module.exports = {
   updateComponentVersion,
   updateComponentInfo,
   deleteComponents,
+  deleteComponentVersion, // 버전 단일 삭제 추가
   downloadAllVcmxFiles, // vc에서 접근 파일 다운 - 추가
   getAllFiles, // vc에서 접근 - 새로 추가
   getAllLatestFiles, // vc에서 접근 - 최신 버전만

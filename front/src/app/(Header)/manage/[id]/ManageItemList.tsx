@@ -508,6 +508,11 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
         onRelatedComponentClick={handleRelatedComponentClick}
         refreshKey={refreshKey}
         onRefresh={refreshList}
+        onLastVersionDeleted={backToList}
+        onCurrentVersionDeleted={(nextId: number) => {
+          const query = searchParams.toString();
+          router.replace(`/manage/${nextId}${query ? `?${query}` : ""}`);
+        }}
       />
     </div>
   );

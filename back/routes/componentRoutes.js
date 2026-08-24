@@ -83,8 +83,16 @@ router.post(
   componentController.createComponent
 );
 
-// 컴포넌트 삭제 (개발자 / 관리자 가능)
+// 컴포넌트 전체 삭제 (개발자 / 관리자 가능)
 router.delete("/", verifyToken, isDeveloperOrAdmin, componentController.deleteComponents);
+
+// 특정 버전 단일 삭제 (개발자 / 관리자 가능)
+router.delete(
+  "/version/:fileId",
+  verifyToken,
+  isDeveloperOrAdmin,
+  componentController.deleteComponentVersion
+);
 
 // 파일 일괄 이동 (개발자 / 관리자 가능)
 router.post(
