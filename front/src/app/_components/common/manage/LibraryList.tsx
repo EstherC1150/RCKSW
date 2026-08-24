@@ -126,6 +126,18 @@ const LibraryList = forwardRef(function LibraryList(
     return `${year}.${month}.${day}`;
   };
 
+  // 컴포넌트 상세 페이지 사전 로드 (호버 시 즉시 프리페치)
+  const handleComponentPrefetch = (itemId: number) => {
+    const params = new URLSearchParams({
+      fromType: type,
+      fromPage: String(curPage),
+      fromSortBy: sortBy,
+      ...(search ? { fromSearch: search } : {}),
+    });
+
+    router.prefetch(`/manage/${itemId}?${params.toString()}`);
+  };
+
   // 컴포넌트 클릭 핸들러
   const handleComponentClick = (itemId: number) => {
     console.log("Navigating to component detail:", itemId);
@@ -304,6 +316,7 @@ const LibraryList = forwardRef(function LibraryList(
             <div
               key={item.id}
               onClick={() => handleComponentClick(item.id)}
+              onMouseEnter={() => handleComponentPrefetch(item.id)}
               className="flex bg-card w-full items-center border-b-[1px] border-border hover:bg-input cursor-pointer h-[124px] overflow-hidden transition-colors duration-200"
             >
               <div className="flex items-center justify-center flex-[1.5] h-full">

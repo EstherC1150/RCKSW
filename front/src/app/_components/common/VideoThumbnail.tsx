@@ -9,6 +9,7 @@ type VideoThumbnailProps = {
   controls?: boolean;
   previewOnHover?: boolean;
   alwaysPlay?: boolean; // 맨 위/첫 번째 동영상 카드 자동 재생 여부
+  preload?: "auto" | "metadata" | "none";
   onClick?: (event: React.MouseEvent) => void;
 };
 
@@ -19,6 +20,7 @@ const VideoThumbnail = ({
   controls = false,
   previewOnHover = true,
   alwaysPlay = false,
+  preload = alwaysPlay ? "auto" : "metadata",
   onClick,
 }: VideoThumbnailProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -85,7 +87,7 @@ const VideoThumbnail = ({
         loop
         playsInline
         autoPlay={alwaysPlay}
-        preload="auto"
+        preload={preload}
         controls={controls}
         onLoadedData={handleLoadedData}
         onPlay={() => setIsPlaying(true)}
