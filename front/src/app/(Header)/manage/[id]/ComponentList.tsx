@@ -309,7 +309,7 @@ const ComponentList = ({
                 <th scope="col" className="py-3 pl-6 pr-4 text-left font-semibold">파일명</th>
                 <th scope="col" className="py-3 px-4 text-center font-semibold w-24">버전</th>
                 <th scope="col" className="py-3 px-4 text-center font-semibold w-32">업데이트 일자</th>
-                <th scope="col" className="py-3 px-6 text-center font-semibold min-w-[280px]">다운로드</th>
+                <th scope="col" className={`py-3 px-4 text-center font-semibold ${componentData.type === "vc_model" ? "w-[380px] min-w-[370px]" : "w-[270px] min-w-[260px]"}`}>다운로드</th>
                 {(user?.role === "admin" || user?.role === "developer") && (
                   <th scope="col" className="py-3 px-4 text-center font-semibold w-24 min-w-[72px] whitespace-nowrap">관리</th>
                 )}
@@ -346,9 +346,10 @@ const ComponentList = ({
                       </td>
                       <td className="py-3.5 px-4 text-center align-middle font-mono text-xs">{file.version}</td>
                       <td className="py-3.5 px-4 text-center align-middle text-xs text-gray-400">{formatDate(file.updatedAt)}</td>
-                      <td className="py-3.5 px-6 text-center align-middle min-w-[280px]">
+                      <td className={`py-3.5 px-4 text-center align-middle ${componentData.type === "vc_model" ? "w-[380px] min-w-[370px]" : "w-[270px] min-w-[260px]"}`}>
                         <div className="flex items-center justify-center gap-2">
-                          {file.fileLinks.source && (() => {
+                          {/* 1. 주 파일(메인/VCMX) 다운로드 슬롯 */}
+                          {file.fileLinks.source ? (() => {
                             const key = `${file.id}_source`;
                             const isLoading = downloadingKey === key;
                             return (
@@ -361,9 +362,9 @@ const ComponentList = ({
                                   )
                                 }
                                 disabled={!!downloadingKey}
-                                className="flex items-center justify-center gap-1.5 min-w-[130px] whitespace-nowrap px-3.5 py-1.5 text-xs font-medium rounded-lg
+                                className={`flex items-center justify-center gap-1.5 ${componentData.type === "vc_model" ? "w-[125px]" : "w-[130px]"} whitespace-nowrap px-3.5 py-1.5 text-xs font-medium rounded-lg
                                   bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900/60 disabled:text-gray-400 text-white
-                                  transition-all duration-200 shadow-md shadow-blue-950/40 disabled:cursor-not-allowed cursor-pointer"
+                                  transition-all duration-200 shadow-md shadow-blue-950/40 disabled:cursor-not-allowed cursor-pointer shrink-0`}
                                 title={componentData.type === "vc_model" ? "VCMX 파일 다운로드" : "주 파일 다운로드"}
                               >
                                 {isLoading ? (
@@ -380,42 +381,64 @@ const ComponentList = ({
                                 )}
                               </button>
                             );
-                          })()}
+                          })() : (
+                            <button
+                              disabled
+                              className={`flex items-center justify-center ${componentData.type === "vc_model" ? "w-[125px]" : "w-[130px]"} whitespace-nowrap px-3.5 py-1.5 text-xs font-medium rounded-lg
+                                bg-gray-800/40 text-gray-600 border border-gray-800/80 cursor-not-allowed shrink-0 select-none`}
+                              title="이 버전에는 주 파일이 없습니다."
+                            >
+                              파일 없음
+                            </button>
+                          )}
 
-                          {file.fileLinks.fbx && componentData.type === "vc_model" && (() => {
-                            const key = `${file.id}_fbx`;
-                            const isLoading = downloadingKey === key;
-                            return (
+                          {/* 2. FBX 다운로드 슬롯 (VC Model 전용) */}
+                          {componentData.type === "vc_model" && (
+                            file.fileLinks.fbx ? (() => {
+                              const key = `${file.id}_fbx`;
+                              const isLoading = downloadingKey === key;
+                              return (
+                                <button
+                                  onClick={(e) =>
+                                    handleFileDownload(
+                                      e,
+                                      file.id,
+                                      "fbx"
+                                    )
+                                  }
+                                  disabled={!!downloadingKey}
+                                  className="flex items-center justify-center gap-1.5 w-[110px] whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg
+                                    bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/60 disabled:text-gray-400 text-white
+                                    transition-all duration-200 shadow-md shadow-indigo-950/40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                                  title="FBX 파일 다운로드"
+                                >
+                                  {isLoading ? (
+                                    <>
+                                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                                      <span>다운로드 중...</span>
+                                    </>
+                                  ) : (
+                                    "FBX 다운로드"
+                                  )}
+                                </button>
+                              );
+                            })() : (
                               <button
-                                onClick={(e) =>
-                                  handleFileDownload(
-                                    e,
-                                    file.id,
-                                    "fbx"
-                                  )
-                                }
-                                disabled={!!downloadingKey}
-                                className="flex items-center justify-center gap-1.5 min-w-[105px] whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg
-                                  bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/60 disabled:text-gray-400 text-white
-                                  transition-all duration-200 shadow-md shadow-indigo-950/40 disabled:cursor-not-allowed cursor-pointer"
+                                disabled
+                                className="flex items-center justify-center w-[110px] whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg
+                                  bg-gray-800/40 text-gray-600 border border-gray-800/80 cursor-not-allowed shrink-0 select-none"
+                                title="이 버전에는 FBX 파일이 없습니다."
                               >
-                                {isLoading ? (
-                                  <>
-                                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
-                                    <span>다운로드 중...</span>
-                                  </>
-                                ) : (
-                                  "FBX 다운로드"
-                                )}
+                                FBX 없음
                               </button>
-                            );
-                          })()}
+                            )
+                          )}
 
-                          {/* 추가 파일 목록 펼치기/접기 버튼 (아이콘 제거) */}
-                          {hasAdditionalFiles && (
+                          {/* 3. 추가 파일 슬롯 (고정 위치 및 비활성 처리) */}
+                          {hasAdditionalFiles ? (
                             <button
                               onClick={(e) => toggleExpandVersion(file.id, e)}
-                              className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer shadow-sm whitespace-nowrap ${
+                              className={`flex items-center justify-center gap-1.5 w-[115px] px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer shadow-sm whitespace-nowrap shrink-0 ${
                                 isExpanded
                                   ? "bg-cyan-600 text-white border-cyan-400 ring-1 ring-cyan-400"
                                   : "bg-gray-800 hover:bg-gray-700 border-cyan-500/50 text-cyan-300"
@@ -424,6 +447,14 @@ const ComponentList = ({
                             >
                               <span>추가 파일 ({file.additionalFiles?.length})</span>
                               <span className="text-[10px] font-bold">{isExpanded ? "▲" : "▼"}</span>
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="flex items-center justify-center w-[115px] px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-800/80 bg-gray-800/40 text-gray-600 cursor-not-allowed whitespace-nowrap shrink-0 select-none"
+                              title="이 버전에는 추가 파일이 없습니다."
+                            >
+                              추가 파일 없음
                             </button>
                           )}
                         </div>
