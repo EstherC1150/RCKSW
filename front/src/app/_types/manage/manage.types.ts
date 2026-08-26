@@ -1,3 +1,13 @@
+export interface AdditionalFile {
+  id: number;
+  fileId: number;
+  originalName: string;
+  filePath: string;
+  fileSize: number;
+  downloadCount: number;
+  createdAt: string;
+}
+
 export type TComponentFormData = {
   thumbnail: File | null;
   componentName: string;
@@ -7,6 +17,7 @@ export type TComponentFormData = {
   environment: string;
   sourceFile: File | null;
   fbxFile: File | null;
+  additionalFiles?: File[];
   categoryId: string;
   subCategoryId: string;
   type: "vc_plugin" | "ns_plugin" | "vc_model" | "ns_model" | "etc";

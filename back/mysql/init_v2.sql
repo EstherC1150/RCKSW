@@ -69,6 +69,20 @@ CREATE TABLE [dbo].[files](
 );
 GO
 
+/****** 4-1. Table [dbo].[component_additional_files] ******/
+IF OBJECT_ID('[dbo].[component_additional_files]', 'U') IS NOT NULL DROP TABLE [dbo].[component_additional_files];
+CREATE TABLE [dbo].[component_additional_files](
+    [id] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    [file_id] [int] NOT NULL,
+    [original_name] [nvarchar](255) NOT NULL,
+    [file_path] [nvarchar](500) NOT NULL,
+    [file_size] [bigint] NULL,
+    [download_count] [int] NULL DEFAULT ((0)),
+    [created_at] [datetime] NULL DEFAULT (getdate()),
+    CONSTRAINT [FK_additional_files_file] FOREIGN KEY([file_id]) REFERENCES [dbo].[files] ([id]) ON DELETE CASCADE
+);
+GO
+
 /****** 5. Table [dbo].[users] ******/
 IF OBJECT_ID('[dbo].[users]', 'U') IS NOT NULL DROP TABLE [dbo].[users];
 CREATE TABLE [dbo].[users](

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import VersionUpdateModal from "./VersionUpdateModal";
 import useUserStore from "@/app/stores/UserStore";
 import { useAlertStore } from "@/app/stores/alertStore";
 import { authenticatedFetch } from "@/app/utils/api";
-import { IoTrashOutline } from "react-icons/io5";
+import { AdditionalFile } from "@/app/_types/manage/manage.types";
 
 interface FileLinks {
   source: string | null;
@@ -28,6 +28,7 @@ interface RelatedFile {
   componentId: number;
   categoryName: string;
   fileLinks: FileLinks;
+  additionalFiles?: AdditionalFile[];
 }
 
 // 현재 버전을 포함하는 확장된 RelatedFile 타입
@@ -45,6 +46,7 @@ interface ComponentListProps {
     recommendedEnvironment: string;
     thumbnailImage: string;
     fileLinks: FileLinks;
+    additionalFiles?: AdditionalFile[];
     relatedFiles: RelatedFile[];
     componentId: number;
     createdAt: string;
@@ -71,6 +73,12 @@ const ComponentList = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user } = useUserStore();
   const [allVersions, setAllVersions] = useState<VersionItem[]>([]);
+  const [expandedVersionId, setExpandedVersionId] = useState<number | null>(null);
+
+  const toggleExpandVersion = (fileId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedVersionId((prev) => (prev === fileId ? null : fileId));
+  };
 
   useEffect(() => {
     // 현재 버전과 관련 파일을 합친 후 버전별로 정렬하는 함수
@@ -90,6 +98,7 @@ const ComponentList = ({
         componentId: componentData.componentId,
         categoryName: "",
         fileLinks: componentData.fileLinks,
+        additionalFiles: componentData.additionalFiles || [],
         isCurrent: true, // 현재 버전 표시를 위한 플래그
       };
 
@@ -177,61 +186,94 @@ const ComponentList = ({
     }
   };
 
+  const handleAdditionalFileDownload = async (
+    e: React.MouseEvent,
+    additionalFileId: number
+  ) => {
+    e.stopPropagation();
+    const key = `add_${additionalFileId}`;
+    if (downloadingKey) return;
+    setDownloadingKey(key);
+
+    try {
+      const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/components/download/additional/${additionalFileId}`;
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("추가 파일 다운로드 중 오류 발생:", error);
+      useAlertStore.getState().showAlert("추가 파일 다운로드에 실패했습니다.", {
+        title: "다운로드 실패",
+        type: "error",
+      });
+    } finally {
+      setTimeout(() => {
+        setDownloadingKey(null);
+      }, 1200);
+    }
+  };
+
   // 단일 버전 삭제 핸들러
   const handleDeleteVersion = async (e: React.MouseEvent, file: VersionItem) => {
     e.stopPropagation();
-    if (deletingId) return;
 
-    const isOnlyOneVersion = allVersions.length <= 1;
-    const confirmMsg = isOnlyOneVersion
-      ? `⚠️ "${file.fileName} (v${file.version})" 버전은 이 파일의 유일한 버전입니다.\n\n삭제 시 파일 전체가 목록에서 완전히 삭제됩니다.\n계속 진행하시겠습니까?`
-      : `"${file.fileName} (v${file.version})" 버전을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`;
+    // 단일 버전만 남았을 때는 삭제 불가 알림
+    if (allVersions.length <= 1) {
+      useAlertStore.getState().showAlert(
+        "버전이 1개만 남아있는 컴포넌트는 삭제할 수 없습니다. 상위 목록에서 컴포넌트 전체를 삭제해주세요.",
+        { title: "삭제 불가", type: "warning" }
+      );
+      return;
+    }
 
-    const confirmed = await useAlertStore.getState().showConfirm(confirmMsg, {
-      title: isOnlyOneVersion ? "마지막 버전 및 파일 삭제" : "버전 삭제 확인",
-      type: "warning",
-      confirmText: "삭제",
-      cancelText: "취소",
-    });
+    const isConfirmed = await useAlertStore.getState().showConfirm(
+      `정말로 ${file.version} 버전을 삭제하시겠습니까?\n이 작업은 취소할 수 없습니다.`,
+      { title: "버전 삭제", type: "warning" }
+    );
 
-    if (!confirmed) return;
+    if (!isConfirmed) return;
 
     setDeletingId(file.id);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
-      const response = await authenticatedFetch(`${apiUrl}/api/components/version/${file.id}`, {
-        method: "DELETE",
-      });
+      const response = await authenticatedFetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/components/${file.id}`,
+        { method: "DELETE" }
+      );
 
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || "버전 삭제에 실패했습니다.");
-      }
+      const data = await response.json();
 
-      useAlertStore.getState().showAlert(result.message || "버전이 삭제되었습니다.", {
-        title: "삭제 완료",
-        type: "success",
-      });
+      if (data.success) {
+        useAlertStore.getState().showAlert(
+          `${file.version} 버전이 성공적으로 삭제되었습니다.`,
+          { title: "삭제 완료", type: "success" }
+        );
 
-      if (result.isLastVersion) {
-        if (onLastVersionDeleted) {
-          onLastVersionDeleted();
-        }
-      } else if (file.isCurrent && result.nextVersionId) {
-        if (onCurrentVersionDeleted) {
-          onCurrentVersionDeleted(result.nextVersionId);
+        if (file.isCurrent) {
+          const remaining = allVersions.filter((v) => v.id !== file.id);
+          if (remaining.length > 0 && onCurrentVersionDeleted) {
+            onCurrentVersionDeleted(remaining[0].id);
+          } else if (onLastVersionDeleted) {
+            onLastVersionDeleted();
+          }
+        } else {
+          if (onRefresh) {
+            onRefresh();
+          }
         }
       } else {
-        if (onRefresh) {
-          onRefresh();
-        }
+        useAlertStore.getState().showAlert(
+          data.message || "버전 삭제에 실패했습니다.",
+          { title: "삭제 실패", type: "error" }
+        );
       }
-    } catch (err: any) {
-      console.error("버전 삭제 오류:", err);
-      useAlertStore.getState().showAlert(err.message || "버전 삭제 중 오류가 발생했습니다.", {
-        title: "오류 발생",
-        type: "error",
-      });
+    } catch (error) {
+      console.error("버전 삭제 중 오류 발생:", error);
+      useAlertStore.getState().showAlert(
+        "버전 삭제 중 오류가 발생했습니다.",
+        { title: "오류 발생", type: "error" }
+      );
     } finally {
       setDeletingId(null);
     }
@@ -243,148 +285,219 @@ const ComponentList = ({
   }, [refreshKey]);
 
   return (
-    <div className="w-full flex-1 mt-10">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-[20px] font-semibold text-white">버전 목록</h2>
-          {(user?.role === "admin" || user?.role === "developer") && (
-            <button
-              onClick={handleOpenModal}
-              className="px-4 py-2 text-sm font-medium rounded-lg 
-              bg-cyan-600/90 hover:bg-cyan-500 border border-cyan-400/50 text-white
-              transition-all duration-300 ease-in-out 
-              shadow-[0_0_15px_rgba(8,145,178,0.3)]"
-            >
-              새 버전 등록
-            </button>
-          )}
+    <div className="bg-card rounded-xl border border-border p-6 mt-6 shadow-lg">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-white tracking-tight">버전 기록</h2>
+          <p className="text-sm text-gray-400 mt-1">이 컴포넌트의 이전 버전 목록입니다.</p>
         </div>
+        {(user?.role === "admin" || user?.role === "developer") && (
+          <button
+            onClick={handleOpenModal}
+            className="flex items-center gap-1.5 px-5 h-[40px] bg-cyan-600/90 hover:bg-cyan-500 border border-cyan-400/50 text-white rounded-lg text-[14px] font-medium shadow-[0_0_15px_rgba(8,145,178,0.3)] transition-all duration-300 cursor-pointer"
+          >
+            <span>+ 새 버전 업데이트</span>
+          </button>
+        )}
       </div>
 
-      <div className="rounded-xl overflow-hidden border border-gray-700/60 bg-gray-900/60 backdrop-blur-md shadow-xl">
-        <div className="max-h-[320px] overflow-y-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead className="sticky top-0 bg-gray-800/90 backdrop-blur-md text-gray-300 font-medium z-10 border-b border-gray-700">
+      <div className="overflow-hidden rounded-xl border border-gray-700/60 bg-gray-900/40">
+        <div className="max-h-[360px] overflow-y-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs uppercase bg-gray-900/90 text-gray-400 sticky top-0 z-10 border-b border-gray-700/80 backdrop-blur-md">
               <tr>
-                <th className="py-3.5 pl-6 pr-4 text-left font-semibold whitespace-nowrap">파일명</th>
-                <th className="py-3.5 px-4 text-center font-semibold whitespace-nowrap w-[12%]">버전</th>
-                <th className="py-3.5 px-4 text-center font-semibold whitespace-nowrap w-[16%]">업데이트 날짜</th>
-                <th className="py-3.5 px-6 text-center font-semibold whitespace-nowrap min-w-[280px]">다운로드</th>
+                <th scope="col" className="py-3 pl-6 pr-4 text-left font-semibold">파일명</th>
+                <th scope="col" className="py-3 px-4 text-center font-semibold w-24">버전</th>
+                <th scope="col" className="py-3 px-4 text-center font-semibold w-32">업데이트 일자</th>
+                <th scope="col" className="py-3 px-6 text-center font-semibold min-w-[280px]">다운로드</th>
                 {(user?.role === "admin" || user?.role === "developer") && (
-                  <th className="py-3.5 px-4 text-center font-semibold whitespace-nowrap w-[10%]">관리</th>
+                  <th scope="col" className="py-3 px-4 text-center font-semibold w-24 min-w-[72px] whitespace-nowrap">관리</th>
                 )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
-              {allVersions.map((file) => (
-                <tr
-                  key={file.id}
-                  className={`text-gray-200 transition-colors ${
-                    file.isCurrent
-                      ? "bg-blue-950/40 border-l-4 border-l-blue-500 text-white font-medium"
-                      : "bg-gray-800/40 hover:bg-gray-800/80"
-                  }`}
-                >
-                  <td
-                    className="py-3.5 pl-6 pr-4 text-left cursor-pointer hover:text-blue-300 transition-colors truncate"
-                    onClick={() =>
-                      !file.isCurrent && onRelatedComponentClick(file)
-                    }
-                  >
-                    <div className="flex items-center gap-2">
-                      <span>{file.fileName}</span>
-                      {file.isCurrent && (
-                        <span className="px-2 py-0.5 text-[11px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full shrink-0">
-                          현재 선택됨
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4 text-center font-mono text-xs">{file.version}</td>
-                  <td className="py-3.5 px-4 text-center text-xs text-gray-400">{formatDate(file.updatedAt)}</td>
-                  <td className="py-3.5 px-6 text-center min-w-[280px]">
-                    <div className="flex items-center justify-center gap-3">
-                      {file.fileLinks.source && (() => {
-                        const key = `${file.id}_source`;
-                        const isLoading = downloadingKey === key;
-                        return (
-                          <button
-                            onClick={(e) =>
-                              handleFileDownload(
-                                e,
-                                file.id,
-                                "source"
-                              )
-                            }
-                            disabled={!!downloadingKey}
-                            className="flex items-center justify-center gap-1.5 min-w-[130px] whitespace-nowrap px-4 py-1.5 text-xs font-medium rounded-lg
-                              bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900/60 disabled:text-gray-400 text-white
-                              transition-all duration-200 shadow-md shadow-blue-950/40 disabled:cursor-not-allowed"
-                          >
-                            {isLoading ? (
-                              <>
-                                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
-                                <span>다운로드 중...</span>
-                              </>
-                            ) : (
-                              componentData.type === "vc_model" ? "VCMX 다운로드" : "파일 다운로드"
-                            )}
-                          </button>
-                        );
-                      })()}
+            <tbody className="divide-y divide-gray-700/40">
+              {allVersions.map((file) => {
+                const isExpanded = expandedVersionId === file.id;
+                const hasAdditionalFiles = Boolean(file.additionalFiles && file.additionalFiles.length > 0);
 
-                      {file.fileLinks.fbx && componentData.type === "vc_model" && (() => {
-                        const key = `${file.id}_fbx`;
-                        const isLoading = downloadingKey === key;
-                        return (
-                          <button
-                            onClick={(e) =>
-                              handleFileDownload(
-                                e,
-                                file.id,
-                                "fbx"
-                              )
-                            }
-                            disabled={!!downloadingKey}
-                            className="flex items-center justify-center gap-1.5 min-w-[130px] whitespace-nowrap px-4 py-1.5 text-xs font-medium rounded-lg
-                              bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/60 disabled:text-gray-400 text-white
-                              transition-all duration-200 shadow-md shadow-indigo-950/40 disabled:cursor-not-allowed"
-                          >
-                            {isLoading ? (
-                              <>
-                                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
-                                <span>다운로드 중...</span>
-                              </>
-                            ) : (
-                              "FBX 다운로드"
-                            )}
-                          </button>
-                        );
-                      })()}
-                    </div>
-                  </td>
-                  {(user?.role === "admin" || user?.role === "developer") && (
-                    <td className="py-3.5 px-4 text-center">
-                      <button
-                        onClick={(e) => handleDeleteVersion(e, file)}
-                        disabled={deletingId === file.id}
-                        className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg
-                          bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300
-                          border border-red-500/30 hover:border-red-500/60
-                          transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={`${file.version} 버전 삭제`}
+                return (
+                  <React.Fragment key={file.id}>
+                    <tr
+                      className={`text-gray-200 transition-colors ${
+                        file.isCurrent
+                          ? "bg-blue-950/40 border-l-4 border-l-blue-500 text-white font-medium"
+                          : "bg-gray-800/40 hover:bg-gray-800/80"
+                      }`}
+                    >
+                      <td
+                        className="py-3.5 pl-6 pr-4 text-left align-middle cursor-pointer hover:text-blue-300 transition-colors truncate"
+                        onClick={() =>
+                          !file.isCurrent && onRelatedComponentClick(file)
+                        }
                       >
-                        {deletingId === file.id ? (
-                          <span className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                        ) : (
-                          <IoTrashOutline className="w-4 h-4" />
-                        )}
-                        <span>삭제</span>
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))}
+                        <div className="flex items-center gap-2">
+                          <span>{file.fileName}</span>
+                          {file.isCurrent && (
+                            <span className="px-2 py-0.5 text-[11px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full shrink-0">
+                              현재 선택됨
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-center align-middle font-mono text-xs">{file.version}</td>
+                      <td className="py-3.5 px-4 text-center align-middle text-xs text-gray-400">{formatDate(file.updatedAt)}</td>
+                      <td className="py-3.5 px-6 text-center align-middle min-w-[280px]">
+                        <div className="flex items-center justify-center gap-2">
+                          {file.fileLinks.source && (() => {
+                            const key = `${file.id}_source`;
+                            const isLoading = downloadingKey === key;
+                            return (
+                              <button
+                                onClick={(e) =>
+                                  handleFileDownload(
+                                    e,
+                                    file.id,
+                                    "source"
+                                  )
+                                }
+                                disabled={!!downloadingKey}
+                                className="flex items-center justify-center gap-1.5 min-w-[130px] whitespace-nowrap px-3.5 py-1.5 text-xs font-medium rounded-lg
+                                  bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900/60 disabled:text-gray-400 text-white
+                                  transition-all duration-200 shadow-md shadow-blue-950/40 disabled:cursor-not-allowed cursor-pointer"
+                                title={componentData.type === "vc_model" ? "VCMX 파일 다운로드" : "주 파일 다운로드"}
+                              >
+                                {isLoading ? (
+                                  <>
+                                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                                    <span>다운로드 중...</span>
+                                  </>
+                                ) : (
+                                  <span>
+                                    {componentData.type === "vc_model"
+                                      ? "VCMX 다운로드"
+                                      : "파일 다운로드"}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })()}
+
+                          {file.fileLinks.fbx && componentData.type === "vc_model" && (() => {
+                            const key = `${file.id}_fbx`;
+                            const isLoading = downloadingKey === key;
+                            return (
+                              <button
+                                onClick={(e) =>
+                                  handleFileDownload(
+                                    e,
+                                    file.id,
+                                    "fbx"
+                                  )
+                                }
+                                disabled={!!downloadingKey}
+                                className="flex items-center justify-center gap-1.5 min-w-[105px] whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg
+                                  bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-900/60 disabled:text-gray-400 text-white
+                                  transition-all duration-200 shadow-md shadow-indigo-950/40 disabled:cursor-not-allowed cursor-pointer"
+                              >
+                                {isLoading ? (
+                                  <>
+                                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                                    <span>다운로드 중...</span>
+                                  </>
+                                ) : (
+                                  "FBX 다운로드"
+                                )}
+                              </button>
+                            );
+                          })()}
+
+                          {/* 서브 파일 목록 펼치기/접기 버튼 (아이콘 제거) */}
+                          {hasAdditionalFiles && (
+                            <button
+                              onClick={(e) => toggleExpandVersion(file.id, e)}
+                              className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer shadow-sm whitespace-nowrap ${
+                                isExpanded
+                                  ? "bg-cyan-600 text-white border-cyan-400 ring-1 ring-cyan-400"
+                                  : "bg-gray-800 hover:bg-gray-700 border-cyan-500/50 text-cyan-300"
+                              }`}
+                              title="서브 파일 목록 펼치기/접기"
+                            >
+                              <span>서브 파일 ({file.additionalFiles?.length})</span>
+                              <span className="text-[10px] font-bold">{isExpanded ? "▲" : "▼"}</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      {(user?.role === "admin" || user?.role === "developer") && (
+                        <td className="py-3.5 px-4 text-center align-middle w-24 min-w-[72px] whitespace-nowrap">
+                          <div className="flex items-center justify-center">
+                            <button
+                              onClick={(e) => handleDeleteVersion(e, file)}
+                              disabled={deletingId === file.id}
+                              className="inline-flex items-center justify-center px-3.5 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap min-w-[54px]
+                                bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300
+                                border border-red-500/30 hover:border-red-500/60
+                                transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                              title={`${file.version} 버전 삭제`}
+                            >
+                              {deletingId === file.id ? (
+                                <span className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                              ) : (
+                                <span className="whitespace-nowrap">삭제</span>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+
+                    {/* 슬림하고 세련된 서브 파일 인라인 바 */}
+                    {isExpanded && hasAdditionalFiles && (
+                      <tr className="bg-cyan-950/20 border-b border-cyan-500/30">
+                        <td colSpan={user?.role === "admin" || user?.role === "developer" ? 5 : 4} className="px-6 py-2.5 bg-gray-900/95 border-y border-cyan-500/30">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-semibold text-cyan-400 shrink-0 mr-1 flex items-center gap-1.5">
+                              <span className="text-sm">↳</span>
+                              <span>서브 파일:</span>
+                            </span>
+                            {file.additionalFiles?.map((af) => (
+                              <div
+                                key={af.id}
+                                className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-gray-800/90 border border-gray-700/80 hover:border-cyan-500/50 text-xs text-gray-200 transition-all shadow-sm group"
+                              >
+                                <span className="font-medium text-gray-300 group-hover:text-white transition-colors truncate max-w-[220px]" title={af.originalName}>
+                                  {af.originalName}
+                                </span>
+                                <span className="text-[10px] text-gray-400 font-mono">
+                                  ({af.fileSize ? (af.fileSize / 1024 < 1024 ? `${(af.fileSize / 1024).toFixed(1)} KB` : `${(af.fileSize / (1024 * 1024)).toFixed(2)} MB`) : "-"})
+                                </span>
+                                <button
+                                  onClick={(e) => handleAdditionalFileDownload(e, af.id)}
+                                  disabled={downloadingKey === `add_${af.id}`}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded bg-cyan-700 hover:bg-cyan-600 text-white shrink-0 transition-all cursor-pointer disabled:opacity-50"
+                                  title={`${af.originalName} 다운로드`}
+                                >
+                                  {downloadingKey === `add_${af.id}` ? (
+                                    <span className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                                  ) : (
+                                    <span>다운로드</span>
+                                  )}
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              onClick={(e) => toggleExpandVersion(file.id, e)}
+                              className="text-xs text-gray-400 hover:text-gray-200 ml-auto px-2 py-1 rounded hover:bg-gray-800 transition-colors shrink-0 cursor-pointer"
+                            >
+                              ✕ 닫기
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -406,6 +519,7 @@ const ComponentList = ({
             thumbnailImage: latest?.thumbnailImage || componentData.thumbnailImage,
             fileName: latest?.fileName || componentData.fileName,
             modelType: componentData.modelType,
+            additionalFiles: latest?.additionalFiles || componentData.additionalFiles || [],
             fileLinks: {
               source: latest?.fileLinks?.source || componentData.fileLinks.source || undefined,
               icon: latest?.fileLinks?.icon || componentData.fileLinks.icon || undefined,

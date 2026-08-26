@@ -7,7 +7,7 @@ import { useAlertStore } from "@/app/stores/alertStore";
 // 파일 다운로드 헬퍼 함수
 export const downloadFileHelper = async (
   fileId: number,
-  fileType: "icon" | "source" | "fbx",
+  fileType: "icon" | "source" | "fbx" | "package",
   onStart?: (fileId: number) => void,
   onEnd?: (fileId: number) => void
 ) => {
@@ -38,7 +38,7 @@ export const FileDownloadButton = ({
   onDownloadEnd,
 }: {
   fileId: number;
-  fileType: "icon" | "source" | "fbx";
+  fileType: "icon" | "source" | "fbx" | "package";
   componentType?: string;
   onDownloadStart?: (fileId: number) => void;
   onDownloadEnd?: (fileId: number) => void;
@@ -64,7 +64,7 @@ export const FileDownloadButton = ({
         </>
       ) : (
         <>
-          {fileType === "source" ? (
+          {fileType === "source" || fileType === "package" ? (
             componentType === "vc_model" ? "VCMX" : "파일"
           ) : fileType === "fbx" ? (
             "FBX"
@@ -133,7 +133,7 @@ export const DownloadOptions = ({
         {fileLinks.source && (
           <FileDownloadButton
             fileId={fileId}
-            fileType="source"
+            fileType="package"
             componentType={componentType}
             onDownloadStart={onDownloadStart}
             onDownloadEnd={onDownloadEnd}
@@ -177,8 +177,8 @@ export const DownloadIconButton = ({
       // 다운로드 파일이 여러 개(FBX + VCMX)인 경우 옵션 팝업 띄움
       onClick(e);
     } else {
-      // 다운로드 파일이 1개뿐인 경우 (VC PlugIn, NS PlugIn, NS Model, etc) 바로 다운로드 실행
-      const targetFileType = item.fileLinks.source ? "source" : item.fileLinks.fbx ? "fbx" : "source";
+      // 바깥 리스트에서 1클릭 다운로드 시: 서브 파일이 있으면 ZIP 패키지, 없으면 단일 파일 자동 다운로드
+      const targetFileType = item.fileLinks.source ? "package" : item.fileLinks.fbx ? "fbx" : "package";
       if (item.fileLinks.source || item.fileLinks.fbx) {
         downloadFileHelper(item.id, targetFileType, onDownloadStart, onDownloadEnd);
       }

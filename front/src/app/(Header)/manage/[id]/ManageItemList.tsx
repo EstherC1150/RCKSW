@@ -9,6 +9,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { IoArrowBack, IoDownloadOutline, IoPencil } from "react-icons/io5";
 import dynamic from "next/dynamic";
 import ComponentList from "./ComponentList";
+import { AdditionalFile } from "@/app/_types/manage/manage.types";
 
 interface Category {
   id: number;
@@ -36,6 +37,7 @@ interface RelatedFile {
   componentId: number;
   categoryName: string;
   fileLinks: FileLinks;
+  additionalFiles?: AdditionalFile[];
 }
 
 interface ComponentDetail {
@@ -58,6 +60,7 @@ interface ComponentDetail {
     fbx?: string;
     vcmx?: string;
   };
+  additionalFiles?: AdditionalFile[];
   relatedFiles: RelatedFile[];
   type: string;
   modelType?: string;

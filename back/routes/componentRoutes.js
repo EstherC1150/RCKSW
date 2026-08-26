@@ -21,6 +21,9 @@ router.get("/vc-sync", componentController.getVcSyncFiles);
 // VCMX 파일 일괄 다운로드 (구체적인 라우트를 먼저 배치)
 router.get("/download/bulk/vcmx", componentController.downloadAllVcmxFiles);
 
+// 추가 파일 개별 다운로드 (구체적인 라우트를 먼저 배치)
+router.get("/download/additional/:id", componentController.downloadAdditionalFile);
+
 // 파일 다운로드
 router.get("/download/:fileId/:fileType", componentController.downloadFile);
 
@@ -72,6 +75,7 @@ router.post(
     { name: "thumbnail", maxCount: 1 }, // 선택사항
     { name: "sourceFile", maxCount: 1 }, // 필수
     { name: "fbxFile", maxCount: 1 }, // FBX 파일
+    { name: "additionalFiles", maxCount: 20 }, // 추가 파일 (선택사항, 복수)
   ]),
   handleMulterError,
   (req, res, next) => {
@@ -94,6 +98,14 @@ router.delete(
   componentController.deleteComponentVersion
 );
 
+// 추가 파일 단일 삭제 (개발자 / 관리자 가능)
+router.delete(
+  "/additional/:id",
+  verifyToken,
+  isDeveloperOrAdmin,
+  componentController.deleteAdditionalFile
+);
+
 // 파일 일괄 이동 (개발자 / 관리자 가능)
 router.post(
   "/bulk-move",
@@ -109,6 +121,7 @@ router.patch(
     { name: "thumbnail", maxCount: 1 }, // 선택사항
     { name: "sourceFile", maxCount: 1 }, // 선택사항
     { name: "fbxFile", maxCount: 1 }, // FBX 파일
+    { name: "additionalFiles", maxCount: 20 }, // 추가 파일 (선택사항, 복수)
   ]),
   handleMulterError,
   componentController.updateComponentVersion

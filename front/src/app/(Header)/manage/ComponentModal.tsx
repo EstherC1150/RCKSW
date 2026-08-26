@@ -37,6 +37,7 @@ const ComponentModal = ({
     environment: "",
     sourceFile: null,
     fbxFile: null,
+    additionalFiles: [],
     categoryId: "",
     subCategoryId: "",
     type: type,
@@ -61,6 +62,7 @@ const ComponentModal = ({
         environment: "",
         sourceFile: null,
         fbxFile: null,
+        additionalFiles: [],
         categoryId: "",
         subCategoryId: "",
         type: type,
@@ -91,6 +93,7 @@ const ComponentModal = ({
         environment: "",
         sourceFile: null,
         fbxFile: null,
+        additionalFiles: [],
         categoryId: "",
         subCategoryId: "",
         type: value as TComponentFormData["type"],
@@ -115,6 +118,26 @@ const ComponentModal = ({
         return next;
       });
     }
+  };
+
+  // 추가 파일 다중 선택 핸들러
+  const handleAdditionalFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const selectedFiles = Array.from(e.target.files);
+      setFormData((prev) => ({
+        ...prev,
+        additionalFiles: [...(prev.additionalFiles || []), ...selectedFiles],
+      }));
+      e.target.value = ""; // 동일 파일 재선택 가능하게 초기화
+    }
+  };
+
+  // 추가 파일 개별 삭제 핸들러
+  const handleRemoveAdditionalFile = (indexToRemove: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      additionalFiles: (prev.additionalFiles || []).filter((_, idx) => idx !== indexToRemove),
+    }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -434,6 +457,50 @@ const ComponentModal = ({
                 </p>
               </div>
             )}
+
+            {/* 추가 파일 (선택사항) */}
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <label className="block text-white mb-2 flex items-center justify-between">
+                <span>추가파일 (선택사항)</span>
+                <span className="text-xs text-cyan-400 font-normal">복수 파일 선택 가능</span>
+              </label>
+              <input
+                type="file"
+                multiple
+                onChange={handleAdditionalFilesChange}
+                className="w-full bg-input text-foreground p-2 rounded border border-input-border focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
+              />
+              <p className="text-gray-400 text-xs mt-1.5">
+                매뉴얼(PDF), 패치 파일, 예제 소스 등 추가로 제공할 파일들을 한 번에 여러 개 등록할 수 있습니다.
+              </p>
+
+              {/* 선택된 추가 파일 목록 UI */}
+              {formData.additionalFiles && formData.additionalFiles.length > 0 && (
+                <div className="mt-3 space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                  {formData.additionalFiles.map((file, idx) => (
+                    <div
+                      key={`${file.name}_${idx}`}
+                      className="flex items-center justify-between p-2 rounded-lg bg-gray-800/80 border border-gray-700/80 text-xs text-gray-200"
+                    >
+                      <div className="flex items-center gap-2 truncate pr-2">
+                        <span className="truncate font-medium">{file.name}</span>
+                        <span className="text-gray-400 shrink-0 font-mono">
+                          ({file.size / 1024 < 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${(file.size / (1024 * 1024)).toFixed(2)} MB`})
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAdditionalFile(idx)}
+                        className="text-red-400 hover:text-red-300 font-bold px-2 py-0.5 rounded hover:bg-red-500/20 transition-colors shrink-0"
+                        title="파일 삭제"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 썸네일 설정 섹션 (NS/etc Model은 자동 생성되므로 제외) */}

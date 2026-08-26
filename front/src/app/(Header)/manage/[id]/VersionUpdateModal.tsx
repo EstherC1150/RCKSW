@@ -9,6 +9,7 @@ import FbxThumbnailGenerator, { FbxThumbnailGeneratorRef } from "../../../_compo
 import ThumbnailPlaceholder from "../../../_components/common/ThumbnailPlaceholder";
 import { useAlertStore } from "@/app/stores/alertStore";
 import { authenticatedFetch } from "@/app/utils/api";
+import { AdditionalFile } from "@/app/_types/manage/manage.types";
 
 const isSupportedVideoFile = (file: File) =>
   Boolean(
@@ -49,6 +50,7 @@ interface VersionUpdateModalProps {
     };
     fileName?: string;
     modelType?: string;
+    additionalFiles?: AdditionalFile[];
   };
   componentType: string;
 }
@@ -134,6 +136,9 @@ const formatFeaturesText = (raw: any): string => {
     fbx?: File;
   }>({});
 
+  const [additionalFiles, setAdditionalFiles] = useState<File[]>([]);
+  const [excludedPrevFileIds, setExcludedPrevFileIds] = useState<number[]>([]);
+
   const [useExistingSource, setUseExistingSource] = useState(true);
   const [useExistingIcon, setUseExistingIcon] = useState(true);
   const [useExistingFbx, setUseExistingFbx] = useState(true);
@@ -168,6 +173,8 @@ const formatFeaturesText = (raw: any): string => {
 
       // 파일 상태 초기화
       setFiles({});
+      setAdditionalFiles([]);
+      setExcludedPrevFileIds([]);
       setUseExistingSource(true);
       setUseExistingIcon(true);
       setUseExistingFbx(true);
@@ -271,7 +278,18 @@ const formatFeaturesText = (raw: any): string => {
         formDataToSend.append("sourceFile", submittedFiles.source);
       }
 
-
+      // 추가 파일 처리 (선택적 유지 ID 및 신규 파일 전송)
+      if (initialData?.additionalFiles && initialData.additionalFiles.length > 0) {
+        const keptIds = initialData.additionalFiles
+          .filter((af) => !excludedPrevFileIds.includes(af.id))
+          .map((af) => af.id);
+        formDataToSend.append("keptAdditionalFileIds", JSON.stringify(keptIds));
+      }
+      if (additionalFiles && additionalFiles.length > 0) {
+        additionalFiles.forEach((file) => {
+          formDataToSend.append("additionalFiles", file);
+        });
+      }
 
       // FBX 파일 처리 (VC Model)
       if (useExistingFbx && existingFiles.fbx) {
@@ -568,6 +586,130 @@ const formatFeaturesText = (raw: any): string => {
                 />
               </div>
             )}
+
+            {/* 추가 파일 설정 (선택사항, 복수) */}
+            <div className="pt-3 border-t border-gray-700/60">
+              <label className="block text-sm font-medium text-gray-300 mb-1.5 flex items-center justify-between">
+                <span>추가 파일 (선택사항)</span>
+                <span className="text-xs text-cyan-400 font-normal">복수 파일 선택 가능</span>
+              </label>
+
+              {/* 기존 추가 파일 개별 선별/제외 목록 */}
+              {initialData?.additionalFiles && initialData.additionalFiles.length > 0 && (
+                <div className="mb-3 p-3 bg-gray-900/80 rounded-xl border border-gray-700 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-300">
+                      이전 버전 추가 파일 ({initialData.additionalFiles.length - excludedPrevFileIds.length}/{initialData.additionalFiles.length}개 유지)
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {excludedPrevFileIds.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setExcludedPrevFileIds([])}
+                          className="text-[11px] text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+                        >
+                          전체 복구
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setExcludedPrevFileIds(initialData.additionalFiles!.map((af) => af.id))}
+                          className="text-[11px] text-gray-400 hover:text-gray-300 underline cursor-pointer"
+                        >
+                          전체 제외
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                    {initialData.additionalFiles.map((af) => {
+                      const isExcluded = excludedPrevFileIds.includes(af.id);
+                      return (
+                        <div
+                          key={af.id}
+                          className={`flex items-center justify-between p-2 rounded-lg border text-xs transition-all ${
+                            isExcluded
+                              ? "bg-gray-950/40 border-gray-800 text-gray-500 opacity-60"
+                              : "bg-gray-800/90 border-gray-700 text-gray-200"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate pr-2">
+                            <span className={`truncate font-medium ${isExcluded ? "line-through text-gray-500" : ""}`}>
+                              {af.originalName}
+                            </span>
+                            {af.fileSize > 0 && (
+                              <span className="text-gray-500 shrink-0 font-mono text-[11px]">
+                                ({af.fileSize / 1024 < 1024 ? `${(af.fileSize / 1024).toFixed(1)} KB` : `${(af.fileSize / (1024 * 1024)).toFixed(2)} MB`})
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExcludedPrevFileIds((prev) =>
+                                prev.includes(af.id) ? prev.filter((id) => id !== af.id) : [...prev, af.id]
+                              );
+                            }}
+                            className={`px-2.5 py-0.5 rounded text-[11px] font-medium transition-all shrink-0 cursor-pointer ${
+                              isExcluded
+                                ? "bg-blue-600/30 text-blue-300 hover:bg-blue-600/50 border border-blue-500/40"
+                                : "bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30"
+                            }`}
+                          >
+                            {isExcluded ? "복구" : "✕ 제외"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <input
+                type="file"
+                multiple
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    const selected = Array.from(e.target.files);
+                    setAdditionalFiles((prev) => [...prev, ...selected]);
+                    e.target.value = "";
+                  }
+                }}
+                className="w-full px-3 py-2 bg-gray-900/90 border border-gray-700 rounded-lg text-white text-sm"
+              />
+              <p className="text-gray-400 text-xs mt-1">
+                새로 추가할 파일들을 한 번에 여러 개 등록할 수 있습니다.
+              </p>
+
+              {/* 새로 선택된 추가 파일 목록 UI */}
+              {additionalFiles.length > 0 && (
+                <div className="mt-2 space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                  {additionalFiles.map((file, idx) => (
+                    <div
+                      key={`${file.name}_${idx}`}
+                      className="flex items-center justify-between p-2 rounded-lg bg-gray-900/90 border border-cyan-500/40 text-xs text-gray-200"
+                    >
+                      <div className="flex items-center gap-2 truncate pr-2">
+                        <span className="text-cyan-400 font-semibold text-[11px] shrink-0">[신규]</span>
+                        <span className="truncate font-medium">{file.name}</span>
+                        <span className="text-gray-400 shrink-0 font-mono text-[11px]">
+                          ({file.size / 1024 < 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${(file.size / (1024 * 1024)).toFixed(2)} MB`})
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAdditionalFiles((prev) => prev.filter((_, i) => i !== idx))}
+                        className="text-red-400 hover:text-red-300 font-bold px-1.5 py-0.5 rounded hover:bg-red-500/20 transition-colors shrink-0"
+                        title="파일 제거"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 3. 썸네일 설정 그룹 (NS/etc Model 제외) */}

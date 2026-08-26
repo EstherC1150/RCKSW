@@ -12,6 +12,8 @@ const storage = multer.diskStorage({
       uploadPath += "fbx/";
     } else if (file.fieldname === "vcmxFile" || file.fieldname === "sourceFile") {
       uploadPath += "source/";
+    } else if (file.fieldname === "additionalFiles") {
+      uploadPath += "additional/";
     }
 
     // 폴더가 존재하지 않으면 생성

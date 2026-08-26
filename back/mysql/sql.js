@@ -889,4 +889,61 @@ module.exports = {
   deleteFileById: `
     DELETE FROM files WHERE id = @id
   `,
+
+  // 특정 파일(버전)의 추가 파일 목록 조회
+  // @file_id: 파일 ID
+  getAdditionalFilesByFileId: `
+    SELECT id, file_id, original_name, file_path, file_size, download_count, created_at
+    FROM component_additional_files
+    WHERE file_id = @file_id
+    ORDER BY id ASC
+  `,
+
+  // 특정 컴포넌트에 속한 모든 파일들의 추가 파일 목록 일괄 조회
+  // @component_id: 컴포넌트 ID
+  getAdditionalFilesByComponentId: `
+    SELECT a.id, a.file_id, a.original_name, a.file_path, a.file_size, a.download_count, a.created_at
+    FROM component_additional_files a
+    INNER JOIN files f ON a.file_id = f.id
+    WHERE f.component_id = @component_id AND f.is_active = 1
+    ORDER BY a.id ASC
+  `,
+
+  // 추가 파일 등록
+  // @file_id: 파일 ID
+  // @original_name: 원본 파일명
+  // @file_path: 파일 저장 경로
+  // @file_size: 파일 크기
+  insertAdditionalFile: `
+    INSERT INTO component_additional_files (
+      file_id, original_name, file_path, file_size, download_count, created_at
+    )
+    VALUES (
+      @file_id, @original_name, @file_path, @file_size, 0, GETDATE()
+    );
+    SELECT SCOPE_IDENTITY() as id;
+  `,
+
+  // 추가 파일 단일 조회
+  // @id: 추가 파일 ID
+  getAdditionalFileById: `
+    SELECT id, file_id, original_name, file_path, file_size, download_count, created_at
+    FROM component_additional_files
+    WHERE id = @id
+  `,
+
+  // 추가 파일 단일 삭제
+  // @id: 추가 파일 ID
+  deleteAdditionalFile: `
+    DELETE FROM component_additional_files WHERE id = @id
+  `,
+
+  // 추가 파일 다운로드 수 증가
+  // @id: 추가 파일 ID
+  incrementAdditionalFileDownloadCount: `
+    UPDATE component_additional_files
+    SET download_count = download_count + 1
+    WHERE id = @id
+  `,
 };
+

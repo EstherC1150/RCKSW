@@ -4,6 +4,7 @@ const fs = require("fs").promises;
 const fsSync = require("fs");
 const { Jimp } = require("jimp");
 const sharp = require("sharp");
+const archiver = require("archiver");
 const { FBXThumbnailGenerator } = require("../utils/thumbnailGenerator");
 const {
   sendComponentUpdate,
@@ -97,6 +98,21 @@ const safeParseMainFeatures = (mainFeaturesData) => {
   return [text];
 };
 
+// 안전한 원본 파일명 추출 헬퍼 (UTF-8 인코딩 보정)
+const getSafeOriginalName = (file) => {
+  if (!file || !file.originalname) return "file";
+  try {
+    const converted = Buffer.from(file.originalname, "latin1").toString("utf8");
+    // UTF-8 변환 시 널문자나 깨짐 없이 변환되었는지 체크
+    if (converted && !converted.includes("\ufffd")) {
+      return converted;
+    }
+    return file.originalname;
+  } catch (e) {
+    return file.originalname;
+  }
+};
+
 // 파일 타입과 확장자에 따라 저장 경로(카테고리)를 결정하는 헬퍼 함수
 const getPathByCategory = (type, originalName, fieldName) => {
   const ext = path.extname(originalName).toLowerCase();
@@ -107,6 +123,8 @@ const getPathByCategory = (type, originalName, fieldName) => {
     category = 'icon';
   } else if (fieldName === 'fbxFile') {
     category = 'fbx';
+  } else if (fieldName === 'additionalFiles') {
+    category = 'additional';
   } else if (fieldName === 'sourceFile') {
     // 소스 파일의 경우 확장자에 따라 세분화
     if (ext === '.dll') category = 'dll';
@@ -437,10 +455,39 @@ exports.createComponent = async (req, res) => {
     };
 
     const result = await mysql.query("componentCreate", insertData);
+    const newFileId = result.recordset[0].id;
+
+    // 추가 파일(선택사항, 복수) 저장
+    if (req.files?.additionalFiles?.length) {
+      for (const addFile of req.files.additionalFiles) {
+        try {
+          const originalName = getSafeOriginalName(addFile);
+          const { relativeDir, absoluteDir } = getPathByCategory(type, originalName, 'additionalFiles');
+          await fs.mkdir(absoluteDir, { recursive: true });
+
+          const srcPath = addFile.path;
+          const targetPath = path.join(absoluteDir, addFile.filename);
+          await fs.rename(srcPath, targetPath);
+
+          const addFileUrl = `/${relativeDir}/${addFile.filename}`.replace(/\\/g, "/");
+          const fileSize = addFile.size || 0;
+
+          await mysql.query("insertAdditionalFile", {
+            file_id: newFileId,
+            original_name: originalName,
+            file_path: addFileUrl,
+            file_size: fileSize,
+          });
+          console.log("추가 파일 저장 및 DB 등록 완료:", originalName, addFileUrl);
+        } catch (addFileErr) {
+          console.error("추가 파일 저장 실패:", addFileErr);
+        }
+      }
+    }
 
     // 저장 데이터 확인
     const savedData = await mysql.query("getFileById", {
-      id: result.recordset[0].id,
+      id: newFileId,
     });
 
     // SSE 이벤트 전송 - 새 컴포넌트 생성 알림
@@ -556,10 +603,104 @@ const downloadFile = async (req, res) => {
     }
 
     const file = fileResult.recordset[0];
+
+    // 파일 경로 탐색 재귀 헬퍼 함수
+    const resolveFilePath = (relPath) => {
+      if (!relPath) return null;
+      const raw = relPath.startsWith('/') ? relPath.substring(1) : relPath;
+      let full = path.join(__dirname, "..", raw);
+      let normalized = path.normalize(full);
+      if (fsSync.existsSync(normalized)) return normalized;
+
+      // uploads 하위 재귀 탐색
+      const targetName = path.basename(normalized);
+      const findRecursive = (dir) => {
+        if (!fsSync.existsSync(dir)) return null;
+        const entries = fsSync.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const p = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            const res = findRecursive(p);
+            if (res) return res;
+          } else if (entry.name === targetName) {
+            return p;
+          }
+        }
+        return null;
+      };
+      return findRecursive(path.join(__dirname, "..", "uploads"));
+    };
+
+    // 추가 파일(서브 파일) 목록 조회
+    const addFilesResult = await mysql.query("getAdditionalFilesByFileId", { file_id: parseInt(fileId, 10) });
+    const additionalFiles = addFilesResult.recordset || [];
+
+    // 만약 package 요청인데 서브 파일이 있는 경우 -> 메인 파일 + 서브 파일 전체 ZIP 압축 다운로드
+    if (fileType === "package" && additionalFiles.length > 0) {
+      const safeComponentName = file.file_name || "component";
+      const zipFileName = `${safeComponentName}_v${file.version || "1.0.0"}.zip`;
+
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${encodeURIComponent(zipFileName)}"`
+      );
+      res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+
+      const archive = archiver("zip", {
+        zlib: { level: 6 },
+      });
+
+      archive.on("error", (archiveErr) => {
+        console.error("ZIP 압축 에러:", archiveErr);
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, message: "압축 파일 생성 중 오류가 발생했습니다." });
+        }
+      });
+
+      archive.pipe(res);
+
+      // 1. 메인 소스 파일 추가
+      const sourceLink = file.source_file_link || file.vcmx_file_link;
+      if (sourceLink) {
+        const sourcePath = resolveFilePath(sourceLink);
+        if (sourcePath && fsSync.existsSync(sourcePath)) {
+          const ext = path.extname(sourceLink);
+          const entryName = `${file.file_name}_v${file.version}${ext}`;
+          archive.file(sourcePath, { name: entryName });
+        }
+      }
+
+      // 2. 추가 파일들(서브 파일들) 추가
+      for (const af of additionalFiles) {
+        const afPath = resolveFilePath(af.file_path);
+        if (afPath && fsSync.existsSync(afPath)) {
+          archive.file(afPath, { name: af.original_name });
+          // 추가 파일 다운로드 수 증가
+          try {
+            await mysql.query("incrementAdditionalFileDownloadCount", { id: af.id });
+          } catch (e) {}
+        }
+      }
+
+      // 3. FBX 파일 추가 (VC Model 타입인 경우)
+      if (file.type === "vc_model" && file.fbx_file_link) {
+        const fbxPath = resolveFilePath(file.fbx_file_link);
+        if (fbxPath && fsSync.existsSync(fbxPath)) {
+          const entryName = `${file.file_name}_v${file.version}.fbx`;
+          archive.file(fbxPath, { name: entryName });
+        }
+      }
+
+      await archive.finalize();
+      await mysql.query("incrementDownloadCount", { id: fileId });
+      return;
+    }
+
     let filePath;
     let fileName;
 
-    if (fileType === "source") {
+    if (fileType === "source" || fileType === "package") {
       const sourceLink = file.source_file_link || file.vcmx_file_link;
       if (!sourceLink) {
         return res.status(404).json({ success: false, message: "소스 파일이 존재하지 않습니다." });
@@ -671,6 +812,127 @@ const downloadFile = async (req, res) => {
   }
 };
 
+// 추가 파일 개별 다운로드
+const downloadAdditionalFile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await mysql.query("getAdditionalFileById", { id: parseInt(id, 10) });
+
+    if (!result || !result.recordset || result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "추가 파일을 찾을 수 없습니다.",
+      });
+    }
+
+    const af = result.recordset[0];
+    let filePath = af.file_path;
+    const rawLink = filePath.startsWith('/') ? filePath.substring(1) : filePath;
+    let fullPath = path.join(__dirname, "..", rawLink);
+
+    let normalizedPath = path.normalize(fullPath);
+
+    if (!fsSync.existsSync(normalizedPath)) {
+      const fileNameOnly = path.basename(normalizedPath);
+      const findFileRecursive = (dir) => {
+        if (!fsSync.existsSync(dir)) return null;
+        const entries = fsSync.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            const found = findFileRecursive(full);
+            if (found) return found;
+          } else if (entry.name === fileNameOnly) {
+            return full;
+          }
+        }
+        return null;
+      };
+
+      const found = findFileRecursive(path.join(__dirname, "..", "uploads"));
+      if (found) {
+        normalizedPath = found;
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "서버에서 추가 파일을 찾을 수 없습니다.",
+        });
+      }
+    }
+
+    // 다운로드 수 카운트 증가
+    try {
+      await mysql.query("incrementAdditionalFileDownloadCount", { id: parseInt(id, 10) });
+    } catch (countErr) {
+      console.warn("추가 파일 다운로드 수 증가 실패:", countErr);
+    }
+
+    const stats = fsSync.statSync(normalizedPath);
+    res.setHeader("Content-Length", stats.size);
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${encodeURIComponent(af.original_name)}"`
+    );
+    res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Disposition");
+
+    const fileStream = fsSync.createReadStream(normalizedPath, { highWaterMark: 1024 * 1024 });
+    fileStream.pipe(res);
+  } catch (error) {
+    console.error("추가 파일 다운로드 에러:", error);
+    res.status(500).json({
+      success: false,
+      message: "추가 파일 다운로드 중 오류가 발생했습니다.",
+      error: error.message,
+    });
+  }
+};
+
+// 추가 파일 개별 삭제 (관리자/개발자 전용)
+const deleteAdditionalFile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const addFileId = parseInt(id, 10);
+
+    const result = await mysql.query("getAdditionalFileById", { id: addFileId });
+    if (!result || !result.recordset || result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "삭제할 추가 파일을 찾을 수 없습니다.",
+      });
+    }
+
+    const af = result.recordset[0];
+
+    // DB 삭제
+    await mysql.query("deleteAdditionalFile", { id: addFileId });
+
+    // 물리 파일 삭제 시도
+    try {
+      const rawLink = af.file_path.startsWith('/') ? af.file_path.substring(1) : af.file_path;
+      const fullPath = path.join(__dirname, "..", rawLink);
+      if (fsSync.existsSync(fullPath)) {
+        await fs.unlink(fullPath);
+        console.log("추가 파일 물리 삭제 완료:", fullPath);
+      }
+    } catch (unlinkErr) {
+      console.warn("추가 파일 물리 삭제 실패:", unlinkErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: "추가 파일이 삭제되었습니다.",
+    });
+  } catch (error) {
+    console.error("추가 파일 삭제 에러:", error);
+    res.status(500).json({
+      success: false,
+      message: "추가 파일 삭제 중 오류가 발생했습니다.",
+      error: error.message,
+    });
+  }
+};
+
 const getFileDetail = async (req, res) => {
   try {
     const { fileId } = req.params;
@@ -709,6 +971,44 @@ const getFileDetail = async (req, res) => {
     // component_id를 숫자로 변환
     const componentId = parseInt(file.component_id) || null;
 
+    // 현재 파일의 추가 파일 목록 조회
+    const additionalFilesResult = await mysql.query("getAdditionalFilesByFileId", {
+      file_id: parseInt(fileId, 10),
+    });
+    const formattedAdditionalFiles = (additionalFilesResult.recordset || []).map((af) => ({
+      id: af.id,
+      fileId: af.file_id,
+      originalName: af.original_name,
+      filePath: af.file_path,
+      fileSize: af.file_size,
+      downloadCount: af.download_count,
+      createdAt: af.created_at,
+    }));
+
+    // 같은 컴포넌트의 모든 추가 파일 맵 조회 (relatedFiles에 첨부용)
+    let addFilesByFileId = {};
+    if (componentId) {
+      try {
+        const allAddFilesResult = await mysql.query("getAdditionalFilesByComponentId", {
+          component_id: componentId,
+        });
+        (allAddFilesResult.recordset || []).forEach((af) => {
+          if (!addFilesByFileId[af.file_id]) addFilesByFileId[af.file_id] = [];
+          addFilesByFileId[af.file_id].push({
+            id: af.id,
+            fileId: af.file_id,
+            originalName: af.original_name,
+            filePath: af.file_path,
+            fileSize: af.file_size,
+            downloadCount: af.download_count,
+            createdAt: af.created_at,
+          });
+        });
+      } catch (addQueryErr) {
+        console.warn("관련 추가 파일 조회 실패:", addQueryErr);
+      }
+    }
+
     const relatedFilesResult = await mysql.query("getRelatedFiles", {
       component_id: componentId,
       file_id: parseInt(fileId),
@@ -736,6 +1036,7 @@ const getFileDetail = async (req, res) => {
           fbx: relatedFile.fbx_file_link ? `/uploads/fbx/${path.basename(relatedFile.fbx_file_link)}` : null,
           vcmx: relatedFile.vcmx_file_link || null,
         },
+        additionalFiles: addFilesByFileId[relatedFile.id] || [],
       })
     );
 
@@ -761,6 +1062,7 @@ const getFileDetail = async (req, res) => {
         fbx: fbxPath,
         vcmx: vcmxPath,
       },
+      additionalFiles: formattedAdditionalFiles,
       relatedFiles: formattedRelatedFiles,
       type: file.type,
       modelType: file.model_type,
@@ -1085,6 +1387,72 @@ const updateComponentVersion = async (req, res) => {
     }
 
     const newId = result.recordset[0].id;
+
+    // 기존 추가 파일 유지 옵션 처리 (전체 유지 또는 선택적 ID 유지)
+    let keptIds = null;
+    if (req.body.keptAdditionalFileIds) {
+      try {
+        const parsed = typeof req.body.keptAdditionalFileIds === "string"
+          ? JSON.parse(req.body.keptAdditionalFileIds)
+          : req.body.keptAdditionalFileIds;
+        if (Array.isArray(parsed)) {
+          keptIds = parsed.map(Number);
+        }
+      } catch (e) {
+        keptIds = String(req.body.keptAdditionalFileIds).split(",").map(Number).filter(Boolean);
+      }
+    }
+
+    if ((keptIds !== null || req.body.useExistingAdditionalFiles === "true") && originalFile.id) {
+      try {
+        const prevAddFiles = await mysql.query("getAdditionalFilesByFileId", { file_id: originalFile.id });
+        if (prevAddFiles && prevAddFiles.recordset) {
+          let copiedCount = 0;
+          for (const paf of prevAddFiles.recordset) {
+            if (keptIds === null || keptIds.includes(paf.id)) {
+              await mysql.query("insertAdditionalFile", {
+                file_id: newId,
+                original_name: paf.original_name,
+                file_path: paf.file_path,
+                file_size: paf.file_size,
+              });
+              copiedCount++;
+            }
+          }
+          console.log(`기존 추가 파일(${copiedCount}개) 새 버전(${newId})으로 복사 완료`);
+        }
+      } catch (copyErr) {
+        console.warn("기존 추가 파일 복사 실패:", copyErr);
+      }
+    }
+
+    // 새로 업로드된 추가 파일 저장
+    if (req.files?.additionalFiles?.length) {
+      for (const addFile of req.files.additionalFiles) {
+        try {
+          const originalName = getSafeOriginalName(addFile);
+          const { relativeDir, absoluteDir } = getPathByCategory(originalFile.type || "etc", originalName, 'additionalFiles');
+          await fs.mkdir(absoluteDir, { recursive: true });
+
+          const srcPath = addFile.path;
+          const targetPath = path.join(absoluteDir, addFile.filename);
+          await fs.rename(srcPath, targetPath);
+
+          const addFileUrl = `/${relativeDir}/${addFile.filename}`.replace(/\\/g, "/");
+          const fileSize = addFile.size || 0;
+
+          await mysql.query("insertAdditionalFile", {
+            file_id: newId,
+            original_name: originalName,
+            file_path: addFileUrl,
+            file_size: fileSize,
+          });
+          console.log("새 버전 추가 파일 저장 및 DB 등록 완료:", originalName, addFileUrl);
+        } catch (addFileErr) {
+          console.error("새 버전 추가 파일 저장 실패:", addFileErr);
+        }
+      }
+    }
 
     // VC Model은 model_type이 버전마다 갈리지 않도록 같은 component_id의 모든 버전에 동일하게 반영
     if (originalFile.type === "vc_model") {
@@ -1977,6 +2345,8 @@ module.exports = {
   createComponent: exports.createComponent,
   getFiles,
   downloadFile,
+  downloadAdditionalFile, // 추가 파일 다운로드
+  deleteAdditionalFile, // 추가 파일 단일 삭제
   getFileDetail,
   updateComponentVersion,
   updateComponentInfo,

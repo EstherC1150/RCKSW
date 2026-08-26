@@ -120,6 +120,12 @@ const ComponentPageLayout = ({
       formDataToSend.append("fbxFile", formData.fbxFile);
     }
 
+    if (formData.additionalFiles && formData.additionalFiles.length > 0) {
+      formData.additionalFiles.forEach((file) => {
+        formDataToSend.append("additionalFiles", file);
+      });
+    }
+
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
       const response = await authenticatedFetch(`${apiUrl}/api/components`, {
