@@ -411,7 +411,7 @@ const ComponentList = ({
                             );
                           })()}
 
-                          {/* 서브 파일 목록 펼치기/접기 버튼 (아이콘 제거) */}
+                          {/* 추가 파일 목록 펼치기/접기 버튼 (아이콘 제거) */}
                           {hasAdditionalFiles && (
                             <button
                               onClick={(e) => toggleExpandVersion(file.id, e)}
@@ -420,9 +420,9 @@ const ComponentList = ({
                                   ? "bg-cyan-600 text-white border-cyan-400 ring-1 ring-cyan-400"
                                   : "bg-gray-800 hover:bg-gray-700 border-cyan-500/50 text-cyan-300"
                               }`}
-                              title="서브 파일 목록 펼치기/접기"
+                              title="추가 파일 목록 펼치기/접기"
                             >
-                              <span>서브 파일 ({file.additionalFiles?.length})</span>
+                              <span>추가 파일 ({file.additionalFiles?.length})</span>
                               <span className="text-[10px] font-bold">{isExpanded ? "▲" : "▼"}</span>
                             </button>
                           )}
@@ -451,14 +451,14 @@ const ComponentList = ({
                       )}
                     </tr>
 
-                    {/* 슬림하고 세련된 서브 파일 인라인 바 */}
+                    {/* 슬림하고 세련된 추가 파일 인라인 바 */}
                     {isExpanded && hasAdditionalFiles && (
                       <tr className="bg-cyan-950/20 border-b border-cyan-500/30">
                         <td colSpan={user?.role === "admin" || user?.role === "developer" ? 5 : 4} className="px-6 py-2.5 bg-gray-900/95 border-y border-cyan-500/30">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-xs font-semibold text-cyan-400 shrink-0 mr-1 flex items-center gap-1.5">
                               <span className="text-sm">↳</span>
-                              <span>서브 파일:</span>
+                              <span>추가 파일:</span>
                             </span>
                             {file.additionalFiles?.map((af) => (
                               <div
