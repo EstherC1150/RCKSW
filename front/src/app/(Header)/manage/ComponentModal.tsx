@@ -4,7 +4,7 @@ import Image from "next/image";
 import { TComponentFormData } from "@/app/_types/manage/manage.types";
 import React, { useState, useEffect, useRef } from "react";
 import FbxThumbnailGenerator, { FbxThumbnailGeneratorRef } from "../../_components/common/FbxThumbnailGenerator";
-import VideoThumbnail, { isVideoThumbnail } from "../../_components/common/VideoThumbnail";
+import VideoThumbnail, { isVideoThumbnail, isSupportedVideoFile } from "../../_components/common/VideoThumbnail";
 
 import { useAlertStore } from "@/app/stores/alertStore";
 
@@ -535,7 +535,7 @@ const ComponentModal = ({
                   <div className="relative w-full aspect-square max-w-[300px] bg-gray-900 rounded-2xl flex flex-col items-center justify-center border border-gray-600 overflow-hidden shadow-inner">
                     {thumbnailPreview ? (
                       <>
-                        {formData.thumbnail && (isVideoThumbnail(formData.thumbnail.name) || formData.thumbnail.type?.startsWith("video/")) ? (
+                        {(formData.thumbnail && isSupportedVideoFile(formData.thumbnail)) || (!formData.thumbnail && isVideoThumbnail(thumbnailPreview)) ? (
                           <VideoThumbnail
                             src={thumbnailPreview}
                             alt="동영상 썸네일 미리보기"
@@ -547,6 +547,7 @@ const ComponentModal = ({
                             src={thumbnailPreview}
                             alt="썸네일"
                             fill
+                            unoptimized
                             className="object-cover"
                           />
                         )}

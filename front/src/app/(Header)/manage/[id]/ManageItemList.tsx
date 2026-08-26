@@ -237,13 +237,13 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
   };
 
   const backToList = () => {
-    const fromType = searchParams.get("fromType") || "vc_plugin";
+    const targetType = searchParams.get("fromType") || componentData?.type || "vc_plugin";
     let basePath = "/manage/vc-plugin";
     
-    if (fromType === "ns_plugin") basePath = "/manage/ns-plugin";
-    else if (fromType === "vc_model") basePath = "/manage/vc-model";
-    else if (fromType === "ns_model") basePath = "/manage/ns-model";
-    else if (fromType === "etc") basePath = "/manage/etc";
+    if (targetType === "ns_plugin") basePath = "/manage/ns-plugin";
+    else if (targetType === "vc_model") basePath = "/manage/vc-model";
+    else if (targetType === "ns_model") basePath = "/manage/ns-model";
+    else if (targetType === "etc") basePath = "/manage/etc";
 
     const params = new URLSearchParams();
     const fromPage = searchParams.get("fromPage");

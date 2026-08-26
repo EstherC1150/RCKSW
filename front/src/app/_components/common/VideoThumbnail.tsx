@@ -101,9 +101,15 @@ const VideoThumbnail = ({
 export const isVideoThumbnail = (url?: string | null) =>
   Boolean(
     url &&
-      (url.startsWith("blob:") ||
-        url.startsWith("data:video/") ||
-        /\.(mp4|webm|mov|mkv|avi)(?:[?#].*)?$/i.test(url))
+      (url.startsWith("data:video/") ||
+        /\.(mp4|webm|mov|mkv|avi)(?:[?#].*)?$/i.test(url.split("?")[0]))
+  );
+
+export const isSupportedVideoFile = (file?: File | null) =>
+  Boolean(
+    file &&
+      (file.type?.startsWith("video/") ||
+        /\.(mp4|webm|mov|mkv|avi)$/i.test(file.name))
   );
 
 export default VideoThumbnail;

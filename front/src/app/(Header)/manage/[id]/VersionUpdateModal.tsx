@@ -313,9 +313,14 @@ const formatFeaturesText = (raw: any): string => {
         showToast("버전이 업데이트되었습니다.", "success");
         handleClose();
 
-        // 최신 버전 페이지로 리다이렉션
+        // 최신 버전 페이지로 리다이렉션 (fromType 및 검색/페이지 컨텍스트 유지)
         if (data.data?.latestVersion?.id) {
-          router.push(`/manage/${data.data.latestVersion.id}`);
+          const currentParams = new URLSearchParams(window.location.search);
+          if (!currentParams.get("fromType") && componentType) {
+            currentParams.set("fromType", componentType);
+          }
+          const queryStr = currentParams.toString() ? `?${currentParams.toString()}` : "";
+          router.push(`/manage/${data.data.latestVersion.id}${queryStr}`);
         } else if (onSuccess) {
           onSuccess();
         }
@@ -736,7 +741,7 @@ const formatFeaturesText = (raw: any): string => {
                   <div className="relative w-full aspect-square max-w-[240px] bg-gray-950 rounded-lg flex flex-col items-center justify-center border border-gray-700 overflow-hidden">
                     {thumbnailPreview ? (
                       <>
-                        {isVideoThumbnail(thumbnailPreview) || (files.thumbnail && isSupportedVideoFile(files.thumbnail)) ? (
+                        {(files.thumbnail && isSupportedVideoFile(files.thumbnail)) || (!files.thumbnail && isVideoThumbnail(thumbnailPreview)) ? (
                           <VideoThumbnail
                             src={thumbnailPreview}
                             alt="썸네일"
