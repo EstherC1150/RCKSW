@@ -92,6 +92,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isDownloadingThumbnail, setIsDownloadingThumbnail] = useState(false);
+  const [viewMode, setViewMode] = useState<"3d" | "thumbnail">("3d");
   const [isEditingFeatures, setIsEditingFeatures] = useState(false);
 
   const refreshList = useCallback(() => {
@@ -282,7 +283,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
   const hasFbxPreview =
     componentData.fileLinks?.fbx ||
     componentData.fileLinks?.source?.toLowerCase()?.endsWith(".fbx");
-  const isWideThumbnail = !hasFbxPreview && (isVcPlugin || isVideoThumbnail(componentData.thumbnailImage));
+  const isWideThumbnail = (!hasFbxPreview || viewMode === "thumbnail") && (isVcPlugin || isVideoThumbnail(componentData.thumbnailImage));
 
   const isPlaceholder =
     componentData.thumbnailImage === "/images/ic-vc.png" ||
@@ -351,25 +352,49 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
           {/* 컴포넌트 이미지 / 썸네일 영역 */}
           <div className="flex flex-col shrink-0">
             <div className="flex items-center justify-between mb-4 gap-4">
-              <h2 className="text-[20px] font-semibold text-white">
-                {hasFbxPreview
-                  ? "3D 프리뷰"
-                  : isVcPlugin
-                  ? "동영상 썸네일"
-                  : "썸네일"}
-              </h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-[20px] font-semibold text-white">
+                  {isVcPlugin ? "동영상 썸네일" : "미리보기"}
+                </h2>
+                {hasFbxPreview && !isPlaceholder && componentData.thumbnailImage && (
+                  <div className="flex items-center bg-gray-800/90 p-0.5 rounded-lg border border-gray-700">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("3d")}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                        viewMode === "3d"
+                          ? "bg-cyan-600 text-white shadow-sm font-semibold"
+                          : "text-gray-400 hover:text-gray-200 hover:bg-gray-700/50"
+                      }`}
+                    >
+                      3D 뷰
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("thumbnail")}
+                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                        viewMode === "thumbnail"
+                          ? "bg-cyan-600 text-white shadow-sm font-semibold"
+                          : "text-gray-400 hover:text-gray-200 hover:bg-gray-700/50"
+                      }`}
+                    >
+                      썸네일
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center gap-2">
-                {/* 썸네일 다운로드 버튼 */}
-                {!hasFbxPreview && !isPlaceholder && componentData.thumbnailImage && (
+                {/* VC PlugIn 전용 동영상 썸네일 다운로드 버튼 */}
+                {isVcPlugin && !isPlaceholder && componentData.thumbnailImage && (
                   <button
                     onClick={handleThumbnailDownload}
                     disabled={isDownloadingThumbnail}
-                    className="flex items-center justify-center gap-1.5 whitespace-nowrap min-w-[165px] px-3 py-1.5 text-xs font-medium rounded-lg
+                    className="flex items-center justify-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg
                       bg-blue-950/70 hover:bg-blue-900/90 text-blue-300 hover:text-blue-200
                       border border-blue-500/40 hover:border-blue-400
-                      transition-all duration-200 shadow-md shadow-blue-950/40 disabled:cursor-not-allowed"
-                    title={isVcPlugin ? "썸네일 동영상 다운로드" : "썸네일 이미지 다운로드"}
+                      transition-all duration-200 shadow-md shadow-blue-950/40 disabled:cursor-not-allowed cursor-pointer"
+                    title="동영상 썸네일 다운로드"
                   >
                     {isDownloadingThumbnail ? (
                       <>
@@ -379,11 +404,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                     ) : (
                       <>
                         <IoDownloadOutline className="w-4 h-4 shrink-0" />
-                        <span>
-                          {isVcPlugin
-                            ? "동영상 썸네일 다운로드"
-                            : "썸네일 다운로드"}
-                        </span>
+                        <span>동영상 다운로드</span>
                       </>
                     )}
                   </button>
@@ -400,7 +421,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                   : "w-[360px] h-[360px]"
               }`}
             >
-              {hasFbxPreview ? (
+              {hasFbxPreview && viewMode === "3d" ? (
                 <div className="relative w-full h-full">
                   <FbxViewer
                     key={componentData.fileLinks?.fbx || componentData.fileLinks?.source}
@@ -425,6 +446,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                   alt="thumbnail"
                   className="object-cover"
                   fill
+                  unoptimized
                 />
               )}
             </div>

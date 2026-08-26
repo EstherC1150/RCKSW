@@ -503,8 +503,8 @@ const ComponentModal = ({
             </div>
           </div>
 
-          {/* 썸네일 설정 섹션 (NS/etc Model은 자동 생성되므로 제외) */}
-          {formData.sourceFile && formData.type !== "ns_model" && formData.type !== "etc" && (
+          {/* 썸네일 설정 섹션 */}
+          {formData.sourceFile && (
             <div className="mb-6 bg-card rounded-xl border border-border mt-4 p-6 shadow-sm">
               <h3 className="text-white font-semibold mb-4 flex items-center justify-between">
                 <span>썸네일 설정</span>

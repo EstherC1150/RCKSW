@@ -717,9 +717,8 @@ const formatFeaturesText = (raw: any): string => {
             </div>
           </div>
 
-          {/* 3. 썸네일 설정 그룹 (NS/etc Model 제외) */}
-          {componentType !== "ns_model" && componentType !== "etc" && (
-            <div className="bg-gray-800/60 p-4 rounded-xl border border-gray-700/60 space-y-4">
+          {/* 3. 썸네일 설정 그룹 */}
+          <div className="bg-gray-800/60 p-4 rounded-xl border border-gray-700/60 space-y-4">
               <h3 className="text-cyan-400 font-semibold text-sm flex items-center justify-between border-b border-gray-700/60 pb-2">
                 <span>썸네일 설정</span>
                 {componentType === "vc_plugin" && (
@@ -876,7 +875,6 @@ const formatFeaturesText = (raw: any): string => {
                 </div>
               </div>
             </div>
-          )}
 
           {/* 4. 상세 내용 그룹 */}
           <div className="bg-gray-800/60 p-4 rounded-xl border border-gray-700/60 space-y-4">
