@@ -204,12 +204,10 @@ const FbxThumbnailGenerator = forwardRef<
 
   return (
     <div className="relative w-full h-full bg-gray-700 overflow-hidden group">
-      {/* 사용자 안내 메시지 - 더 작고 세련되게, 호버 시에만 강조 */}
-      <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm text-white/80 p-2 rounded text-[10px] z-20 pointer-events-none transition-opacity group-hover:bg-black/70">
-        <div className="font-semibold mb-1 border-b border-white/20 pb-0.5">💡 조작 안내</div>
-        <div>• 회전: 좌클릭 드래그</div>
-        <div>• 이동: 우클릭 드래그</div>
-        <div>• 확대: 휠 스크롤</div>
+      {/* 사용자 조작 안내 - 좌측 상단 컴팩트 배치 */}
+      <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white/80 px-2 py-1.5 rounded-md text-[10px] z-20 pointer-events-none transition-opacity">
+        <div className="font-medium text-cyan-300 text-[10px] mb-0.5">💡 3D 조작</div>
+        <div className="text-[9px] text-gray-300 leading-tight">회전: 좌클릭 | 이동: 우클릭 | 확대: 휠</div>
       </div>
 
       {isGenerating && (
