@@ -32,7 +32,7 @@ const ClientLayout = ({ children }: Props) => {
       if (!store.user || isExpired) {
         store.clearAll();
         if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-          useAlertStore.getState().showAlert("로그인 세션(24시간)이 만료되었습니다. 다시 로그인해 주세요.", {
+          useAlertStore.getState().showAlert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.", {
             title: "세션 만료",
             type: "warning",
           });
@@ -44,8 +44,8 @@ const ClientLayout = ({ children }: Props) => {
     // 마운트 및 경로 이동 시 즉시 인증/만료 검증
     checkAuth();
 
-    // 1분마다 만료 체크 및 창 포커스 복귀 시 즉시 체크
-    const timer = setInterval(checkAuth, 60 * 1000);
+    // 5초마다 만료 체크 및 창 포커스 복귀 시 즉시 체크 (실시간 세션 만료 감지)
+    const timer = setInterval(checkAuth, 5 * 1000);
     window.addEventListener("focus", checkAuth);
     document.addEventListener("visibilitychange", checkAuth);
 

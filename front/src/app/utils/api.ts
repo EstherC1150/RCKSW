@@ -168,7 +168,7 @@ const handleSessionExpired = () => {
   store.clearAll();
 
   if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-    useAlertStore.getState().showAlert("로그인 세션(24시간)이 만료되었습니다. 다시 로그인해 주세요.", {
+    useAlertStore.getState().showAlert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.", {
       title: "세션 만료",
       type: "warning",
     });
