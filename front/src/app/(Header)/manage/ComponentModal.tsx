@@ -316,7 +316,6 @@ const ComponentModal = ({
       <UploadProgressOverlay
         isSubmitting={isSubmitting}
         progress={uploadProgress}
-        title="컴포넌트 등록"
       />
       <div className="bg-card rounded-lg p-8 w-[800px] max-h-[90vh] overflow-y-auto relative border border-border shadow-2xl">
         <button

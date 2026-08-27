@@ -395,7 +395,6 @@ const formatFeaturesText = (raw: any): string => {
       <UploadProgressOverlay
         isSubmitting={isSubmitting}
         progress={uploadProgress}
-        title="새 버전 등록"
       />
 
       <div className="bg-gray-800 rounded-2xl p-6 w-[600px] max-h-[85vh] overflow-y-auto relative shadow-2xl">

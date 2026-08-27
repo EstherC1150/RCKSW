@@ -222,15 +222,34 @@ export const authenticatedUpload = async (
   });
 };
 
-export const handleSessionExpired = () => {
-  const store = useUserStore.getState();
-  store.clearAll();
+let isHandlingSessionExpired = false;
+
+export const handleSessionExpired = async (
+  message = "로그인 세션이 만료되었습니다.\n다시 로그인해 주세요.",
+  title = "세션 만료"
+) => {
+  if (isHandlingSessionExpired) return;
+  isHandlingSessionExpired = true;
 
   if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-    useAlertStore.getState().showAlert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.", {
-      title: "세션 만료",
-      type: "warning",
-    });
-    window.location.href = "/login";
+    try {
+      // 사용자가 팝업의 [확인] 버튼을 누를 때까지 대기
+      await useAlertStore.getState().showAlert(message, {
+        title,
+        type: "warning",
+        confirmText: "확인",
+      });
+    } catch {
+      // 모달 닫힘 예외 무시
+    } finally {
+      const store = useUserStore.getState();
+      store.clearAll();
+      window.location.href = "/login";
+    }
+  } else {
+    const store = useUserStore.getState();
+    store.clearAll();
   }
+
+  isHandlingSessionExpired = false;
 };
