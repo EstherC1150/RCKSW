@@ -127,7 +127,7 @@ const ComponentPageLayout = ({
     }
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
       const response = await authenticatedFetch(`${apiUrl}/api/components`, {
         method: "POST",
         body: formDataToSend,

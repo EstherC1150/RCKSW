@@ -216,7 +216,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
     if (!componentData?.thumbnailImage) return;
     setIsDownloadingThumbnail(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
       const downloadUrl = `${apiUrl}/api/components/download/${componentData.id}/thumbnail`;
 
       const link = document.createElement("a");

@@ -299,8 +299,9 @@ const formatFeaturesText = (raw: any): string => {
         formDataToSend.append("fbxFile", submittedFiles.fbx);
       }
 
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
       const response = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/components/${componentId}`,
+        `${apiUrl}/api/components/${componentId}`,
         {
           method: "PATCH",
           body: formDataToSend,

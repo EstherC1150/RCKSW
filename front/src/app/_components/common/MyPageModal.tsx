@@ -40,7 +40,7 @@ export default function MyPageModal({ isOpen, onClose }: MyPageModalProps) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
 
   useEffect(() => {
     if (!isOpen) return;

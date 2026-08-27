@@ -4,7 +4,7 @@
 import { useRouter } from "next/navigation"; // 페이지 이동 기능
 import React, { useState, useEffect } from "react"; // 웹 화면 구성과 상태 관리 기능, useEffect 추가
 import { IoPerson, IoLockClosed } from "react-icons/io5"; // 사용자 아이콘과 자물쇠 아이콘
-import useUserStore from "@/app/stores/UserStore"; // 사용자 정보 저장소
+import useUserStore, { isJwtExpired } from "@/app/stores/UserStore"; // 사용자 정보 저장소
 import Image from "next/image";
 import LoadingSpinner from "@/app/_components/common/LoadingSpinner"; // 로딩 스피너 컴포넌트
 
@@ -19,21 +19,27 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
   // 사용자 정보를 저장할 기능
-  const { setUser, setTokens, isAuthenticated } = useUserStore();
+  const { setUser, setTokens } = useUserStore();
   const { showAlert } = useAlertStore();
 
-  // 로그인 상태라면 자동 이동
+  // 로그인 상태라면 자동 이동 (24시간 만료 검증 포함)
   useEffect(() => {
-    if (isAuthenticated && isAuthenticated()) {
-      router.replace("/manage"); // 이미 로그인된 경우 관리 페이지로 이동
+    const store = useUserStore.getState();
+    const token = store.tokens?.accessToken;
+    if (store.user && token && !isJwtExpired(token)) {
+      router.replace("/manage"); // 유효한 토큰일 때만 이동
+    } else if (token && isJwtExpired(token)) {
+      // 24시간 지나 만료된 토큰인 경우 세션 정리
+      store.clearAll();
     }
-  }, [isAuthenticated, router]);
+  }, [router]);
 
   // 로그인 버튼을 눌렀을 때 실행되는 함수
   const handleLogin = () => {
     setIsLoading(true); // 로그인 시작 시 로딩 상태 켜기
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
     // 서버에 로그인 요청 보내기
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/login`, {
+    fetch(`${apiUrl}/api/users/login`, {
       method: "POST", // 서버에 데이터를 보내는 방식
       headers: {
         "Content-Type": "application/json", // 보내는 데이터 형식

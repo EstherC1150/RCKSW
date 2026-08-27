@@ -61,7 +61,8 @@ const SignupPage = () => {
       return;
     }
     const phone = `${data.phone1}-${data.phone2}-${data.phone3}`;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/signup`, {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
+    fetch(`${apiUrl}/api/users/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -108,8 +109,9 @@ const SignupPage = () => {
     }
     clearErrors("email");
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users/checkEmail`,
+        `${apiUrl}/api/users/checkEmail`,
         {
           method: "POST",
           headers: {

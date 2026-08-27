@@ -1,4 +1,4 @@
-import useUserStore from "@/app/stores/UserStore";
+import useUserStore, { isJwtExpired } from "@/app/stores/UserStore";
 import { useAlertStore } from "@/app/stores/alertStore";
 
 export const authenticatedFetch = async (
@@ -8,10 +8,12 @@ export const authenticatedFetch = async (
   const store = useUserStore.getState();
   const accessToken = store.getAccessToken();
 
-  if (!accessToken) {
+  if (!accessToken || isJwtExpired(accessToken)) {
     handleSessionExpired();
-    throw new Error("인증 토큰이 없습니다.");
+    throw new Error("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
   }
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
 
   let response = await fetch(url, {
     ...options,
@@ -24,10 +26,10 @@ export const authenticatedFetch = async (
   if (response.status === 401) {
     // 토큰 갱신 시도
     const refreshToken = store.getRefreshToken();
-    if (refreshToken) {
+    if (refreshToken && !isJwtExpired(refreshToken)) {
       try {
         const refreshResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/users/refresh`,
+          `${apiUrl}/api/users/refresh`,
           {
             method: "POST",
             headers: {
@@ -72,7 +74,7 @@ const handleSessionExpired = () => {
   store.clearAll();
 
   if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-    useAlertStore.getState().showAlert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.", {
+    useAlertStore.getState().showAlert("로그인 세션(24시간)이 만료되었습니다. 다시 로그인해 주세요.", {
       title: "세션 만료",
       type: "warning",
     });
