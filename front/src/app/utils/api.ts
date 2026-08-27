@@ -40,11 +40,18 @@ export const ensureValidAccessToken = async (): Promise<string | null> => {
         const newAccessToken = data.accessToken;
         store.updateTokens({ accessToken: newAccessToken });
         return newAccessToken as string;
+      } else if (refreshResponse.status === 401 || refreshResponse.status === 403) {
+        // 서버에서 Refresh Token 만료/무효 판정 -> 명확한 세션 만료 처리
+        handleSessionExpired();
+        return null;
       } else {
+        // 500 서버 장애 등 일시적 오류인 경우 세션을 즉시 폭파하지 않고 기존 세션 유지 시도
+        console.warn(`토큰 갱신 중 일시적 서버 오류 (HTTP ${refreshResponse.status})`);
         return null;
       }
     } catch (error) {
-      console.error("Silent Refresh 실패:", error);
+      // 와이파이 단선/오프라인 등 네트워크 단절 오류 시 세션을 파기하지 않음
+      console.warn("네트워크 일시 오류로 토큰 갱신 요청 실패:", error);
       return null;
     } finally {
       refreshPromise = null;

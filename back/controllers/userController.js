@@ -173,7 +173,7 @@ const login = async (req, res) => {
       },
       process.env.JWT_SECRET,
       {
-        expiresIn: "24h",
+        expiresIn: "2h",
       }
     );
 
@@ -474,7 +474,7 @@ const refreshToken = async (req, res) => {
       },
       process.env.JWT_SECRET,
       {
-        expiresIn: "24h",
+        expiresIn: "2h",
       }
     );
 

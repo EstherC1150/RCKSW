@@ -203,4 +203,13 @@ const useUserStore = create<UserState>()(
   )
 );
 
+// 멀티탭 간 토큰/로그아웃 실시간 동기화 (탭 A에서 갱신/로그아웃 시 탭 B, C도 즉시 자동 동기화)
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key === "user-storage") {
+      useUserStore.persist.rehydrate();
+    }
+  });
+}
+
 export default useUserStore;
