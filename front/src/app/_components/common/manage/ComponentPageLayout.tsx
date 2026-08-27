@@ -13,7 +13,7 @@ import ComponentModal from "@/app/(Header)/manage/ComponentModal";
 import { TComponentFormData } from "@/app/_types/manage/manage.types";
 import useUserStore from "@/app/stores/UserStore";
 import { useAlertStore } from "@/app/stores/alertStore";
-import { authenticatedFetch } from "@/app/utils/api";
+import { authenticatedFetch, authenticatedUpload, UploadProgress } from "@/app/utils/api";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // 카테고리 타입 정의
@@ -78,7 +78,10 @@ const ComponentPageLayout = ({
     setRefreshKey((prev) => prev + 1);
   }, []);
 
-  const handleSubmitComponent = async (formData: TComponentFormData) => {
+  const handleSubmitComponent = async (
+    formData: TComponentFormData,
+    onProgress?: (progress: UploadProgress) => void
+  ) => {
     const accessToken = getAccessToken();
     const { showAlert, showToast } = useAlertStore.getState();
 
@@ -128,24 +131,24 @@ const ComponentPageLayout = ({
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
-      const response = await authenticatedFetch(`${apiUrl}/api/components`, {
-        method: "POST",
-        body: formDataToSend,
-      });
+      const data = await authenticatedUpload(
+        `${apiUrl}/api/components`,
+        formDataToSend,
+        "POST",
+        onProgress
+      );
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (data && data.success) {
         showToast(`${typeName}가 등록되었습니다.`, "success");
         handleCloseModal();
         // 컴포넌트 목록 새로고침
         refreshList();
       } else {
-        showAlert(data.message || `${typeName} 등록에 실패했습니다.`, { title: "등록 실패", type: "error" });
+        showAlert(data?.message || `${typeName} 등록에 실패했습니다.`, { title: "등록 실패", type: "error" });
       }
     } catch (err) {
       console.error(`${typeName} 등록 중 오류 발생:`, err);
-      showAlert(`${typeName} 등록 중 오류가 발생했습니다.`, { title: "오류 발생", type: "error" });
+      showAlert(err instanceof Error ? err.message : `${typeName} 등록 중 오류가 발생했습니다.`, { title: "오류 발생", type: "error" });
     }
   };
 

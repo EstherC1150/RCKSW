@@ -8,7 +8,8 @@ import VideoThumbnail, { isVideoThumbnail } from "../../../_components/common/Vi
 import FbxThumbnailGenerator, { FbxThumbnailGeneratorRef } from "../../../_components/common/FbxThumbnailGenerator";
 import ThumbnailPlaceholder from "../../../_components/common/ThumbnailPlaceholder";
 import { useAlertStore } from "@/app/stores/alertStore";
-import { authenticatedFetch } from "@/app/utils/api";
+import { authenticatedFetch, authenticatedUpload, UploadProgress } from "@/app/utils/api";
+import UploadProgressOverlay from "../../../_components/common/UploadProgressOverlay";
 import { AdditionalFile } from "@/app/_types/manage/manage.types";
 
 const isSupportedVideoFile = (file: File) =>
@@ -148,6 +149,7 @@ const formatFeaturesText = (raw: any): string => {
     string | null
   >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 
   const [existingFiles] = useState({
     source: initialData?.fileLinks?.source || "",
@@ -300,17 +302,14 @@ const formatFeaturesText = (raw: any): string => {
       }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
-      const response = await authenticatedFetch(
+      const data = await authenticatedUpload(
         `${apiUrl}/api/components/${componentId}`,
-        {
-          method: "PATCH",
-          body: formDataToSend,
-        }
+        formDataToSend,
+        "PATCH",
+        (progress) => setUploadProgress(progress)
       );
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (data && data.success) {
         showToast("버전이 업데이트되었습니다.", "success");
         handleClose();
 
@@ -326,11 +325,11 @@ const formatFeaturesText = (raw: any): string => {
           onSuccess();
         }
       } else {
-        showAlert(data.message || "버전 업데이트에 실패했습니다.", { title: "업데이트 실패", type: "error" });
+        showAlert(data?.message || "버전 업데이트에 실패했습니다.", { title: "업데이트 실패", type: "error" });
       }
     } catch (error) {
       console.error("버전 업데이트 중 오류 발생:", error);
-      showAlert("버전 업데이트 중 오류가 발생했습니다.", { title: "오류 발생", type: "error" });
+      showAlert(error instanceof Error ? error.message : "버전 업데이트 중 오류가 발생했습니다.", { title: "오류 발생", type: "error" });
     }
   };
 
@@ -378,11 +377,13 @@ const formatFeaturesText = (raw: any): string => {
 
     try {
       setIsSubmitting(true);
+      setUploadProgress({ loaded: 0, total: 100, percent: 0 });
       await onSubmit(finalFiles);
     } catch (err) {
       console.error("업데이트 제출 에러:", err);
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -390,17 +391,12 @@ const formatFeaturesText = (raw: any): string => {
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      {/* 업로드 중 로딩 오버레이 (화면 중앙 fixed 배치) */}
-      {isSubmitting && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center z-[100] p-6 text-center">
-          <div className="w-14 h-14 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_20px_rgba(6,182,212,0.6)]" />
-          <h4 className="text-white font-bold text-lg mb-2">버전 정보를 서버로 업로드하는 중입니다...</h4>
-          <p className="text-cyan-200 text-xs leading-relaxed max-w-sm">
-            파일 크기에 따라 소요 시간이 길어질 수 있습니다.<br />
-            업로드가 완료될 때까지 창을 닫거나 새로고침하지 마세요.
-          </p>
-        </div>
-      )}
+      {/* 업로드 중 로딩 및 프로그레스 오버레이 */}
+      <UploadProgressOverlay
+        isSubmitting={isSubmitting}
+        progress={uploadProgress}
+        title="새 버전 등록"
+      />
 
       <div className="bg-gray-800 rounded-2xl p-6 w-[600px] max-h-[85vh] overflow-y-auto relative shadow-2xl">
 
