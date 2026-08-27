@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import useUserStore, { isJwtExpired, getJwtRemainingSeconds } from "../stores/UserStore";
+import useUserStore, { isJwtExpired, isJwtExpiringSoon } from "../stores/UserStore";
 import { useAlertStore } from "../stores/alertStore";
+import { ensureValidAccessToken } from "../utils/api";
 import Header from "../_components/common/Header";
 import Sidebar from "../_components/common/Sidebar";
 
@@ -24,16 +25,26 @@ const ClientLayout = ({ children }: Props) => {
   useEffect(() => {
     if (!isMounted) return;
 
-    const checkAuth = () => {
+    const checkAuth = async () => {
       const store = useUserStore.getState();
-      const token = store.tokens?.accessToken;
-      const remainingSec = getJwtRemainingSeconds(token);
-      const isExpired = !token || isJwtExpired(token);
+      const accessToken = store.tokens?.accessToken;
+      const refreshToken = store.tokens?.refreshToken;
 
-      console.log(`[세션 상태] 만료까지 남은 시간: ${remainingSec}초 | 만료여부: ${isExpired}`);
+      // 1. 비로그인 상태이거나 토큰이 아예 없는 경우
+      if (!store.user || (!accessToken && !refreshToken)) {
+        store.clearAll();
+        if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+          useAlertStore.getState().showAlert("로그인이 필요한 서비스입니다.", {
+            title: "로그인 필요",
+            type: "warning",
+          });
+          window.location.href = "/login";
+        }
+        return;
+      }
 
-      if (!store.user || isExpired) {
-        console.warn("[세션 만료] 세션을 초기화하고 로그인 페이지로 이동합니다.");
+      // 2. 리프레시 토큰까지 완전히 만료된 경우 (장기 미접속)
+      if (refreshToken && isJwtExpired(refreshToken)) {
         store.clearAll();
         if (typeof window !== "undefined" && window.location.pathname !== "/login") {
           useAlertStore.getState().showAlert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.", {
@@ -42,19 +53,33 @@ const ClientLayout = ({ children }: Props) => {
           });
           window.location.href = "/login";
         }
+        return;
+      }
+
+      // 3. 액세스 토큰이 만료되었거나 임박했으면 백그라운드 Silent Refresh 진행
+      if (!accessToken || isJwtExpiringSoon(accessToken, 60)) {
+        const validToken = await ensureValidAccessToken();
+        if (!validToken) {
+          store.clearAll();
+          if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+            useAlertStore.getState().showAlert("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.", {
+              title: "세션 만료",
+              type: "warning",
+            });
+            window.location.href = "/login";
+          }
+        }
       }
     };
 
-    // 마운트 및 경로 이동 시 즉시 인증/만료 검증
+    // 마운트 및 라우트 이동 시 인증 검증
     checkAuth();
 
-    // 2초마다 만료 체크 및 창 포커스 복귀 시 즉시 체크 (실시간 세션 만료 감지)
-    const timer = setInterval(checkAuth, 2 * 1000);
+    // 탭 포커스 복귀 시에만 체크 (불필요한 setInterval 폴링 없음)
     window.addEventListener("focus", checkAuth);
     document.addEventListener("visibilitychange", checkAuth);
 
     return () => {
-      clearInterval(timer);
       window.removeEventListener("focus", checkAuth);
       document.removeEventListener("visibilitychange", checkAuth);
     };
@@ -64,8 +89,10 @@ const ClientLayout = ({ children }: Props) => {
     return null;
   }
 
-  // 비로그인 또는 토큰 만료 상태면 페이지 콘텐츠 렌더링을 차단하고 리다이렉트 대기
-  if (!user || !tokens?.accessToken || isJwtExpired(tokens.accessToken)) {
+  // 비로그인 상태이거나 리프레시 토큰까지 모두 만료된 경우 렌더링 차단
+  const isRefreshExpired = !tokens?.refreshToken || isJwtExpired(tokens.refreshToken);
+  const isAccessExpired = !tokens?.accessToken || isJwtExpired(tokens.accessToken);
+  if (!user || (isRefreshExpired && isAccessExpired)) {
     return null;
   }
 

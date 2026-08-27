@@ -1,14 +1,67 @@
-import useUserStore, { isJwtExpired } from "@/app/stores/UserStore";
+import useUserStore, { isJwtExpired, isJwtExpiringSoon } from "@/app/stores/UserStore";
 import { useAlertStore } from "@/app/stores/alertStore";
+
+let refreshPromise: Promise<string | null> | null = null;
+
+// 요청 전 액세스 토큰의 유효성을 검사하고, 만료 임박 시 백그라운드에서 자동 갱신(Silent Refresh)하는 핵심 함수
+export const ensureValidAccessToken = async (): Promise<string | null> => {
+  const store = useUserStore.getState();
+  const accessToken = store.tokens?.accessToken;
+  const refreshToken = store.tokens?.refreshToken;
+
+  // 1. 유효한 액세스 토큰이 있고, 아직 만료되지 않았다면 (60초 버퍼) 그대로 사용
+  if (accessToken && !isJwtExpiringSoon(accessToken, 60)) {
+    return accessToken;
+  }
+
+  // 2. 액세스 토큰이 만료되었거나 임박했는데 리프레시 토큰도 없거나 만료된 경우
+  if (!refreshToken || isJwtExpired(refreshToken)) {
+    return null;
+  }
+
+  // 3. 다중 API 호출 시 중복 갱신 요청 방지를 위한 Promise 공유 (Mutex 패턴)
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
+      const refreshResponse = await fetch(`${apiUrl}/api/users/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (refreshResponse.ok) {
+        const data = await refreshResponse.json();
+        const newAccessToken = data.accessToken;
+        store.updateTokens({ accessToken: newAccessToken });
+        return newAccessToken as string;
+      } else {
+        return null;
+      }
+    } catch (error) {
+      console.error("Silent Refresh 실패:", error);
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+};
 
 export const authenticatedFetch = async (
   url: string,
   options: RequestInit = {}
 ) => {
-  const store = useUserStore.getState();
-  const accessToken = store.getAccessToken();
+  // 요청 전 유효한 토큰 확보 (만료 시 백그라운드 자동 갱신)
+  const token = await ensureValidAccessToken();
 
-  if (!accessToken || isJwtExpired(accessToken)) {
+  if (!token) {
     handleSessionExpired();
     throw new Error("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
   }
@@ -19,12 +72,13 @@ export const authenticatedFetch = async (
     ...options,
     headers: {
       ...options.headers,
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${token}`,
     },
   });
 
+  // 서버에서 401을 반환한 경우 (토큰 무효화 등) 2차 리프레시 시도 후 재요청
   if (response.status === 401) {
-    // 토큰 갱신 시도
+    const store = useUserStore.getState();
     const refreshToken = store.getRefreshToken();
     if (refreshToken && !isJwtExpired(refreshToken)) {
       try {
@@ -61,7 +115,7 @@ export const authenticatedFetch = async (
       }
     }
 
-    // 토큰 갱신 실패 또는 401 재발생 시 로그아웃 & 로그인 페이지 리다이렉트
+    // 갱신 실패 시 로그아웃 & 로그인 페이지 리다이렉트
     handleSessionExpired();
     throw new Error("인증이 만료되었습니다. 다시 로그인해 주세요.");
   }
@@ -84,23 +138,21 @@ export const formatBytes = (bytes: number, decimals = 1): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 };
 
-export const authenticatedUpload = (
+export const authenticatedUpload = async (
   url: string,
   formData: FormData,
   method: "POST" | "PATCH" | "PUT" = "POST",
   onProgress?: (progress: UploadProgress) => void
 ): Promise<any> => {
+  // 대용량 파일 업로드 시작 전 사전 silent refresh로 만료되지 않은 깨끗한 토큰 확보!
+  const accessToken = await ensureValidAccessToken();
+
+  if (!accessToken) {
+    handleSessionExpired();
+    throw new Error("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
+  }
+
   return new Promise((resolve, reject) => {
-    const store = useUserStore.getState();
-    const accessToken = store.getAccessToken();
-
-    if (!accessToken || isJwtExpired(accessToken)) {
-      handleSessionExpired();
-      return reject(
-        new Error("로그인 세션(24시간)이 만료되었습니다. 다시 로그인해 주세요.")
-      );
-    }
-
     const xhr = new XMLHttpRequest();
 
     xhr.upload.addEventListener("progress", (event) => {
@@ -163,7 +215,7 @@ export const authenticatedUpload = (
   });
 };
 
-const handleSessionExpired = () => {
+export const handleSessionExpired = () => {
   const store = useUserStore.getState();
   store.clearAll();
 

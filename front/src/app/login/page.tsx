@@ -22,14 +22,14 @@ const LoginPage = () => {
   const { setUser, setTokens } = useUserStore();
   const { showAlert } = useAlertStore();
 
-  // 로그인 상태라면 자동 이동 (24시간 만료 검증 포함)
+  // 로그인 상태라면 자동 이동 (유효한 세션 검증 포함)
   useEffect(() => {
     const store = useUserStore.getState();
-    const token = store.tokens?.accessToken;
-    if (store.user && token && !isJwtExpired(token)) {
-      router.replace("/manage"); // 유효한 토큰일 때만 이동
-    } else if (token && isJwtExpired(token)) {
-      // 24시간 지나 만료된 토큰인 경우 세션 정리
+    const accessValid = store.tokens?.accessToken && !isJwtExpired(store.tokens.accessToken);
+    const refreshValid = store.tokens?.refreshToken && !isJwtExpired(store.tokens.refreshToken);
+    if (store.user && (accessValid || refreshValid)) {
+      router.replace("/manage"); // 유효한 세션일 때만 관리 페이지로 이동
+    } else {
       store.clearAll();
     }
   }, [router]);

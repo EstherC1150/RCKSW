@@ -59,6 +59,31 @@ export const isJwtExpired = (token: string | null | undefined): boolean => {
   }
 };
 
+// JWT 토큰 만료 임박 여부 확인 함수 (기본 60초 버퍼)
+export const isJwtExpiringSoon = (
+  token: string | null | undefined,
+  bufferSeconds = 60
+): boolean => {
+  if (!token) return true;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return true;
+    let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (base64.length % 4 !== 0) {
+      base64 += "=";
+    }
+    const decoded = typeof window !== "undefined" 
+      ? window.atob(base64) 
+      : Buffer.from(base64, "base64").toString("binary");
+    const payload = JSON.parse(decoded);
+    if (!payload.exp) return false;
+    const now = Math.floor(Date.now() / 1000);
+    return now >= (payload.exp - bufferSeconds);
+  } catch {
+    return true;
+  }
+};
+
 // JWT 토큰 남은 유효 시간 (초 단위) 반환 함수
 export const getJwtRemainingSeconds = (token: string | null | undefined): number => {
   if (!token) return 0;
@@ -115,40 +140,24 @@ const useUserStore = create<UserState>()(
       // 모든 인증 정보 초기화 (전체 로그아웃)
       clearAll: () => set({ user: null, tokens: null }),
 
-      // 인증 상태 확인 (토큰 유효성 및 24시간 만료 여부 동시 검사)
+      // 인증 상태 확인 (Access Token 또는 Refresh Token 중 하나라도 유효하면 true)
       isAuthenticated: () => {
         const state = get();
-        if (!state.user || !state.tokens?.accessToken) {
-          return false;
-        }
-        if (isJwtExpired(state.tokens.accessToken)) {
+        if (!state.user) return false;
+        const accessValid = state.tokens?.accessToken && !isJwtExpired(state.tokens.accessToken);
+        const refreshValid = state.tokens?.refreshToken && !isJwtExpired(state.tokens.refreshToken);
+        if (!accessValid && !refreshValid) {
           get().clearAll();
           return false;
         }
         return true;
       },
 
-      // 액세스 토큰 가져오기 (만료 시 null 반환 및 세션 정리)
-      getAccessToken: () => {
-        const state = get();
-        const token = state.tokens?.accessToken || null;
-        if (token && isJwtExpired(token)) {
-          get().clearAll();
-          return null;
-        }
-        return token;
-      },
+      // 액세스 토큰 가져오기
+      getAccessToken: () => get().tokens?.accessToken || null,
 
-      // 리프레시 토큰 가져오기 (만료 시 null 반환 및 세션 정리)
-      getRefreshToken: () => {
-        const state = get();
-        const token = state.tokens?.refreshToken || null;
-        if (token && isJwtExpired(token)) {
-          get().clearAll();
-          return null;
-        }
-        return token;
-      },
+      // 리프레시 토큰 가져오기
+      getRefreshToken: () => get().tokens?.refreshToken || null,
     }),
     {
       name: "user-storage",
@@ -156,7 +165,7 @@ const useUserStore = create<UserState>()(
         user: state.user,
         tokens: state.tokens,
       }),
-      // 민감한 정보 보호 및 로딩 시 만료 토큰 자동 정리
+      // 민감한 정보 보호 및 만료 세션 정리
       storage: {
         getItem: (name) => {
           if (typeof window === "undefined") return null;
@@ -165,8 +174,12 @@ const useUserStore = create<UserState>()(
           try {
             const data = JSON.parse(str);
             const accessToken = data?.state?.tokens?.accessToken;
-            // 24시간 지나 만료된 토큰인 경우 localStorage에서 즉시 삭제
-            if (accessToken && isJwtExpired(accessToken)) {
+            const refreshToken = data?.state?.tokens?.refreshToken;
+            const hasValidAccess = accessToken && !isJwtExpired(accessToken);
+            const hasValidRefresh = refreshToken && !isJwtExpired(refreshToken);
+
+            // Access Token과 Refresh Token이 모두 만료된 경우에만 localStorage에서 세션 정리
+            if (!hasValidAccess && !hasValidRefresh) {
               localStorage.removeItem(name);
               return null;
             }
