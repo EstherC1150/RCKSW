@@ -59,6 +59,28 @@ export const isJwtExpired = (token: string | null | undefined): boolean => {
   }
 };
 
+// JWT 토큰 남은 유효 시간 (초 단위) 반환 함수
+export const getJwtRemainingSeconds = (token: string | null | undefined): number => {
+  if (!token) return 0;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return 0;
+    let base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (base64.length % 4 !== 0) {
+      base64 += "=";
+    }
+    const decoded = typeof window !== "undefined" 
+      ? window.atob(base64) 
+      : Buffer.from(base64, "base64").toString("binary");
+    const payload = JSON.parse(decoded);
+    if (!payload.exp) return 0;
+    const now = Math.floor(Date.now() / 1000);
+    return Math.max(0, payload.exp - now);
+  } catch {
+    return 0;
+  }
+};
+
 // Zustand 스토어 생성
 const useUserStore = create<UserState>()(
   persist(
