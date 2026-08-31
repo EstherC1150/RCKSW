@@ -97,6 +97,12 @@ router.delete(
   isDeveloperOrAdmin,
   componentController.deleteComponentVersion
 );
+router.delete(
+  "/:fileId",
+  verifyToken,
+  isDeveloperOrAdmin,
+  componentController.deleteComponentVersion
+);
 
 // 추가 파일 단일 삭제 (개발자 / 관리자 가능)
 router.delete(

@@ -2213,8 +2213,8 @@ const getVcSyncFiles = async (req, res) => {
 // 특정 컴포넌트 버전 단일 삭제 (개발자 / 관리자 전용)
 const deleteComponentVersion = async (req, res) => {
   try {
-    const { fileId } = req.params;
-    const targetFileId = parseInt(fileId, 10);
+    const rawId = req.params.fileId || req.params.id;
+    const targetFileId = parseInt(rawId, 10);
 
     if (!targetFileId) {
       return res.status(400).json({

@@ -238,7 +238,7 @@ const ComponentList = ({
     setDeletingId(file.id);
     try {
       const response = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/components/${file.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/components/version/${file.id}`,
         { method: "DELETE" }
       );
 
