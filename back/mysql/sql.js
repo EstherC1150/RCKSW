@@ -945,5 +945,15 @@ module.exports = {
     SET download_count = download_count + 1
     WHERE id = @id
   `,
+  // 특정 파일 경로를 참조하고 있는 파일 수 조회 (물리 파일 삭제 전 참조 여부 확인용)
+  // @file_path: 파일 경로
+  countFileReferences: `
+    SELECT COUNT(*) as count 
+    FROM files 
+    WHERE thumbnail_image = @file_path
+       OR source_file_link = @file_path
+       OR icon_file_link = @file_path
+       OR fbx_file_link = @file_path
+       OR vcmx_file_link = @file_path
+  `,
 };
-

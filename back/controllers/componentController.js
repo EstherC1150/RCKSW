@@ -1629,39 +1629,70 @@ const deleteComponents = async (req, res) => {
       });
     }
 
-    // 4. 실제 파일 삭제
+    // 4. 실제 파일 삭제 (기본 템플릿/공용 이미지 제외 및 다른 레코드 참조 여부 확인)
     const deletedFiles = [];
     const failedFiles = [];
+    const skippedFiles = [];
 
+    // 삭제 대상 고유 파일 경로 수집 (중복 검사 방지)
+    const uniqueFilesToDelete = new Set();
     for (const fileInfo of filePaths) {
-      const filesToDelete = [
+      const candidates = [
         fileInfo.thumbnail_image,
         fileInfo.source_file_link,
         fileInfo.fbx_file_link,
         fileInfo.vcmx_file_link,
+        fileInfo.icon_file_link,
       ].filter((filePath) => filePath && filePath.trim() !== "");
 
-      for (const filePath of filesToDelete) {
-        try {
-          const fullPath = path.join(__dirname, "..", filePath);
+      candidates.forEach((p) => uniqueFilesToDelete.add(p));
+    }
 
-          // 파일 존재 여부 확인
-          try {
-            await fs.access(fullPath);
-            await fs.unlink(fullPath);
-            deletedFiles.push(filePath);
-            console.log("파일 삭제 성공:", fullPath);
-          } catch (accessError) {
-            if (accessError.code === "ENOENT") {
-              console.log("파일이 이미 존재하지 않음:", fullPath);
-            } else {
-              throw accessError;
-            }
-          }
-        } catch (error) {
-          console.error("파일 삭제 실패:", filePath, error.message);
-          failedFiles.push({ filePath, error: error.message });
+    for (const filePath of uniqueFilesToDelete) {
+      // 기본 템플릿 또는 공용 아이콘 이미지인 경우 삭제 제외
+      if (
+        filePath.startsWith("/images/") ||
+        filePath.includes("ic-vc.png") ||
+        filePath.includes("ic-ns.png") ||
+        filePath.includes("ic-etc.png")
+      ) {
+        continue;
+      }
+
+      try {
+        // DB에서 아직 해당 파일(썸네일/소스/아이콘 등)을 참조하고 있는 다른 레코드가 있는지 확인
+        const refResult = await mysql.query("countFileReferences", {
+          file_path: filePath,
+        });
+        const refCount = refResult?.recordset?.[0]?.count || 0;
+
+        if (refCount > 0) {
+          console.log(
+            `파일 물리 삭제 건너뜀 (다른 레코드에서 ${refCount}건 참조 중):`,
+            filePath
+          );
+          skippedFiles.push(filePath);
+          continue;
         }
+
+        const fullPath = path.join(__dirname, "..", filePath);
+
+        // 파일 존재 여부 확인 후 삭제
+        try {
+          await fs.access(fullPath);
+          await fs.unlink(fullPath);
+          deletedFiles.push(filePath);
+          console.log("파일 물리 삭제 성공:", fullPath);
+        } catch (accessError) {
+          if (accessError.code === "ENOENT") {
+            console.log("파일이 이미 존재하지 않음:", fullPath);
+          } else {
+            throw accessError;
+          }
+        }
+      } catch (error) {
+        console.error("파일 삭제 실패:", filePath, error.message);
+        failedFiles.push({ filePath, error: error.message });
       }
     }
 
@@ -2250,6 +2281,7 @@ const deleteComponentVersion = async (req, res) => {
       file.source_file_link,
       file.fbx_file_link,
       file.vcmx_file_link,
+      file.icon_file_link,
     ].filter((filePath) => filePath && filePath.trim() !== "");
 
     // 3. 마지막 버전인지 여부 판단
@@ -2287,7 +2319,7 @@ const deleteComponentVersion = async (req, res) => {
       }
     }
 
-    // 4. 물리 파일 삭제 (기본 템플릿/공용 이미지 제외)
+    // 4. 물리 파일 삭제 (기본 템플릿/공용 이미지 제외 및 다른 버전/컴포넌트 참조 확인)
     for (const filePath of filesToDelete) {
       if (
         filePath.startsWith("/images/") ||
@@ -2299,11 +2331,25 @@ const deleteComponentVersion = async (req, res) => {
       }
 
       try {
+        // DB에서 아직 해당 파일(썸네일, 소스, 아이콘 등)을 참조하고 있는 다른 레코드가 있는지 확인
+        const refResult = await mysql.query("countFileReferences", {
+          file_path: filePath,
+        });
+        const refCount = refResult?.recordset?.[0]?.count || 0;
+
+        if (refCount > 0) {
+          console.log(
+            `파일 물리 삭제 건너뜀 (다른 레코드에서 ${refCount}건 참조 중):`,
+            filePath
+          );
+          continue;
+        }
+
         const fullPath = path.join(__dirname, "..", filePath);
         try {
           await fs.access(fullPath);
           await fs.unlink(fullPath);
-          console.log("버전 파일 삭제 성공:", fullPath);
+          console.log("버전 파일 물리 삭제 성공:", fullPath);
         } catch (accessErr) {
           if (accessErr.code !== "ENOENT") {
             throw accessErr;
