@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import useUserStore from "@/app/stores/UserStore"; // 인증 토큰 가져오기 위한 import
 import { useAlertStore } from "@/app/stores/alertStore";
 import { authenticatedFetch } from "@/app/utils/api";
@@ -29,7 +30,12 @@ const CategoryEditModal = ({
   categories,
   setCategories,
 }: CategoryEditModalProps) => {
+  const [isMounted, setIsMounted] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(
     null
   );
@@ -573,38 +579,38 @@ const CategoryEditModal = ({
     toast(message, toastType);
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !isMounted || typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg p-6 w-[900px] h-[700px] flex flex-col">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center z-[9999] p-4">
+      <div className="bg-card border border-border text-foreground rounded-2xl p-6 w-[900px] h-[720px] max-h-[90vh] flex flex-col shadow-2xl">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-white">카테고리 관리</h2>
+          <h2 className="text-xl font-bold text-foreground">카테고리 관리</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-muted hover:text-foreground text-lg transition-colors"
           >
             ✕
           </button>
         </div>
         {/* 탭 메뉴 */}
-        <div className="flex space-x-4 mb-6 flex-shrink-0">
+        <div className="flex space-x-3 mb-6 flex-shrink-0">
           <button
             onClick={() => setActiveTab("categories")}
-            className={`px-4 py-2 rounded-md transition-colors ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
               activeTab === "categories"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                ? "bg-primary text-white shadow-sm"
+                : "bg-card-hover border border-border text-muted hover:text-foreground"
             }`}
           >
             메인 카테고리
           </button>
           <button
             onClick={() => setActiveTab("subcategories")}
-            className={`px-4 py-2 rounded-md transition-colors ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
               activeTab === "subcategories"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                ? "bg-primary text-white shadow-sm"
+                : "bg-card-hover border border-border text-muted hover:text-foreground"
             }`}
           >
             서브 카테고리
@@ -614,23 +620,17 @@ const CategoryEditModal = ({
               setActiveTab("fileMove");
               loadFiles();
             }}
-            className={`px-4 py-2 rounded-md transition-colors ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
               activeTab === "fileMove"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                ? "bg-primary text-white shadow-sm"
+                : "bg-card-hover border border-border text-muted hover:text-foreground"
             }`}
           >
             파일 이동 관리
           </button>
         </div>
         {/* 탭 내용 - 스크롤 가능 */}
-        <div
-          className="flex-1 overflow-y-scroll pr-2"
-          style={{
-            scrollbarWidth: "thin",
-            scrollbarColor: "#374151 #111827",
-          }}
-        >
+        <div className="flex-1 overflow-y-auto pr-2 space-y-4">
           {/* 메인 카테고리 탭 */}
           {activeTab === "categories" && (
             <div className="space-y-4">
@@ -638,24 +638,24 @@ const CategoryEditModal = ({
                 {categories.map((category) => (
                   <li
                     key={category.id}
-                    className="flex justify-between items-center text-white"
+                    className="flex justify-between items-center p-3 rounded-xl bg-card-hover/40 border border-border text-foreground transition-colors"
                   >
                     {editingCategoryId === category.id ? (
                       <input
                         type="text"
                         value={editingCategoryName}
                         onChange={(e) => setEditingCategoryName(e.target.value)}
-                        className="w-full px-3 py-2 bg-gray-700 rounded-md text-white"
+                        className="w-full px-3 py-1.5 bg-input border border-input-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                       />
                     ) : (
-                      <span>{category.name}</span>
+                      <span className="font-medium text-sm">{category.name}</span>
                     )}
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 pl-3">
                       {editingCategoryId === category.id ? (
                         <>
                           <button
                             onClick={handleSaveEdit}
-                            className="text-green-400 hover:text-green-500 transition-colors whitespace-nowrap"
+                            className="text-emerald-500 hover:text-emerald-600 font-medium text-xs px-2 py-1 rounded hover:bg-emerald-500/10 transition-colors whitespace-nowrap"
                           >
                             저장
                           </button>
@@ -664,7 +664,7 @@ const CategoryEditModal = ({
                               setEditingCategoryId(null);
                               setEditingCategoryName("");
                             }}
-                            className="text-gray-400 hover:text-gray-500 transition-colors whitespace-nowrap"
+                            className="text-muted hover:text-foreground text-xs px-2 py-1 rounded hover:bg-card-hover transition-colors whitespace-nowrap"
                           >
                             취소
                           </button>
@@ -675,13 +675,13 @@ const CategoryEditModal = ({
                             onClick={() =>
                               handleEditCategory(category.id, category.name)
                             }
-                            className="text-blue-400 hover:text-blue-500 transition-colors whitespace-nowrap"
+                            className="text-primary hover:text-primary-hover font-medium text-xs px-2 py-1 rounded hover:bg-primary/10 transition-colors whitespace-nowrap"
                           >
                             편집
                           </button>
                           <button
                             onClick={() => handleDeleteCategory(category.id)}
-                            className="text-red-400 hover:text-red-500 transition-colors whitespace-nowrap"
+                            className="text-rose-500 hover:text-rose-600 font-medium text-xs px-2 py-1 rounded hover:bg-rose-500/10 transition-colors whitespace-nowrap"
                           >
                             삭제
                           </button>
@@ -691,17 +691,17 @@ const CategoryEditModal = ({
                   </li>
                 ))}
               </ul>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 pt-2">
                 <input
                   type="text"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded-md text-white"
+                  className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                   placeholder="새 카테고리 이름"
                 />
                 <button
                   onClick={handleAddCategory}
-                  className="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 transition-all duration-300 ease-in-out whitespace-nowrap"
+                  className="bg-primary hover:bg-primary-hover text-white px-5 py-2 rounded-xl font-semibold text-sm transition-all shadow-sm whitespace-nowrap"
                 >
                   추가
                 </button>
@@ -714,7 +714,7 @@ const CategoryEditModal = ({
             <div className="space-y-4">
               {/* 메인 카테고리 선택 */}
               <div className="space-y-2">
-                <label className="text-white text-sm font-medium">
+                <label className="text-foreground text-sm font-medium">
                   메인 카테고리 선택:
                 </label>
                 <select
@@ -722,11 +722,11 @@ const CategoryEditModal = ({
                   onChange={(e) =>
                     handleCategorySelectForSub(Number(e.target.value))
                   }
-                  className="w-full px-3 py-2 bg-gray-700 rounded-md text-white"
+                  className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                 >
-                  <option value="">카테고리를 선택하세요</option>
+                  <option className="bg-card text-foreground" value="">카테고리를 선택하세요</option>
                   {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
+                    <option key={category.id} className="bg-card text-foreground" value={category.id}>
                       {category.name}
                     </option>
                   ))}
@@ -740,7 +740,7 @@ const CategoryEditModal = ({
                     {subCategories.map((subCategory) => (
                       <li
                         key={subCategory.id}
-                        className="flex justify-between items-center text-white"
+                        className="flex justify-between items-center p-3 rounded-xl bg-card-hover/40 border border-border text-foreground transition-colors"
                       >
                         {editingSubCategoryId === subCategory.id ? (
                           <input
@@ -749,17 +749,17 @@ const CategoryEditModal = ({
                             onChange={(e) =>
                               setEditingSubCategoryName(e.target.value)
                             }
-                            className="w-full px-3 py-2 bg-gray-700 rounded-md text-white"
+                            className="w-full px-3 py-1.5 bg-input border border-input-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                           />
                         ) : (
-                          <span>{subCategory.name}</span>
+                          <span className="font-medium text-sm">{subCategory.name}</span>
                         )}
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-2 pl-3">
                           {editingSubCategoryId === subCategory.id ? (
                             <>
                               <button
                                 onClick={handleSaveSubCategoryEdit}
-                                className="text-green-400 hover:text-green-500 transition-colors whitespace-nowrap"
+                                className="text-emerald-500 hover:text-emerald-600 font-medium text-xs px-2 py-1 rounded hover:bg-emerald-500/10 transition-colors whitespace-nowrap"
                               >
                                 저장
                               </button>
@@ -768,7 +768,7 @@ const CategoryEditModal = ({
                                   setEditingSubCategoryId(null);
                                   setEditingSubCategoryName("");
                                 }}
-                                className="text-gray-400 hover:text-gray-500 transition-colors whitespace-nowrap"
+                                className="text-muted hover:text-foreground text-xs px-2 py-1 rounded hover:bg-card-hover transition-colors whitespace-nowrap"
                               >
                                 취소
                               </button>
@@ -782,7 +782,7 @@ const CategoryEditModal = ({
                                     subCategory.name
                                   )
                                 }
-                                className="text-blue-400 hover:text-blue-500 transition-colors whitespace-nowrap"
+                                className="text-primary hover:text-primary-hover font-medium text-xs px-2 py-1 rounded hover:bg-primary/10 transition-colors whitespace-nowrap"
                               >
                                 편집
                               </button>
@@ -790,7 +790,7 @@ const CategoryEditModal = ({
                                 onClick={() =>
                                   handleDeleteSubCategory(subCategory.id)
                                 }
-                                className="text-red-400 hover:text-red-500 transition-colors whitespace-nowrap"
+                                className="text-rose-500 hover:text-rose-600 font-medium text-xs px-2 py-1 rounded hover:bg-rose-500/10 transition-colors whitespace-nowrap"
                               >
                                 삭제
                               </button>
@@ -800,17 +800,17 @@ const CategoryEditModal = ({
                       </li>
                     ))}
                   </ul>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 pt-2">
                     <input
                       type="text"
                       value={newSubCategoryName}
                       onChange={(e) => setNewSubCategoryName(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-700 rounded-md text-white"
+                      className="w-full px-3 py-2 bg-input border border-input-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                       placeholder="새 서브카테고리 이름"
                     />
                     <button
                       onClick={handleAddSubCategory}
-                      className="bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 transition-all duration-300 ease-in-out whitespace-nowrap"
+                      className="bg-primary hover:bg-primary-hover text-white px-5 py-2 rounded-xl font-semibold text-sm transition-all shadow-sm whitespace-nowrap"
                     >
                       추가
                     </button>
@@ -824,13 +824,13 @@ const CategoryEditModal = ({
           {activeTab === "fileMove" && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="text-lg font-semibold text-foreground">
                   파일 이동 관리
                 </h3>
                 <div className="flex space-x-2">
                   <button
                     onClick={handleSelectAll}
-                    className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-500"
+                    className="px-3 py-1.5 bg-card hover:bg-card-hover border border-border text-foreground text-xs font-medium rounded-lg transition-colors"
                   >
                     {selectedFiles.length === currentFiles.length
                       ? "전체 해제"
@@ -843,7 +843,7 @@ const CategoryEditModal = ({
                       !selectedMoveCategory ||
                       !selectedMoveSubCategory
                     }
-                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:bg-gray-500 disabled:cursor-not-allowed"
+                    className="px-3.5 py-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-semibold rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     선택된 파일 이동 ({selectedFiles.length})
                   </button>
@@ -854,10 +854,10 @@ const CategoryEditModal = ({
               <div className="flex space-x-2 mb-4">
                 <button
                   onClick={() => handleSubTabChange("library")}
-                  className={`px-4 py-2 rounded-md transition-colors ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     fileMoveSubTab === "library"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      ? "bg-primary text-white font-semibold shadow-sm"
+                      : "bg-card-hover border border-border text-muted hover:text-foreground"
                   }`}
                 >
                   라이브러리 (
@@ -870,10 +870,10 @@ const CategoryEditModal = ({
                 </button>
                 <button
                   onClick={() => handleSubTabChange("object")}
-                  className={`px-4 py-2 rounded-md transition-colors ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     fileMoveSubTab === "object"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                      ? "bg-primary text-white font-semibold shadow-sm"
+                      : "bg-card-hover border border-border text-muted hover:text-foreground"
                   }`}
                 >
                   오브젝트 (
@@ -887,21 +887,21 @@ const CategoryEditModal = ({
               </div>
 
               {/* 검색 및 필터 */}
-              <div className="grid grid-cols-3 gap-4 p-4 bg-gray-700 rounded-lg">
+              <div className="grid grid-cols-3 gap-4 p-4 bg-card-hover/40 border border-border rounded-xl">
                 <div>
-                  <label className="text-white text-sm font-medium mb-2 block">
+                  <label className="text-foreground text-xs font-medium mb-1.5 block">
                     파일명 검색:
                   </label>
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-600 rounded-md text-white"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-lg text-foreground text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                     placeholder="파일명을 입력하세요"
                   />
                 </div>
                 <div>
-                  <label className="text-white text-sm font-medium mb-2 block">
+                  <label className="text-foreground text-xs font-medium mb-1.5 block">
                     카테고리 필터:
                   </label>
                   <select
@@ -909,18 +909,18 @@ const CategoryEditModal = ({
                     onChange={(e) =>
                       handleCategoryFilterChange(Number(e.target.value) || null)
                     }
-                    className="w-full px-3 py-2 bg-gray-600 rounded-md text-white"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-lg text-foreground text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                   >
-                    <option value="">전체 카테고리</option>
+                    <option className="bg-card text-foreground" value="">전체 카테고리</option>
                     {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
+                      <option key={category.id} className="bg-card text-foreground" value={category.id}>
                         {category.name}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="text-white text-sm font-medium mb-2 block">
+                  <label className="text-foreground text-xs font-medium mb-1.5 block">
                     정렬 기준:
                   </label>
                   <select
@@ -930,19 +930,19 @@ const CategoryEditModal = ({
                         e.target.value as "name" | "date" | "category"
                       )
                     }
-                    className="w-full px-3 py-2 bg-gray-600 rounded-md text-white"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-lg text-foreground text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                   >
-                    <option value="name">이름순</option>
-                    <option value="date">최신순</option>
-                    <option value="category">카테고리순</option>
+                    <option className="bg-card text-foreground" value="name">이름순</option>
+                    <option className="bg-card text-foreground" value="date">최신순</option>
+                    <option className="bg-card text-foreground" value="category">카테고리순</option>
                   </select>
                 </div>
               </div>
 
               {/* 목적지 선택 */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-700 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-card-hover/40 border border-border rounded-xl">
                 <div>
-                  <label className="text-white text-sm font-medium mb-2 block">
+                  <label className="text-foreground text-xs font-medium mb-1.5 block">
                     목적지 카테고리:
                   </label>
                   <select
@@ -950,18 +950,18 @@ const CategoryEditModal = ({
                     onChange={(e) =>
                       handleMoveCategoryChange(Number(e.target.value))
                     }
-                    className="w-full px-3 py-2 bg-gray-600 rounded-md text-white"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-lg text-foreground text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                   >
-                    <option value="">카테고리를 선택하세요</option>
+                    <option className="bg-card text-foreground" value="">카테고리를 선택하세요</option>
                     {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
+                      <option key={category.id} className="bg-card text-foreground" value={category.id}>
                         {category.name}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="text-white text-sm font-medium mb-2 block">
+                  <label className="text-foreground text-xs font-medium mb-1.5 block">
                     목적지 서브카테고리:
                   </label>
                   <select
@@ -970,11 +970,11 @@ const CategoryEditModal = ({
                       setSelectedMoveSubCategory(Number(e.target.value))
                     }
                     disabled={!selectedMoveCategory}
-                    className="w-full px-3 py-2 bg-gray-600 rounded-md text-white disabled:bg-gray-500"
+                    className="w-full px-3 py-2 bg-input border border-input-border rounded-lg text-foreground text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none disabled:opacity-50"
                   >
-                    <option value="">서브카테고리를 선택하세요</option>
+                    <option className="bg-card text-foreground" value="">서브카테고리를 선택하세요</option>
                     {moveSubCategories.map((subCategory) => (
-                      <option key={subCategory.id} value={subCategory.id}>
+                      <option key={subCategory.id} className="bg-card text-foreground" value={subCategory.id}>
                         {subCategory.name}
                       </option>
                     ))}
@@ -983,43 +983,37 @@ const CategoryEditModal = ({
               </div>
 
               {/* 파일 목록 */}
-              <div className="bg-gray-700 rounded-lg p-4">
+              <div className="bg-card-hover/40 border border-border rounded-xl p-4">
                 <div className="flex justify-between items-center mb-4">
-                  <div className="text-white text-sm">
+                  <div className="text-foreground text-xs font-medium">
                     총 {filteredFiles.length}개 파일 (페이지 {currentPage}/
                     {totalPages})
                   </div>
-                  <div className="text-white text-sm">
+                  <div className="text-primary text-xs font-semibold">
                     선택됨: {selectedFiles.length}개
                   </div>
                 </div>
 
                 {isLoadingFiles ? (
-                  <div className="text-center text-white py-8">
+                  <div className="text-center text-muted py-8 text-sm">
                     파일 목록을 불러오는 중...
                   </div>
                 ) : currentFiles.length === 0 ? (
-                  <div className="text-center text-white py-8">
+                  <div className="text-center text-muted py-8 text-sm">
                     {searchQuery || filterCategory
                       ? "조건에 맞는 파일이 없습니다."
                       : "파일이 없습니다."}
                   </div>
                 ) : (
                   <>
-                    <div
-                      className="space-y-1 max-h-60 overflow-y-scroll pr-2"
-                      style={{
-                        scrollbarWidth: "thin",
-                        scrollbarColor: "#4B5563 #1F2937",
-                      }}
-                    >
+                    <div className="space-y-1.5 max-h-60 overflow-y-auto pr-2">
                       {currentFiles.map((file) => (
                         <div
                           key={file.id}
-                          className={`flex items-center justify-between p-2 rounded border ${
+                          className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
                             selectedFiles.includes(file.id)
-                              ? "bg-blue-600 border-blue-400"
-                              : "bg-gray-600 border-gray-500 hover:bg-gray-500"
+                              ? "bg-primary/10 border-primary text-foreground"
+                              : "bg-card border-border hover:bg-card-hover text-foreground"
                           }`}
                         >
                           <div className="flex items-center space-x-3 flex-1">
@@ -1027,13 +1021,13 @@ const CategoryEditModal = ({
                               type="checkbox"
                               checked={selectedFiles.includes(file.id)}
                               onChange={() => handleFileSelect(file.id)}
-                              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-300 rounded focus:ring-blue-500"
+                              className="w-4 h-4 text-primary bg-input border-input-border rounded focus:ring-primary"
                             />
                             <div className="flex-1 min-w-0">
-                              <div className="text-white font-medium text-sm truncate">
+                              <div className="text-foreground font-medium text-sm truncate">
                                 {file.file_name}
                               </div>
-                              <div className="text-gray-300 text-xs">
+                              <div className="text-muted text-xs">
                                 {file.category_name} / {file.sub_category_name}{" "}
                                 • v{file.version} •{" "}
                                 {new Date(file.created_at).toLocaleDateString()}
@@ -1052,11 +1046,11 @@ const CategoryEditModal = ({
                             setCurrentPage(Math.max(1, currentPage - 1))
                           }
                           disabled={currentPage === 1}
-                          className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-500 disabled:bg-gray-500 disabled:cursor-not-allowed"
+                          className="px-3 py-1 bg-card hover:bg-card-hover border border-border text-foreground text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           이전
                         </button>
-                        <span className="text-white text-sm">
+                        <span className="text-muted text-xs">
                           {currentPage} / {totalPages}
                         </span>
                         <button
@@ -1066,7 +1060,7 @@ const CategoryEditModal = ({
                             )
                           }
                           disabled={currentPage === totalPages}
-                          className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-500 disabled:bg-gray-500 disabled:cursor-not-allowed"
+                          className="px-3 py-1 bg-card hover:bg-card-hover border border-border text-foreground text-xs rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           다음
                         </button>
@@ -1080,7 +1074,8 @@ const CategoryEditModal = ({
         </div>{" "}
         {/* 탭 내용 끝 */}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

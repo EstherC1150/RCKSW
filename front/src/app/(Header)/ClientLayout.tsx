@@ -6,6 +6,9 @@ import useUserStore, { isJwtExpired, isJwtExpiringSoon } from "../stores/UserSto
 import { ensureValidAccessToken, handleSessionExpired } from "../utils/api";
 import Header from "../_components/common/Header";
 import Sidebar from "../_components/common/Sidebar";
+import ScrollToTop from "../_components/common/ScrollToTop";
+
+import useThemeStore from "../stores/ThemeStore";
 
 type Props = {
   children: React.ReactNode;
@@ -18,6 +21,7 @@ const ClientLayout = ({ children }: Props) => {
 
   useEffect(() => {
     setIsMounted(true);
+    useThemeStore.getState().initTheme();
   }, []);
 
   useEffect(() => {
@@ -71,7 +75,10 @@ const ClientLayout = ({ children }: Props) => {
       <Header />
       <div className="flex flex-1 overflow-hidden">
         {user && <Sidebar />}
-        <main className="flex-1 overflow-y-auto w-full">{children}</main>
+        <main id="main-scroll-container" className="flex-1 overflow-y-auto w-full relative">
+          {children}
+          <ScrollToTop targetId="main-scroll-container" />
+        </main>
       </div>
     </div>
   );

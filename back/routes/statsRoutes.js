@@ -4,5 +4,6 @@ const statsController = require("../controllers/statsController");
 
 // 통계 관련 라우트
 router.get("/categories", statsController.getCategoryStats);
+router.get("/dashboard", statsController.getDashboardStats);
 
 module.exports = router;

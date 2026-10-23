@@ -1,7 +1,6 @@
 "use client";
 
 import LibraryList from "@/app/_components/common/manage/LibraryList";
-import SelectBox from "@/app/_components/common/SelectBox";
 import React, {
   useState,
   useEffect,
@@ -15,6 +14,7 @@ import useUserStore from "@/app/stores/UserStore";
 import { useAlertStore } from "@/app/stores/alertStore";
 import { authenticatedFetch, authenticatedUpload, UploadProgress } from "@/app/utils/api";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Search, X, Plus, Trash2 } from "lucide-react";
 
 // 카테고리 타입 정의
 interface Category {
@@ -291,9 +291,9 @@ const ComponentPageLayout = ({
   );
 
   return (
-    <div className="h-full flex flex-col p-8">
+    <div className="min-h-full flex flex-col p-8">
       {/* 프리미엄 리부트 탭 네비게이션 (Grouping & Toggle) */}
-      <div className="flex items-center mb-8 border-b border-white/5 pb-4">
+      <div className="flex items-center mb-6">
         <div className="flex items-center gap-4">
           {tabGroups.map((group) => {
             const isGroupActive = activeGroup?.id === group.id;
@@ -302,8 +302,8 @@ const ComponentPageLayout = ({
             return (
               <div 
                 key={group.id} 
-                className={`flex items-center rounded-2xl transition-all duration-500 overflow-hidden ${
-                  isGroupActive ? "bg-white/5 shadow-inner" : "hover:bg-white/5"
+                className={`flex items-center rounded-2xl transition-all duration-300 overflow-hidden ${
+                  isGroupActive ? "bg-card shadow-sm" : "hover:bg-card-hover"
                 }`}
               >
                 {/* 대분류 아이콘 버튼 */}
@@ -313,10 +313,10 @@ const ComponentPageLayout = ({
                     else if (group.subItems.length > 0) handleTabChange(group.subItems[0].id);
                   }}
                   className={`flex items-center justify-center w-[54px] h-[54px] transition-all duration-300 relative ${
-                    isGroupActive ? "opacity-100" : "opacity-40 hover:opacity-100 grayscale hover:grayscale-0"
+                    isGroupActive ? "opacity-100" : "opacity-45 hover:opacity-85"
                   }`}
                 >
-                  <img src={group.icon} alt={group.label} className={`w-6 h-6 object-contain transition-transform duration-300 ${isGroupActive ? "scale-110" : "scale-100"}`} />
+                  <img src={group.icon} alt={group.label} className={`w-6 h-6 object-contain transition-all duration-300 invert dark:invert-0 ${isGroupActive ? "opacity-65 dark:opacity-100 scale-110" : "opacity-60 dark:opacity-90 scale-100"}`} />
                 </button>
 
                 {/* 소분류 토글 (옆으로 늘어뜨린 느낌) */}
@@ -332,8 +332,8 @@ const ComponentPageLayout = ({
                         onClick={() => handleTabChange(sub.id)}
                         className={`px-4 py-2 rounded-xl text-[14px] font-black tracking-tight whitespace-nowrap transition-all duration-300 ${
                           type === sub.id 
-                            ? "text-primary bg-primary/10 shadow-[0_0_15px_rgba(59,130,246,0.15)]" 
-                            : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
+                            ? "text-white bg-primary shadow-sm" 
+                            : "text-muted hover:text-foreground hover:bg-card-hover"
                         }`}
                       >
                         {sub.label}
@@ -354,139 +354,127 @@ const ComponentPageLayout = ({
         </div>
       </div>
 
-      <div className="flex items-center justify-between bg-card p-5 mb-6 z-10 rounded-xl border border-border">
-        <div className="flex items-center gap-6">
-
-          {/* 검색 섹션 */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <input
-                className="border border-input-border rounded-lg w-[240px] h-[40px] outline-none pl-4 pr-9 bg-input text-foreground text-[14px] placeholder-muted focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-                value={inputValue}
-                onChange={handleSearchInputChange}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter") {
-                    handleSearch();
-                  }
-                }}
-                placeholder="검색어를 입력하세요"
-              />
-              {inputValue && (
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  aria-label="검색어 초기화"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-[14px] leading-none"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
+      {/* 2. 컨트롤 바 (통합 검색, 정렬/필터 탭, 등록/삭제 버튼) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-card p-4 mb-6 z-10 rounded-2xl shadow-xs">
+        {/* 좌측: 통합 검색 인풋 */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex items-center w-full sm:w-[280px]">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={handleSearchInputChange}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch();
+              }}
+              placeholder="파일명 검색..."
+              className="w-full h-[38px] pl-9 pr-16 rounded-xl bg-input hover:bg-card-hover focus:bg-input text-foreground placeholder-muted text-[13px] outline-none focus:ring-1 focus:ring-primary/40 border border-input-border transition-all"
+            />
+            <Search className="w-4 h-4 text-muted absolute left-3 pointer-events-none" />
+            {inputValue && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                aria-label="검색어 초기화"
+                className="absolute right-12 text-muted hover:text-foreground p-1 transition-colors"
+                title="검색어 지우기"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button
-              className="bg-white/10 text-white px-4 h-[40px] rounded-xl text-[14px] font-medium hover:bg-white/20 border border-white/5 transition-colors shadow-sm"
+              type="button"
               onClick={handleSearch}
+              className="absolute right-1.5 h-[28px] px-2.5 rounded-lg bg-black/5 hover:bg-black/10 dark:bg-white/[0.08] dark:hover:bg-white/[0.14] text-foreground text-[12px] font-medium transition-all active:scale-95"
             >
               검색
             </button>
           </div>
         </div>
 
-        {/* 등록/삭제 버튼 */}
-        <div className="flex gap-2">
+        {/* 우측: 필터/정렬 세그먼트 + 등록/삭제 버튼 */}
+        <div className="flex flex-wrap items-center gap-3">
           {/* 모델 타입 필터 (VC Model 전용) */}
           {type === "vc_model" && (
-            <>
-              <div className="flex items-center gap-2 mr-4">
-                <p className="text-white text-[14px] mr-3">모델 타입</p>
-                <div className="flex gap-4">
-                  {[
-                    { value: "", label: "전체" },
-                    { value: "component", label: "컴포넌트" },
-                    { value: "layout", label: "레이아웃" },
-                  ].map((option) => (
-                    <span
-                      key={option.value}
-                      className={`text-[14px] cursor-pointer ${
-                        activeModelType === option.value
-                          ? "text-blue-400 font-medium"
-                          : "text-gray-400 hover:text-gray-300"
-                      }`}
-                      onClick={() => handleModelTypeChange(option.value)}
-                    >
-                      {option.label}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="w-px h-4 self-center bg-white/10 mr-5" />
-            </>
-          )}
-          {/* 정렬 섹션 */}
-          <div className="flex items-center gap-2 mr-5">
-            <p className="text-white text-[14px] mr-3">정렬기준</p>
-            <div className="flex gap-4">
-              <span
-                className={`text-[14px] cursor-pointer ${
-                  activeSort === "latest"
-                    ? "text-blue-400 font-medium"
-                    : "text-gray-400 hover:text-gray-300"
-                }`}
-                onClick={() => handleSortChange("latest")}
-              >
-                최신순
-              </span>
-              <span
-                className={`text-[14px] cursor-pointer ${
-                  activeSort === "downloads"
-                    ? "text-blue-400 font-medium"
-                    : "text-gray-400 hover:text-gray-300"
-                }`}
-                onClick={() => handleSortChange("downloads")}
-              >
-                다운로드순
-              </span>
-              <span
-                className={`text-[14px] cursor-pointer ${
-                  activeSort === "name"
-                    ? "text-blue-400 font-medium"
-                    : "text-gray-400 hover:text-gray-300"
-                }`}
-                onClick={() => handleSortChange("name")}
-              >
-                이름순
-              </span>
+            <div className="flex items-center bg-black/5 dark:bg-white/[0.04] p-1 rounded-xl">
+              {[
+                { value: "", label: "전체" },
+                { value: "component", label: "컴포넌트" },
+                { value: "layout", label: "레이아웃" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => handleModelTypeChange(option.value)}
+                  className={`px-3 py-1 rounded-lg text-[12px] font-medium transition-all ${
+                    activeModelType === option.value
+                      ? "bg-primary text-white font-semibold shadow-sm"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
-          </div>
-          {(user?.role === "admin" || user?.role === "developer") && (
-            <button
-              className="px-6 h-[40px] bg-cyan-600/90 hover:bg-cyan-500 border border-cyan-400/50 text-white rounded-lg text-[14px] font-medium shadow-[0_0_15px_rgba(8,145,178,0.3)] transition-all duration-300 flex items-center justify-center"
-              onClick={handleOpenModal}
-            >
-              등록
-            </button>
           )}
+
+          {/* 정렬 셀렉터 */}
+          <div className="flex items-center bg-black/5 dark:bg-white/[0.04] p-1 rounded-xl">
+            {[
+              { id: "latest", label: "최신순" },
+              { id: "downloads", label: "다운로드순" },
+              { id: "name", label: "이름순" },
+            ].map((sort) => (
+              <button
+                key={sort.id}
+                type="button"
+                onClick={() => handleSortChange(sort.id as any)}
+                className={`px-3 py-1 rounded-lg text-[12px] font-medium transition-all ${
+                  activeSort === sort.id
+                    ? "bg-primary text-white font-semibold shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                {sort.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 등록 / 삭제 버튼 */}
           {(user?.role === "admin" || user?.role === "developer") && (
-            <button
-              className="px-6 h-[40px] bg-rose-600/20 hover:bg-rose-500/80 border border-rose-500/50 text-rose-300 hover:text-white rounded-lg text-[14px] font-medium hover:shadow-[0_0_15px_rgba(225,29,72,0.3)] transition-all duration-300 flex items-center justify-center backdrop-blur-sm"
-              onClick={async () => {
-                if (
-                  libraryListRef.current &&
-                  libraryListRef.current.handleDeleteSelected
-                ) {
-                  const deleted =
-                    await libraryListRef.current.handleDeleteSelected();
-                  if (deleted) refreshList();
-                }
-              }}
-            >
-              삭제
-            </button>
+            <div className="flex items-center gap-2 pl-1">
+              <button
+                type="button"
+                onClick={handleOpenModal}
+                className="h-[38px] px-4 rounded-xl bg-primary hover:bg-primary-hover text-white text-[13px] font-semibold transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>등록</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (
+                    libraryListRef.current &&
+                    libraryListRef.current.handleDeleteSelected
+                  ) {
+                    const deleted =
+                      await libraryListRef.current.handleDeleteSelected();
+                    if (deleted) refreshList();
+                  }
+                }}
+                className="h-[38px] px-4 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[13px] font-medium transition-all active:scale-95 flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>삭제</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
       <Suspense
         fallback={
-          <div className="flex-1 flex items-center justify-center w-full mt-[16px] text-white">
+          <div className="flex-1 flex items-center justify-center w-full mt-[16px] text-muted">
             로딩 중...
           </div>
         }

@@ -6,6 +6,17 @@ import SelectBox from "@/app/_components/common/SelectBox";
 import { useRouter } from "next/navigation";
 import { authenticatedFetch } from "@/app/utils/api";
 import { useAlertStore } from "@/app/stores/alertStore";
+import {
+  Search,
+  Trash2,
+  User as UserIcon,
+  Edit2,
+  Check,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+} from "lucide-react";
 
 interface User {
   id: string;
@@ -21,19 +32,29 @@ interface User {
 
 const UserManagementPage = () => {
   const router = useRouter();
-  const { getAccessToken, clearAll } = useUserStore();
-  const { showConfirm, showAlert, showToast } = useAlertStore();
+  const user = useUserStore((state) => state.user);
+  const getAccessToken = useUserStore((state) => state.getAccessToken);
+  const clearAll = useUserStore((state) => state.clearAll);
+  const showConfirm = useAlertStore((state) => state.showConfirm);
+  const showToast = useAlertStore((state) => state.showToast);
+
+  useEffect(() => {
+    if (user && user.role !== "admin") {
+      router.replace("/dashboard");
+    }
+  }, [user, router]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [isAllSelected, setIsAllSelected] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<User>>({});
-  const limit = 13;
+  const limit = 12;
   const [searchType, setSearchType] = useState("all");
 
   const handleTokenInvalid = useCallback(() => {
@@ -43,14 +64,26 @@ const UserManagementPage = () => {
 
   const fetchUsers = useCallback(async () => {
     try {
+      setLoading(true);
       const token = getAccessToken();
       if (!token) {
         handleTokenInvalid();
         return;
       }
 
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: limit.toString(),
+        sortBy: "id",
+      });
+
+      if (searchQuery) {
+        params.set("search", searchQuery);
+        params.set("type", searchType);
+      }
+
       const response = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users?page=${currentPage}&limit=${limit}&sortBy=id`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/users?${params.toString()}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -65,59 +98,65 @@ const UserManagementPage = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setUsers(data.users);
-        setTotalPages(data.totalPages);
-        setCurrentPage(data.currentPage);
-        setTotalUsers(data.total);
+        setUsers(data.users || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalUsers(data.total || 0);
+
+        setSelectedUser((prevSelected) => {
+          if (!prevSelected) return null;
+          const matched = (data.users || []).find((u: User) => u.id === prevSelected.id);
+          return matched || prevSelected;
+        });
       } else {
         showToast("사용자 목록을 불러오는데 실패했습니다.", "error");
       }
     } catch (err) {
       console.error("사용자 목록 조회 중 오류 발생:", err);
       showToast("사용자 목록을 불러오는 중 오류가 발생했습니다.", "error");
+    } finally {
+      setLoading(false);
     }
-  }, [currentPage, getAccessToken, handleTokenInvalid]);
+  }, [currentPage, searchQuery, searchType, limit, getAccessToken, handleTokenInvalid, showToast]);
 
-  const handleSearch = async () => {
-    try {
-      const token = getAccessToken();
-      if (!token) {
-        handleTokenInvalid();
-        return;
-      }
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
-      const response = await authenticatedFetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users?search=${searchInput}&type=${searchType}&page=${currentPage}&limit=${limit}`
-      );
+  const handleSearch = () => {
+    setCurrentPage(1);
+    setSearchQuery(searchInput.trim());
+    setSelectedUsers([]);
+  };
 
-      if (response.status === 401) {
-        handleTokenInvalid();
-        return;
-      }
+  const handleResetSearch = () => {
+    setSearchInput("");
+    setSearchQuery("");
+    setCurrentPage(1);
+    setSelectedUsers([]);
+  };
 
-      const data = await response.json();
-      setUsers(data.users);
-      setTotalPages(data.totalPages);
-      setTotalUsers(data.total);
-    } catch (err) {
-      console.error("사용자 검색 중 오류 발생:", err);
-      showToast("사용자 검색에 실패했습니다.", "error");
-    }
+  const handleSearchTypeChange = (value: string) => {
+    setSearchType(value);
+    setSearchInput("");
+    setSearchQuery("");
+    setCurrentPage(1);
+    setSelectedUser(null);
+    setSelectedUsers([]);
   };
 
   const handleUserSelect = (user: User) => {
     setSelectedUser(user);
+    setIsEditing(false);
+    setEditForm({});
   };
 
   const handleCheckboxChange = (userId: string) => {
-    setSelectedUsers((prev) => {
-      if (prev.includes(userId)) {
-        return prev.filter((id) => id !== userId);
-      } else {
-        return [...prev, userId];
-      }
-    });
+    setSelectedUsers((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
   };
+
+  const isAllSelected = users.length > 0 && users.every((user) => selectedUsers.includes(user.id));
 
   const handleSelectAll = () => {
     if (isAllSelected) {
@@ -125,7 +164,6 @@ const UserManagementPage = () => {
     } else {
       setSelectedUsers(users.map((user) => user.id));
     }
-    setIsAllSelected(!isAllSelected);
   };
 
   const handleDeleteSelected = async () => {
@@ -135,7 +173,7 @@ const UserManagementPage = () => {
     }
 
     const confirmed = await showConfirm(
-      `선택한 ${selectedUsers.length}명의 사용자를 삭제하시겠습니까?`,
+      `선택한 ${selectedUsers.length}명의 사용자를 영구 삭제하시겠습니까?`,
       {
         title: "사용자 삭제 확인",
         type: "warning",
@@ -170,14 +208,10 @@ const UserManagementPage = () => {
         }
 
         if (response.ok) {
-          setUsers((prev) =>
-            prev.filter((user) => !selectedUsers.includes(user.id))
-          );
-          setSelectedUsers([]);
-          setIsAllSelected(false);
           if (selectedUser && selectedUsers.includes(selectedUser.id)) {
             setSelectedUser(null);
           }
+          setSelectedUsers([]);
           showToast("선택한 사용자가 삭제되었습니다.", "success");
           fetchUsers();
         } else {
@@ -191,7 +225,9 @@ const UserManagementPage = () => {
   };
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
   const handleEditClick = (user: User) => {
@@ -246,22 +282,19 @@ const UserManagementPage = () => {
 
       const updatedUser = await response.json();
 
-      setUsers(
-        users.map((user) =>
+      setUsers((prev) =>
+        prev.map((user) =>
           user.id === selectedUser.id ? { ...user, ...updatedUser } : user
         )
       );
 
       setSelectedUser(updatedUser.data);
       setIsEditing(false);
-      showToast("사용자 정보가 수정되었습니다.", "success");
-
+      showToast("사용자 정보가 성공적으로 수정되었습니다.", "success");
       fetchUsers();
     } catch (err) {
       showToast(
-        err instanceof Error
-          ? err.message
-          : "알 수 없는 오류가 발생했습니다.",
+        err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
         "error"
       );
     }
@@ -271,355 +304,504 @@ const UserManagementPage = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSearchTypeChange = (value: string) => {
-    setSearchType(value);
-    // 검색조건 변경 시: 검색어/페이지/선택 상태/목록 초기화 후 기본 목록 다시 불러오기
-    setSearchInput("");
-    setCurrentPage(1);
-    setSelectedUser(null);
-    setSelectedUsers([]);
-    setIsAllSelected(false);
-    setUsers([]);
-    setTotalPages(1);
+  const getRoleBadge = (role: string) => {
+    switch (role) {
+      case "admin":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-300">
+            관리자
+          </span>
+        );
+      case "developer":
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-500/15 text-blue-600 dark:text-blue-300">
+            개발자
+          </span>
+        );
+      case "user":
+      default:
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-500/10 dark:bg-white/10 text-slate-600 dark:text-gray-300">
+            일반 유저
+          </span>
+        );
+    }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers, searchType]);
-
   return (
-    <div className="flex h-full bg-background p-4">
+    <div className="min-h-full flex flex-col p-6 lg:p-8 max-w-[1700px] mx-auto w-full space-y-6">
+      {/* 1. 상단 타이틀 헤더 */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-[12px] font-semibold text-muted tracking-wider uppercase">
+            RCK Admin
+          </p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">사용자 관리</h1>
+            <span className="text-[12px] font-medium text-muted px-2.5 py-0.5 rounded-full bg-card shadow-xs">
+              총 {totalUsers}명
+            </span>
+          </div>
+        </div>
 
-      {/* 왼쪽 사용자 목록 및 검색 */}
-      <div className="w-[65%] p-4 border-r border-gray-700 flex flex-col h-full">
-        <div className="flex-none">
-          <h2 className="text-[24px] font-bold text-white mb-4">사용자 관리</h2>
-          <div className="flex items-center mb-4 h-10">
-            <div className="flex items-center space-x-2">
-              <p className="text-white text-[14px]">검색조건</p>
-              <div className="w-[120px]">
-                <SelectBox
-                  options={[
-                    { label: "전체", value: "all" },
-                    { label: "이름", value: "username" },
-                    { label: "아이디", value: "email" },
-                    { label: "부서", value: "department" },
-                  ]}
-                  defaultValue="all"
-                  onChange={handleSearchTypeChange}
-                />
-              </div>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="border border-gray-600 rounded-md w-[200px] h-[32px] outline-none px-3 bg-gray-700 text-white text-[14px] placeholder-gray-400"
-                  placeholder="검색어를 입력하세요"
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      handleSearch();
-                    }
-                  }}
-                />
-              </div>
+        <button
+          onClick={() => fetchUsers()}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-card hover:bg-card-hover text-muted hover:text-foreground text-[13px] font-medium transition-all active:scale-95 self-start md:self-auto shadow-xs"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          <span>새로고침</span>
+        </button>
+      </div>
+
+      {/* 2. 컨트롤 바 (검색 필터 및 다중 선택 삭제) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-card p-4 rounded-2xl shadow-xs">
+        {/* 검색 조건 & 검색창 */}
+        <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-2xl">
+          <div className="w-[120px]">
+            <SelectBox
+              options={[
+                { label: "전체", value: "all" },
+                { label: "이름", value: "username" },
+                { label: "아이디", value: "email" },
+                { label: "부서", value: "department" },
+              ]}
+              defaultValue="all"
+              onChange={handleSearchTypeChange}
+            />
+          </div>
+
+          <div className="relative flex-1 min-w-[200px]">
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="검색어를 입력하세요..."
+              className="w-full h-[38px] pl-9 pr-8 rounded-xl bg-input hover:bg-card-hover focus:bg-input text-foreground placeholder-muted text-[13px] outline-none focus:ring-1 focus:ring-primary/40 border border-input-border transition-all"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch();
+              }}
+            />
+            <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            {searchInput && (
               <button
-                onClick={handleSearch}
-                className="bg-blue-600 text-white px-3 h-[32px] rounded text-[13px] hover:bg-blue-700"
+                type="button"
+                onClick={handleResetSearch}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-foreground p-1"
+                title="검색 초기화"
               >
-                검색
+                <X className="w-3.5 h-3.5" />
               </button>
-            </div>
+            )}
           </div>
-          <div className="flex justify-between mb-2">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={handleSelectAll}
-                className="mr-2 h-4 w-4"
-              />
-              <span className="text-white">전체 선택</span>
-            </div>
-            <button
-              onClick={handleDeleteSelected}
-              disabled={selectedUsers.length === 0}
-              className={`px-3 py-1 rounded-md ${
-                selectedUsers.length === 0
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                  : "bg-red-600 text-white hover:bg-red-700"
-              } transition-all duration-300 ease-in-out`}
-            >
-              선택 삭제
-            </button>
-          </div>
+
+          <button
+            onClick={handleSearch}
+            className="h-[38px] px-4 rounded-xl bg-card hover:bg-card-hover text-foreground text-[13px] font-medium transition-all active:scale-95 flex items-center gap-1.5 shadow-xs"
+          >
+            <Search className="w-3.5 h-3.5 text-muted" />
+            <span>검색</span>
+          </button>
         </div>
 
-        <div className="flex-1 overflow-x-auto min-h-0">
-          <table className="w-full text-white table-fixed border-collapse">
-            <colgroup>
-              <col style={{ width: "5%" }} />
-              <col style={{ width: "15%" }} />
-              <col style={{ width: "20%" }} />
-              <col style={{ width: "15%" }} />
-              <col style={{ width: "15%" }} />
-              <col style={{ width: "15%" }} />
-              <col style={{ width: "7.5%" }} />
-              {/* <col style={{ width: "7.5%" }} /> */}
-            </colgroup>
-            <thead>
-              <tr className="bg-gray-700">
-                <th className="p-2"></th>
-                <th className="p-2">이름</th>
-                <th className="p-2">아이디</th>
-                <th className="p-2">부서</th>
-                <th className="p-2">직위</th>
-                <th className="p-2">전화번호</th>
-                <th className="p-2">권한</th>
-                {/* <th className="p-2">상태</th> */}
-              </tr>
-            </thead>
-            <tbody className="text-center">
-              {users.map((user) => (
-                <tr
-                  key={user.id}
-                  className={`cursor-pointer hover:bg-gray-700 ${
-                    selectedUser?.id === user.id ? "bg-gray-600" : ""
-                  }`}
-                  onClick={() => handleUserSelect(user)}
-                >
-                  <td className="p-2" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.includes(user.id)}
-                      onChange={() => handleCheckboxChange(user.id)}
-                      className="h-4 w-4"
-                    />
-                  </td>
-                  <td className="p-2 truncate">{user.username}</td>
-                  <td className="p-2 truncate">{user.email}</td>
-                  <td className="p-2 truncate">{user.department}</td>
-                  <td className="p-2 truncate">{user.position}</td>
-                  <td className="p-2 truncate">{user.phone_number}</td>
-                  <td className="p-2 truncate">
-                    {user.role === "admin" ? "관리자" : user.role === "developer" ? "개발자" : "일반 유저"}
-                  </td>
-                  {/* <td className="p-2 truncate">
-                    {user.is_approved ? "승인" : "미승인"}
-                  </td> */}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 페이지네이션 */}
-        <div className="flex-none flex justify-center items-center mt-4 text-white">
-          <div className="flex space-x-2">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`px-3 py-1 rounded-md ${
-                currentPage === 1
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                  : "bg-gray-700 text-white hover:bg-gray-600"
-              }`}
-            >
-              이전
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter((page) => {
-                // 현재 페이지 주변의 페이지 번호만 표시
-                const diff = Math.abs(page - currentPage);
-                return diff <= 2 || page === 1 || page === totalPages;
-              })
-              .map((page, index, array) => {
-                if (index > 0 && page - array[index - 1] > 1) {
-                  return (
-                    <React.Fragment key={`ellipsis-${page}`}>
-                      <span className="px-2">...</span>
-                      <button
-                        onClick={() => handlePageChange(page)}
-                        className={`px-3 py-1 rounded-md ${
-                          currentPage === page
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-700 text-white hover:bg-gray-600"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    </React.Fragment>
-                  );
-                }
-                return (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`px-3 py-1 rounded-md ${
-                      currentPage === page
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-700 text-white hover:bg-gray-600"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                );
-              })}
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-1 rounded-md ${
-                currentPage === totalPages
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                  : "bg-gray-700 text-white hover:bg-gray-600"
-              }`}
-            >
-              다음
-            </button>
-          </div>
+        {/* 선택 삭제 버튼 */}
+        <div className="flex items-center gap-3 self-end lg:self-auto">
+          {selectedUsers.length > 0 && (
+            <span className="text-[12px] text-muted">
+              <strong className="text-foreground font-semibold">{selectedUsers.length}</strong>명 선택됨
+            </span>
+          )}
+          <button
+            onClick={handleDeleteSelected}
+            disabled={selectedUsers.length === 0}
+            className={`h-[38px] px-4 rounded-xl text-[13px] font-medium transition-all flex items-center gap-1.5 ${
+              selectedUsers.length === 0
+                ? "bg-card/40 text-muted/50 border border-border/50 cursor-not-allowed"
+                : "bg-red-500/15 hover:bg-red-500/25 text-red-500 dark:text-red-400 border border-red-500/30 active:scale-95 shadow-sm"
+            }`}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>선택 삭제</span>
+          </button>
         </div>
       </div>
 
-      {/* 오른쪽 사용자 상세 정보 */}
-      <div className="flex-1 p-4">
-        {selectedUser ? (
-          <div className="bg-card p-6 rounded-lg">
-            <h3 className="text-[24px] font-semibold text-white mb-4">
-              사용자 상세 정보
-            </h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">
-                    아이디
-                  </label>
-                  <div className="text-white">{selectedUser.email}</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">
-                    이름
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="username"
-                      value={editForm.username || ""}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-gray-700 text-white rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+      {/* 3. 2단 레이아웃: 좌측 사용자 테이블 + 우측 상세 정보 패널 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* 좌측 사용자 테이블 영역 */}
+        <div className="lg:col-span-7 xl:col-span-8 flex flex-col space-y-4">
+          <div className="rounded-2xl bg-card shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-foreground table-fixed border-collapse">
+                <colgroup>
+                  <col style={{ width: "6%" }} />
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "25%" }} />
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "11%" }} />
+                </colgroup>
+                <thead>
+                  <tr className="bg-[#EAEFF6] dark:bg-[#182133] border-b border-[#D8E2EF] dark:border-white/10 h-[48px]">
+                    <th className="p-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isAllSelected}
+                        onChange={handleSelectAll}
+                        className="w-[18px] h-[18px] rounded border-border text-primary focus:ring-primary/40 cursor-pointer align-middle"
+                        title="전체 선택"
+                      />
+                    </th>
+                    <th className="p-3 font-bold text-[13px] text-slate-800 dark:text-slate-100 tracking-tight text-center">
+                      이름
+                    </th>
+                    <th className="p-3 font-bold text-[13px] text-slate-800 dark:text-slate-100 tracking-tight text-center">
+                      아이디
+                    </th>
+                    <th className="p-3 font-bold text-[13px] text-slate-800 dark:text-slate-100 tracking-tight text-center">
+                      부서
+                    </th>
+                    <th className="p-3 font-bold text-[13px] text-slate-800 dark:text-slate-100 tracking-tight text-center">
+                      직위
+                    </th>
+                    <th className="p-3 font-bold text-[13px] text-slate-800 dark:text-slate-100 tracking-tight text-center">
+                      전화번호
+                    </th>
+                    <th className="p-3 font-bold text-[13px] text-slate-800 dark:text-slate-100 tracking-tight text-center">
+                      권한
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="p-16 text-center text-muted text-[14px]">
+                        사용자 목록을 불러오는 중...
+                      </td>
+                    </tr>
+                  ) : users.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-16 text-center text-muted text-[14px]">
+                        조건에 일치하는 사용자가 없습니다.
+                      </td>
+                    </tr>
                   ) : (
-                    <div className="text-white">{selectedUser.username}</div>
+                    users.map((user) => {
+                      const isSelected = selectedUser?.id === user.id;
+                      const isChecked = selectedUsers.includes(user.id);
+                      return (
+                        <tr
+                          key={user.id}
+                          onClick={() => handleUserSelect(user)}
+                          className={`border-b border-black/[0.04] dark:border-white/[0.04] last:border-b-0 cursor-pointer transition-colors duration-150 h-[52px] ${
+                            isSelected
+                              ? "bg-primary/10 dark:bg-white/[0.08] relative"
+                              : isChecked
+                              ? "bg-primary/5 dark:bg-white/[0.04]"
+                              : "hover:bg-card-hover/60"
+                          }`}
+                        >
+                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleCheckboxChange(user.id)}
+                              className="w-[18px] h-[18px] rounded border-border text-primary focus:ring-primary/40 cursor-pointer align-middle"
+                            />
+                          </td>
+                          <td className="p-3 font-medium text-foreground text-[13px] text-center truncate">
+                            {user.username}
+                          </td>
+                          <td className="p-3 text-foreground/80 text-[13px] font-mono text-center truncate">
+                            {user.email}
+                          </td>
+                          <td className="p-3 text-muted text-[13px] text-center truncate">
+                            {user.department || "-"}
+                          </td>
+                          <td className="p-3 text-muted text-[13px] text-center truncate">
+                            {user.position || "-"}
+                          </td>
+                          <td className="p-3 text-muted text-[13px] text-center truncate">
+                            {user.phone_number || "-"}
+                          </td>
+                          <td className="p-3 text-center">
+                            {getRoleBadge(user.role)}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">
-                    부서
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="department"
-                      value={editForm.department || ""}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-gray-700 text-white rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  ) : (
-                    <div className="text-white">{selectedUser.department}</div>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">
-                    직위
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="position"
-                      value={editForm.position || ""}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-gray-700 text-white rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  ) : (
-                    <div className="text-white">{selectedUser.position}</div>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">
-                    전화번호
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="phone_number"
-                      value={editForm.phone_number || ""}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-gray-700 text-white rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  ) : (
-                    <div className="text-white">
-                      {selectedUser.phone_number}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">
-                    권한
-                  </label>
-                  {isEditing ? (
-                    <select
-                      name="role"
-                      value={editForm.role || selectedUser.role}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-gray-700 text-white rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 페이지네이션 바 */}
+          <div className="flex flex-col sm:flex-row justify-between items-center px-1 gap-3 text-foreground">
+            <span className="text-[12px] text-muted">
+              페이지 <strong className="text-foreground font-semibold">{currentPage}</strong> / {totalPages || 1}
+              <span className="ml-2 text-muted/70">
+                (총 <span className="text-foreground font-medium">{totalUsers}</span>명)
+              </span>
+            </span>
+
+            <div className="flex items-center space-x-1.5">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`p-2 rounded-xl text-[13px] font-medium transition-all ${
+                  currentPage === 1
+                    ? "text-muted/30 cursor-not-allowed"
+                    : "text-muted hover:text-foreground hover:bg-card-hover active:scale-95"
+                }`}
+                title="이전 페이지"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  const diff = Math.abs(page - currentPage);
+                  return diff <= 2 || page === 1 || page === totalPages;
+                })
+                .map((page, index, array) => {
+                  if (index > 0 && page - array[index - 1] > 1) {
+                    return (
+                      <React.Fragment key={`ellipsis-${page}`}>
+                        <span className="px-1 text-muted text-[12px]">...</span>
+                        <button
+                          onClick={() => handlePageChange(page)}
+                          className={`min-w-[32px] h-[32px] px-2 rounded-xl text-[12px] font-medium transition-all ${
+                            currentPage === page
+                              ? "bg-primary text-white font-semibold shadow-xs"
+                              : "text-muted hover:text-foreground hover:bg-card-hover"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      </React.Fragment>
+                    );
+                  }
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`min-w-[32px] h-[32px] px-2 rounded-xl text-[12px] font-medium transition-all ${
+                        currentPage === page
+                          ? "bg-primary text-white font-semibold shadow-xs"
+                          : "text-muted hover:text-foreground hover:bg-card-hover"
+                      }`}
                     >
-                      <option value="admin">관리자</option>
-                      <option value="developer">개발자</option>
-                      <option value="user">유저</option>
-                    </select>
-                  ) : (
-                    <div className="text-white">
-                      {selectedUser.role === "admin" ? "관리자" : selectedUser.role === "developer" ? "개발자" : "유저"}
-                    </div>
-                  )}
+                      {page}
+                    </button>
+                  );
+                })}
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`p-2 rounded-xl text-[13px] font-medium transition-all ${
+                  currentPage === totalPages
+                    ? "text-muted/30 cursor-not-allowed"
+                    : "text-muted hover:text-foreground hover:bg-card-hover active:scale-95"
+                }`}
+                title="다음 페이지"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 우측 사용자 상세 정보 패널 */}
+        <div className="lg:col-span-5 xl:col-span-4 sticky top-6">
+          {selectedUser ? (
+            <div className="rounded-2xl bg-card p-6 shadow-xs flex flex-col space-y-6">
+              {/* 패널 상단 유저 정보 */}
+              <div className="flex items-center justify-between pb-4 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-[16px]">
+                    {selectedUser.username ? selectedUser.username.charAt(0) : "U"}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
+                      {selectedUser.username}
+                      {getRoleBadge(selectedUser.role)}
+                    </h3>
+                    <p className="text-[12px] text-muted font-mono mt-0.5">{selectedUser.email}</p>
+                  </div>
                 </div>
+
+                {!isEditing && (
+                  <button
+                    onClick={() => handleEditClick(selectedUser)}
+                    className="px-3 py-1.5 rounded-xl bg-card hover:bg-card-hover text-foreground text-[12px] font-medium border border-border transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>수정</span>
+                  </button>
+                )}
               </div>
 
-              <div className="flex justify-end space-x-2">
-                {isEditing ? (
-                  <>
+              {/* 입력 / 표시 폼 */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3.5">
+                  {/* 아이디 */}
+                  <div className="col-span-2">
+                    <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">
+                      아이디
+                    </label>
+                    <div className="w-full px-3.5 py-2.5 rounded-xl bg-card-hover/40 border border-border text-foreground font-mono text-[13px]">
+                      {selectedUser.email}
+                    </div>
+                  </div>
+
+                  {/* 이름 */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">
+                      이름
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="username"
+                        value={editForm.username || ""}
+                        onChange={handleInputChange}
+                        className="w-full px-3.5 py-2 rounded-xl bg-input border border-input-border text-foreground text-[13px] outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+                      />
+                    ) : (
+                      <div className="w-full px-3.5 py-2.5 rounded-xl bg-card-hover/40 border border-border text-foreground text-[13px] font-medium">
+                        {selectedUser.username}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 부서 */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">
+                      부서
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="department"
+                        value={editForm.department || ""}
+                        onChange={handleInputChange}
+                        className="w-full px-3.5 py-2 rounded-xl bg-input border border-input-border text-foreground text-[13px] outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+                      />
+                    ) : (
+                      <div className="w-full px-3.5 py-2.5 rounded-xl bg-card-hover/40 border border-border text-foreground text-[13px]">
+                        {selectedUser.department || "-"}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 직위 */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">
+                      직위
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="position"
+                        value={editForm.position || ""}
+                        onChange={handleInputChange}
+                        className="w-full px-3.5 py-2 rounded-xl bg-input border border-input-border text-foreground text-[13px] outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+                      />
+                    ) : (
+                      <div className="w-full px-3.5 py-2.5 rounded-xl bg-card-hover/40 border border-border text-foreground text-[13px]">
+                        {selectedUser.position || "-"}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 전화번호 */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">
+                      전화번호
+                    </label>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        name="phone_number"
+                        value={editForm.phone_number || ""}
+                        onChange={handleInputChange}
+                        className="w-full px-3.5 py-2 rounded-xl bg-input border border-input-border text-foreground text-[13px] outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+                      />
+                    ) : (
+                      <div className="w-full px-3.5 py-2.5 rounded-xl bg-card-hover/40 border border-border text-foreground text-[13px]">
+                        {selectedUser.phone_number || "-"}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 권한 */}
+                  <div className="col-span-2">
+                    <label className="block text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">
+                      시스템 권한
+                    </label>
+                    {isEditing ? (
+                      <select
+                        name="role"
+                        value={editForm.role || selectedUser.role}
+                        onChange={handleInputChange}
+                        className="w-full px-3.5 py-2 rounded-xl bg-input border border-input-border text-foreground text-[13px] outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
+                      >
+                        <option value="admin">관리자 (admin)</option>
+                        <option value="developer">개발자 (developer)</option>
+                        <option value="user">일반 유저 (user)</option>
+                      </select>
+                    ) : (
+                      <div className="w-full px-3.5 py-2.5 rounded-xl bg-card-hover/40 border border-border text-foreground text-[13px] flex items-center justify-between">
+                        <span>
+                          {selectedUser.role === "admin"
+                            ? "관리자 (모든 권한 부여)"
+                            : selectedUser.role === "developer"
+                            ? "개발자 (컴포넌트 등록 및 관리 권한)"
+                            : "일반 유저 (조회 및 다운로드 권한)"}
+                        </span>
+                        {getRoleBadge(selectedUser.role)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 수정 모드 버튼 */}
+                {isEditing && (
+                  <div className="flex justify-end items-center gap-2 pt-3 border-t border-border">
                     <button
                       onClick={handleCancelEdit}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500"
+                      className="px-4 py-2 rounded-xl bg-card hover:bg-card-hover text-muted hover:text-foreground text-[13px] font-medium border border-border transition-all"
                     >
                       취소
                     </button>
                     <button
                       onClick={handleSaveEdit}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-500"
+                      className="px-5 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-[13px] font-medium shadow-sm transition-all active:scale-95 flex items-center gap-1.5"
                     >
-                      저장
+                      <Check className="w-3.5 h-3.5" />
+                      <span>저장</span>
                     </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => handleEditClick(selectedUser)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-500"
-                  >
-                    수정
-                  </button>
+                  </div>
                 )}
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="text-white">
-            사용자를 선택하면 상세 정보가 표시됩니다.
-          </div>
-        )}
+          ) : (
+            <div className="rounded-2xl bg-card border border-border p-10 shadow-sm flex flex-col items-center justify-center text-center space-y-3 min-h-[380px]">
+              <div className="w-14 h-14 rounded-2xl bg-card-hover border border-border flex items-center justify-center text-muted mb-1">
+                <UserIcon className="w-7 h-7" />
+              </div>
+              <p className="text-foreground font-semibold text-[15px]">선택된 사용자가 없습니다</p>
+              <p className="text-muted text-[13px] max-w-[240px] leading-relaxed">
+                좌측 목록에서 사용자를 클릭하면 상세 정보 조회 및 권한 수정이 가능합니다.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

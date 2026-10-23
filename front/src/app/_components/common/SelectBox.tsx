@@ -44,15 +44,16 @@ function SelectBox({
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        className={`w-full h-[32px] px-3 bg-gray-700 text-white text-[14px] rounded-md border border-gray-600 flex items-center justify-between hover:bg-gray-600 transition-all duration-300 ${
+        type="button"
+        className={`w-full h-[38px] px-3.5 bg-input hover:bg-card-hover text-foreground text-[13px] rounded-xl border border-input-border flex items-center justify-between transition-all duration-200 focus:outline-none focus:ring-1 focus:ring-primary/40 ${
           disabled ? "opacity-50 cursor-not-allowed" : ""
         }`}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
       >
-        <span className="truncate">{selectedOption.label}</span>
+        <span className="truncate text-foreground">{selectedOption.label}</span>
         <svg
-          className={`w-4 h-4 transition-transform duration-300 ${
+          className={`w-4 h-4 text-muted transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
           }`}
           fill="none"
@@ -69,14 +70,14 @@ function SelectBox({
         </svg>
       </button>
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-gray-700 border border-gray-600 rounded-md shadow-lg">
+        <div className="absolute z-30 w-full mt-1.5 py-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
           {options.map((option) => (
             <div
               key={option.value}
-              className={`px-3 py-1.5 text-[14px] cursor-pointer ${
+              className={`px-3.5 py-2 text-[13px] cursor-pointer transition-colors ${
                 selectedOption.value === option.value
-                  ? "bg-blue-600 text-white"
-                  : "text-gray-300 hover:bg-gray-600"
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-muted hover:bg-card-hover hover:text-foreground"
               }`}
               onClick={() => handleSelect(option)}
             >

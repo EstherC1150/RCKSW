@@ -13,9 +13,11 @@ const NSModelClientPage = () => {
 
   useEffect(() => {
     if (!pageParam || isNaN(page) || page < 1) {
-      router.replace("/manage/ns-model?page=1");
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", "1");
+      router.replace(`/manage/ns-model?${params.toString()}`);
     }
-  }, [pageParam, page, router]);
+  }, [pageParam, page, router, searchParams]);
 
   return (
     <ComponentPageLayout

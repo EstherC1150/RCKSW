@@ -83,21 +83,22 @@ const Page = () => {
   return (
     <div
       className={`flex-1 mt-[12px] relative overflow-hidden ${
-        isMaximized ? "fixed inset-0 z-50 bg-gray-900" : ""
+        isMaximized ? "fixed inset-0 z-50 bg-background" : ""
       }`}
     >
       {!isMaximized && (
-        <div className="bg-gray-900 rounded-lg shadow-lg p-4 m-4">
+        <div className="bg-card border border-border rounded-2xl shadow-sm p-6 m-4 text-foreground">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-white text-lg font-medium">
+            <h2 className="text-foreground text-lg font-bold">
               카테고리별 다운로드
             </h2>
             <div className="flex space-x-2">
               <button
-                className="p-1 hover:bg-gray-700 rounded"
+                className="p-1.5 hover:bg-card-hover text-muted hover:text-foreground rounded-xl transition-colors"
                 onClick={handleMaximizeChart}
+                title="최대화"
               >
-                <Maximize2 className="w-4 h-4 text-gray-400" />
+                <Maximize2 className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -107,27 +108,29 @@ const Page = () => {
         </div>
       )}
       {isMaximized && (
-        <div className="fixed inset-0 bg-gray-900 z-50 p-4">
+        <div className="fixed inset-0 bg-background z-50 p-6 flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-white text-lg font-medium">
+            <h2 className="text-foreground text-xl font-bold">
               카테고리별 다운로드
             </h2>
             <div className="flex space-x-2">
               <button
-                className="p-1 hover:bg-gray-700 rounded"
+                className="p-1.5 hover:bg-card-hover text-muted hover:text-foreground rounded-xl transition-colors"
                 onClick={handleMaximizeChart}
+                title="이전 크기로 복원"
               >
-                <Minimize2 className="w-4 h-4 text-gray-400" />
+                <Minimize2 className="w-5 h-5" />
               </button>
               <button
-                className="p-1 hover:bg-gray-700 rounded"
+                className="p-1.5 hover:bg-card-hover text-muted hover:text-foreground rounded-xl transition-colors"
                 onClick={() => setIsMaximized(false)}
+                title="닫기"
               >
-                <X className="w-4 h-4 text-gray-400" />
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>
-          <div style={{ height: "calc(100vh - 100px)" }}>
+          <div className="flex-1 min-h-0 bg-card border border-border rounded-2xl p-4">
             <canvas ref={chartRef} />
           </div>
         </div>

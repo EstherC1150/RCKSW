@@ -1,16 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-const ManagePage = () => {
+function ManageRedirect() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    router.push("/manage/vc-plugin");
-  }, [router]);
+    const query = searchParams.toString();
+    router.replace(`/manage/search${query ? `?${query}` : ""}`);
+  }, [router, searchParams]);
 
   return null;
-};
+}
 
-export default ManagePage;
+export default function ManagePage() {
+  return (
+    <Suspense fallback={null}>
+      <ManageRedirect />
+    </Suspense>
+  );
+}

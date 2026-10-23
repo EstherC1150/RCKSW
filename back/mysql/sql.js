@@ -601,6 +601,28 @@ module.exports = {
       total_downloads DESC
   `,
 
+  // 대시보드 카테고리(타입)별 통계
+  getDashboardStats: `
+    SELECT 
+      type,
+      COUNT(DISTINCT component_id) as component_count,
+      COUNT(id) as file_count,
+      ISNULL(SUM(download_count), 0) as total_downloads
+    FROM files
+    WHERE is_active = 1
+    GROUP BY type
+  `,
+
+  // 대시보드 전체 합계 통계
+  getDashboardTotals: `
+    SELECT 
+      COUNT(DISTINCT component_id) as total_components,
+      COUNT(id) as total_files,
+      ISNULL(SUM(download_count), 0) as total_downloads
+    FROM files
+    WHERE is_active = 1
+  `,
+
   // 서브카테고리 이름으로 ID 찾기
   // @name: 서브카테고리 이름
   // @category_id: 메인 카테고리 ID
@@ -945,5 +967,15 @@ module.exports = {
     SET download_count = download_count + 1
     WHERE id = @id
   `,
+  // 특정 파일 경로를 참조하고 있는 파일 수 조회 (물리 파일 삭제 전 참조 여부 확인용)
+  // @file_path: 파일 경로
+  countFileReferences: `
+    SELECT COUNT(*) as count 
+    FROM files 
+    WHERE thumbnail_image = @file_path
+       OR source_file_link = @file_path
+       OR icon_file_link = @file_path
+       OR fbx_file_link = @file_path
+       OR vcmx_file_link = @file_path
+  `,
 };
-

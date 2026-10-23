@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { Download } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
-import { useAlertStore } from "@/app/stores/alertStore";
 
 // 파일 다운로드 헬퍼 함수
 export const downloadFileHelper = async (
@@ -55,7 +55,7 @@ export const FileDownloadButton = ({
     <div
       onClick={handleDownload}
       className={`px-3 py-1.5 text-xs rounded font-medium cursor-pointer transition-all flex items-center justify-center gap-1.5 whitespace-nowrap
-        ${isLoading ? "bg-cyan-700 text-white cursor-wait opacity-90" : "bg-gray-700 hover:bg-gray-600 text-white"}`}
+        ${isLoading ? "bg-primary text-white cursor-wait opacity-90" : "bg-card hover:bg-card-hover border border-border text-foreground shadow-sm"}`}
     >
       {isLoading ? (
         <>
@@ -116,7 +116,7 @@ export const DownloadOptions = ({
   return (
     <div
       ref={optionsRef}
-      className="absolute bottom-1/2 left-1/2 transform -translate-x-1/2 translate-y-1/2 mb-2 right-0 bg-gray-800 rounded-lg shadow-xl p-2 min-w-[125px] border border-gray-700 z-[10]"
+      className="absolute bottom-1/2 left-1/2 transform -translate-x-1/2 translate-y-1/2 mb-2 right-0 bg-card rounded-lg shadow-xl p-2 min-w-[125px] border border-border z-[10]"
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex flex-col gap-2">
@@ -149,6 +149,7 @@ export const DownloadIconButton = ({
   item,
   isActive,
   isDownloading = false,
+  variant = "icon",
   onClick,
   onClose,
   onDownloadStart,
@@ -157,6 +158,7 @@ export const DownloadIconButton = ({
   item: { id: number; type?: string; fileLinks: { source?: string; icon?: string; fbx?: string } };
   isActive: boolean;
   isDownloading?: boolean;
+  variant?: "icon" | "button";
   onClick: (e: React.MouseEvent) => void;
   onClose: () => void;
   onDownloadStart?: (fileId: number) => void;
@@ -189,7 +191,11 @@ export const DownloadIconButton = ({
     <div className="flex font-[600] items-center justify-center flex-[2] relative">
       <div
         ref={buttonRef}
-        className="w-[24px] h-[24px] relative cursor-pointer flex items-center justify-center"
+        className={
+          variant === "button"
+            ? "h-[28px] px-2.5 rounded-lg relative cursor-pointer flex items-center gap-1.5 bg-blue-500/10 hover:bg-primary text-primary hover:text-white transition-all text-[12px] font-medium active:scale-95"
+            : "w-[28px] h-[28px] rounded-lg relative cursor-pointer flex items-center justify-center hover:bg-card-hover transition-colors text-muted hover:text-primary active:scale-95"
+        }
         onClick={handleClick}
         title={
           isDownloading
@@ -200,9 +206,15 @@ export const DownloadIconButton = ({
         }
       >
         {isDownloading ? (
-          <span className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin shrink-0" />
+          <>
+            <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+            {variant === "button" && <span className="text-[11px] font-medium">다운 중</span>}
+          </>
         ) : (
-          <Image src="/images/ic-download-white.png" alt="download" fill />
+          <>
+            <Download className={variant === "button" ? "w-3.5 h-3.5" : "w-4 h-4 text-foreground/80 hover:text-primary transition-colors"} />
+            {variant === "button" && <span className="text-[11px] font-medium">받기</span>}
+          </>
         )}
         {isActive && hasMultipleFiles && (
           <DownloadOptions

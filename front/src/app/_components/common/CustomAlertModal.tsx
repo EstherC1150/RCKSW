@@ -26,10 +26,10 @@ const toastIconMap: Record<AlertType, React.ReactNode> = {
 };
 
 const headerBgMap: Record<AlertType, string> = {
-  success: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20',
-  error: 'bg-rose-500/15 text-rose-400 border border-rose-500/20',
-  warning: 'bg-amber-500/15 text-amber-400 border border-amber-500/20',
-  info: 'bg-sky-500/15 text-sky-400 border border-sky-500/20',
+  success: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
+  error: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20',
+  warning: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20',
+  info: 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20',
 };
 
 export const CustomAlertModal: React.FC = () => {
@@ -52,7 +52,7 @@ export const CustomAlertModal: React.FC = () => {
 
     const originalAlert = window.alert;
 
-    window.alert = (msg?: any) => {
+    window.alert = (msg?: unknown) => {
       useAlertStore.getState().showAlert(String(msg ?? ''), {
         title: '알림',
         type: 'info',
@@ -86,7 +86,7 @@ export const CustomAlertModal: React.FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 12 }}
               transition={{ type: 'spring', damping: 24, stiffness: 320 }}
-              className="relative w-full max-w-sm overflow-hidden bg-[#0f172a]/95 backdrop-blur-xl rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] border border-slate-700/60 text-slate-100"
+              className="relative w-full max-w-sm overflow-hidden bg-card backdrop-blur-xl rounded-2xl shadow-2xl border border-border text-foreground"
             >
               {/* Header Icon & Title */}
               <div className="p-6 text-center">
@@ -95,21 +95,21 @@ export const CustomAlertModal: React.FC = () => {
                 >
                   {iconMap[type]}
                 </div>
-                <h3 className="text-lg font-bold text-white tracking-tight">
+                <h3 className="text-lg font-bold text-foreground tracking-tight">
                   {title}
                 </h3>
-                <p className="mt-2.5 text-sm text-slate-300 whitespace-pre-line leading-relaxed">
+                <p className="mt-2.5 text-sm text-muted whitespace-pre-line leading-relaxed">
                   {message}
                 </p>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2.5 p-4 bg-slate-900/60 border-t border-slate-800/80">
+              <div className="flex items-center gap-2.5 p-4 bg-card-hover/50 border-t border-border">
                 {mode === 'confirm' && (
                   <button
                     type="button"
                     onClick={() => closeModal(false)}
-                    className="w-full px-4 py-2.5 text-sm font-semibold text-slate-300 bg-slate-800 border border-slate-700 rounded-xl hover:bg-slate-700 hover:text-white transition-all focus:outline-none"
+                    className="w-full px-4 py-2.5 text-sm font-semibold text-muted bg-card border border-border rounded-xl hover:bg-card-hover hover:text-foreground transition-all focus:outline-none"
                   >
                     {cancelText}
                   </button>
@@ -145,13 +145,13 @@ export const CustomAlertModal: React.FC = () => {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 30, scale: 0.9 }}
               transition={{ duration: 0.2 }}
-              className="pointer-events-auto flex items-center gap-3 p-3.5 bg-[#0f172a]/95 backdrop-blur-xl rounded-xl shadow-2xl border border-slate-700/60 text-sm text-slate-200"
+              className="pointer-events-auto flex items-center gap-3 p-3.5 bg-card backdrop-blur-xl rounded-xl shadow-2xl border border-border text-sm text-foreground"
             >
               {toastIconMap[t.type]}
               <span className="flex-1 font-medium leading-snug">{t.message}</span>
               <button
                 onClick={() => removeToast(t.id)}
-                className="text-slate-400 hover:text-slate-200 transition-colors"
+                className="text-muted hover:text-foreground transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>

@@ -10,9 +10,11 @@ const EtcClientPage = () => {
 
   useEffect(() => {
     if (!pageParam || isNaN(page) || page < 1) {
-      router.replace("/manage/etc?page=1");
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("page", "1");
+      router.replace(`/manage/etc?${params.toString()}`);
     }
-  }, [pageParam, page, router]);
+  }, [pageParam, page, router, searchParams]);
 
   return (
     <ComponentPageLayout

@@ -73,7 +73,7 @@ interface ManageItemListProps {
 const FbxViewer = dynamic(() => import("@/app/_components/common/FbxViewer"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-gray-900">
+    <div className="w-full h-full flex items-center justify-center bg-card-hover">
       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
     </div>
   ),
@@ -245,6 +245,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
     else if (targetType === "vc_model") basePath = "/manage/vc-model";
     else if (targetType === "ns_model") basePath = "/manage/ns-model";
     else if (targetType === "etc") basePath = "/manage/etc";
+    else if (targetType === "all") basePath = "/manage/search";
 
     const params = new URLSearchParams();
     const fromPage = searchParams.get("fromPage");
@@ -272,11 +273,11 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
   }, [componentData]);
 
   if (loading) {
-    return <div className="text-white">로딩 중...</div>;
+    return <div className="text-muted">로딩 중...</div>;
   }
 
   if (error || !componentData) {
-    return <div className="text-white">에러: {error}</div>;
+    return <div className="text-rose-500 dark:text-rose-400">에러: {error}</div>;
   }
 
   const isVcPlugin = componentData.type === "vc_plugin";
@@ -291,52 +292,53 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
     componentData.thumbnailImage === "/images/ic-etc.png" ||
     componentData.thumbnailImage === "/uploads/thumbnails/ic-vc.png" ||
     componentData.thumbnailImage === "/uploads/thumbnails/ic-ns.png" ||
-    componentData.thumbnailImage === "/uploads/thumbnails/ic-etc.png";
+    componentData.thumbnailImage === "/uploads/thumbnails/ic-etc.png" ||
+    !componentData.thumbnailImage ||
+    componentData.thumbnailImage === "/images/thumbnail.png";
 
   return (
-    <div className="h-full flex flex-col py-[20px] px-[30px] text-white">
+    <div className="min-h-full flex flex-col pt-5 pb-14 px-[30px] text-foreground">
       {/* 상단 버튼 영역 */}
       <div className="flex items-center justify-between mt-4 mb-6">
         <button
           onClick={backToList}
           className="group flex items-center gap-2 px-3 py-2 rounded-lg 
-            bg-gray-800/50 backdrop-blur-sm hover:bg-gray-700/60
+            bg-card backdrop-blur-sm hover:bg-card-hover
             transition-all duration-300 ease-in-out
-            border border-gray-700/30 shadow-lg"
+            shadow-xs"
         >
           <IoArrowBack
-            className="w-5 h-5 text-gray-300 
+            className="w-5 h-5 text-muted 
             group-hover:transform group-hover:-translate-x-1 
             transition-transform duration-300"
           />
-          <span className="text-gray-300 text-sm font-medium">목록 보기</span>
+          <span className="text-muted group-hover:text-foreground text-sm font-medium">목록 보기</span>
         </button>
       </div>
 
       {/* 컴포넌트 제목 추가 */}
       <div className="mb-6">
         <h1
-          className="text-2xl font-bold bg-clip-text text-transparent 
-          bg-gradient-to-r from-white to-gray-400"
+          className="text-2xl font-bold text-foreground"
         >
           {componentData.fileName}
         </h1>
         <div className="flex items-center gap-3 mt-2">
-          <span className="text-sm text-gray-400">
+          <span className="text-sm text-muted">
             버전 {componentData.version}
           </span>
-          <span className="w-1 h-1 rounded-full bg-gray-600"></span>
-          <span className="text-sm text-gray-400">
+          <span className="w-1 h-1 rounded-full bg-muted/50"></span>
+          <span className="text-sm text-muted">
             {formatDate(componentData.updatedAt)}
           </span>
           {componentData.type === "vc_model" && componentData.modelType && (
             <>
-              <span className="w-1 h-1 rounded-full bg-gray-600"></span>
+              <span className="w-1 h-1 rounded-full bg-muted/50"></span>
               <span
-                className={`text-[11px] px-2 py-[2px] rounded-full font-medium ${
+                className={`text-[11px] px-2.5 py-[2px] rounded-full font-medium ${
                   componentData.modelType === "layout"
-                    ? "bg-purple-500/20 text-purple-300"
-                    : "bg-cyan-500/20 text-cyan-300"
+                    ? "bg-purple-500/15 text-purple-600 dark:text-purple-300"
+                    : "bg-blue-500/15 text-blue-600 dark:text-blue-300"
                 }`}
               >
                 {componentData.modelType === "layout" ? "레이아웃" : "컴포넌트"}
@@ -353,18 +355,18 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
           <div className="flex flex-col shrink-0">
             <div className="flex items-center justify-between mb-4 gap-4">
               <div className="flex items-center gap-3">
-                <h2 className="text-[20px] font-semibold text-white">
+                <h2 className="text-[20px] font-semibold text-foreground">
                   {isVcPlugin ? "동영상 썸네일" : "미리보기"}
                 </h2>
                 {hasFbxPreview && !isPlaceholder && componentData.thumbnailImage && (
-                  <div className="flex items-center bg-gray-800/90 p-0.5 rounded-lg border border-gray-700">
+                  <div className="flex items-center bg-black/5 dark:bg-white/[0.04] p-1 rounded-xl">
                     <button
                       type="button"
                       onClick={() => setViewMode("3d")}
-                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                      className={`px-3 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                         viewMode === "3d"
-                          ? "bg-cyan-600 text-white shadow-sm font-semibold"
-                          : "text-gray-400 hover:text-gray-200 hover:bg-gray-700/50"
+                          ? "bg-card text-primary dark:text-white shadow-xs font-semibold"
+                          : "text-muted hover:text-foreground hover:bg-black/5 dark:hover:bg-white/[0.05]"
                       }`}
                     >
                       3D 뷰
@@ -372,10 +374,10 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                     <button
                       type="button"
                       onClick={() => setViewMode("thumbnail")}
-                      className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                      className={`px-3 py-1 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                         viewMode === "thumbnail"
-                          ? "bg-cyan-600 text-white shadow-sm font-semibold"
-                          : "text-gray-400 hover:text-gray-200 hover:bg-gray-700/50"
+                          ? "bg-card text-primary dark:text-white shadow-xs font-semibold"
+                          : "text-muted hover:text-foreground hover:bg-black/5 dark:hover:bg-white/[0.05]"
                       }`}
                     >
                       썸네일
@@ -391,9 +393,8 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                     onClick={handleThumbnailDownload}
                     disabled={isDownloadingThumbnail}
                     className="flex items-center justify-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-lg
-                      bg-blue-950/70 hover:bg-blue-900/90 text-blue-300 hover:text-blue-200
-                      border border-blue-500/40 hover:border-blue-400
-                      transition-all duration-200 shadow-md shadow-blue-950/40 disabled:cursor-not-allowed cursor-pointer"
+                      bg-primary hover:bg-primary-hover text-white
+                      transition-all duration-200 shadow-sm disabled:cursor-not-allowed cursor-pointer"
                     title="동영상 썸네일 다운로드"
                   >
                     {isDownloadingThumbnail ? (
@@ -414,8 +415,8 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
 
             {/* 썸네일 카드 뷰어 */}
             <div
-              className={`group relative bg-gray-900 rounded-lg shadow-xl overflow-hidden
-              border border-gray-700/50 backdrop-blur-sm transition-all duration-300 ${
+              className={`group relative bg-card rounded-2xl shadow-xs overflow-hidden
+              backdrop-blur-sm transition-all duration-300 ${
                 isWideThumbnail
                   ? "w-full max-w-[560px] h-[315px] sm:w-[560px]"
                   : "w-[360px] h-[360px]"
@@ -427,7 +428,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                     key={componentData.fileLinks?.fbx || componentData.fileLinks?.source}
                     fbxUrl={componentData.fileLinks?.fbx || componentData.fileLinks?.source || ""}
                   />
-                  <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-xs px-2 py-1 rounded text-xs text-gray-300 z-10 border border-gray-700/40">
+                  <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-xs px-2 py-1 rounded text-xs text-white/85 z-10 border border-white/10">
                     마우스 좌클릭: 회전 | 우클릭: 이동 | 휠: 확대/축소
                   </div>
                 </div>
@@ -457,7 +458,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
             <div className="flex flex-col h-full">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-[20px] font-semibold text-white">
+                  <h2 className="text-[20px] font-semibold text-foreground">
                     주요 기능
                   </h2>
                   {(user?.role === "admin" || user?.role === "developer") && (
@@ -467,7 +468,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                           <button
                             onClick={handleSaveFeatures}
                             className="px-3 py-1.5 text-xs font-medium rounded-lg
-                              bg-blue-600 hover:bg-blue-500 text-white
+                              bg-primary hover:bg-primary-hover text-white
                               transition-all duration-200 shadow-md"
                           >
                             저장
@@ -480,7 +481,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                               }
                             }}
                             className="px-3 py-1.5 text-xs font-medium rounded-lg
-                              bg-gray-700 hover:bg-gray-600 text-gray-200
+                              bg-card hover:bg-card-hover text-muted hover:text-foreground
                               transition-all duration-200"
                           >
                             취소
@@ -490,9 +491,8 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                         <button
                           onClick={() => setIsEditingFeatures(true)}
                           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
-                            bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white
-                            border border-gray-600/50 hover:border-gray-500
-                            transition-all duration-200 shadow-md"
+                            bg-card hover:bg-card-hover text-muted hover:text-foreground
+                            transition-all duration-200 shadow-sm"
                         >
                           <IoPencil className="w-3.5 h-3.5" />
                           <span>주요 기능 수정</span>
@@ -504,7 +504,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
 
                 {isEditingFeatures ? (
                   <textarea
-                    className={`w-full bg-gray-900 border border-cyan-500/50 resize-none px-4 py-3 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 font-normal leading-relaxed text-sm ${
+                    className={`w-full bg-input border border-input-border resize-none px-4 py-3 rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 font-normal leading-relaxed text-sm ${
                       isWideThumbnail ? "h-[315px]" : "h-[360px]"
                     }`}
                     value={features}
@@ -513,7 +513,7 @@ const ManageItemList = ({ id }: ManageItemListProps) => {
                   />
                 ) : (
                   <div
-                    className={`w-full px-4 py-4 rounded-xl text-gray-200 overflow-y-auto border border-gray-700/60 bg-gray-900/80 backdrop-blur-md text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                    className={`w-full px-5 py-5 rounded-2xl text-foreground overflow-y-auto bg-card backdrop-blur-md text-sm leading-relaxed whitespace-pre-wrap break-words shadow-xs ${
                       isWideThumbnail ? "h-[315px]" : "h-[360px]"
                     }`}
                   >

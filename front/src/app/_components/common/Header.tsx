@@ -3,8 +3,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import useUserStore from "@/app/stores/UserStore";
+import useThemeStore from "@/app/stores/ThemeStore";
 import Image from "next/image";
 import Link from "next/link";
+import { Sun, Moon } from "lucide-react";
 
 import MyPageModal from "./MyPageModal";
 
@@ -15,14 +17,9 @@ const Header = () => {
   const [isMyPageOpen, setIsMyPageOpen] = useState(false);
   const optionsRef = useRef<HTMLDivElement>(null);
   const { user, clearAll } = useUserStore();
+  const { theme, toggleTheme } = useThemeStore();
 
   const isManagement = pathname.includes("/manage") || pathname.includes("/user") || pathname.includes("/log");
-
-  const navItems = [
-    { name: "Visual Components", href: "/manage/vc-plugin", active: pathname.includes("/vc-") },
-    { name: "Nextspace", href: "/manage/ns-plugin", active: pathname.includes("/ns-") },
-    { name: "etc", href: "/manage/etc", active: pathname.includes("/etc") },
-  ];
 
   const handleLogout = () => {
     // 로그아웃 로직 구현
@@ -49,42 +46,70 @@ const Header = () => {
 
   return (
     <>
-      <header className="h-[64px] bg-card border-b border-border flex items-center justify-between px-8 z-30 shadow-sm transition-all flex-shrink-0">
+      <header className="h-[64px] bg-header border-b border-header-border flex items-center justify-between px-8 z-30 shadow-sm transition-colors flex-shrink-0">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            <Image src="/images/RCK Logo-en-Horizontal-Reverse.png" alt="RCK Logo" width={100} height={26} className="object-contain" priority />
-          </div>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 group transition-transform hover:opacity-90 active:scale-95 cursor-pointer"
+            title="대시보드 메인으로 이동"
+          >
+            <Image
+              src="/images/RCK Logo-en-Horizontal-Reverse.png"
+              alt="RCK Logo"
+              width={100}
+              height={26}
+              className="object-contain transition-all group-hover:opacity-90"
+              priority
+            />
+          </Link>
           {isManagement}
         </div>
-        <div className="flex gap-[8px] items-center relative">
-          <p
-            className="text-[14px] font-medium cursor-pointer hover:underline"
-            onClick={() => setShowOptions(!showOptions)}
+        <div className="flex items-center gap-4">
+          {/* 테마 전환 토글 버튼 */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:bg-white/15 text-header-fg active:scale-95 cursor-pointer"
+            title={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
           >
-            {user?.username}님
-          </p>
-          {showOptions && (
-            <div
-              ref={optionsRef}
-              className="absolute top-[30px] right-0 bg-card border border-gray-600 rounded-md shadow-lg z-10 w-[120px] overflow-hidden"
+            {theme === "dark" ? (
+              <Sun className="w-4 h-4 text-amber-400 transition-transform rotate-0 scale-100" />
+            ) : (
+              <Moon className="w-4 h-4 text-cyan-200 transition-transform -rotate-12 scale-100" />
+            )}
+          </button>
+
+          {/* 유저 메뉴 */}
+          <div className="flex gap-[8px] items-center relative">
+            <p
+              className="text-[14px] font-medium text-header-fg cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => setShowOptions(!showOptions)}
             >
-              <button
-                className="w-full px-4 py-2.5 text-left text-white hover:bg-gray-700 text-[14px] border-b border-gray-700 flex items-center gap-2"
-                onClick={() => {
-                  setIsMyPageOpen(true);
-                  setShowOptions(false);
-                }}
+              {user?.username}님
+            </p>
+            {showOptions && (
+              <div
+                ref={optionsRef}
+                className="absolute top-[36px] right-0 bg-card border border-border text-foreground rounded-xl shadow-xl z-50 w-[130px] overflow-hidden backdrop-blur-md"
               >
-                마이페이지
-              </button>
-              <button
-                className="w-full px-4 py-2.5 text-left text-white hover:bg-gray-700 text-[14px] flex items-center gap-2 text-red-400 hover:text-red-300"
-                onClick={handleLogout}
-              >
-                로그아웃
-              </button>
-            </div>
-          )}
+                <button
+                  className="w-full px-4 py-2.5 text-left text-foreground hover:bg-card-hover text-[13px] border-b border-border flex items-center gap-2 font-medium transition-colors cursor-pointer"
+                  onClick={() => {
+                    setIsMyPageOpen(true);
+                    setShowOptions(false);
+                  }}
+                >
+                  마이페이지
+                </button>
+                <button
+                  className="w-full px-4 py-2.5 text-left text-rose-500 hover:bg-rose-500/10 text-[13px] flex items-center gap-2 font-medium transition-colors cursor-pointer"
+                  onClick={handleLogout}
+                >
+                  로그아웃
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

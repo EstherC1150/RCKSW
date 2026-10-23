@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import useUserStore from "@/app/stores/UserStore";
 import { authenticatedFetch } from "@/app/utils/api";
-import { IoPerson, IoMail, IoBriefcase, IoPhonePortrait, IoKey, IoShieldCheckmark, IoSave, IoClose } from "react-icons/io5";
+import { IoPerson, IoMail, IoBriefcase, IoPhonePortrait, IoShieldCheckmark, IoClose } from "react-icons/io5";
 
 interface UserProfile {
   id: number;
@@ -23,10 +24,15 @@ interface MyPageModalProps {
 
 export default function MyPageModal({ isOpen, onClose }: MyPageModalProps) {
   const { updateUser, getAccessToken, clearAll } = useUserStore();
+  const [isMounted, setIsMounted] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // 폼 입력 상태
   const [username, setUsername] = useState("");
@@ -85,7 +91,7 @@ export default function MyPageModal({ isOpen, onClose }: MyPageModalProps) {
     fetchProfile();
   }, [isOpen, API_URL, getAccessToken, clearAll, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !isMounted || typeof document === "undefined") return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,36 +166,37 @@ export default function MyPageModal({ isOpen, onClose }: MyPageModalProps) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fade-in">
-      <div className="bg-[#0b1121] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-xs p-4 animate-fade-in">
+      <div className="bg-card border border-black/[0.08] dark:border-white/[0.1] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         {/* 모달 헤더 */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border bg-card">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-primary/20 border border-primary/30 rounded-xl text-primary">
+            <div className="p-2.5 bg-primary/10 rounded-xl text-primary flex items-center justify-center">
               <IoPerson className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">마이페이지 (내 정보 수정)</h2>
-              <p className="text-xs text-gray-400">개인 프로필 및 비밀번호 관리</p>
+              <h2 className="text-lg font-bold text-foreground">마이페이지 (내 정보 수정)</h2>
+              <p className="text-xs text-muted mt-0.5">개인 프로필 및 비밀번호 관리</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors"
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-muted hover:text-foreground hover:bg-card-hover transition-colors cursor-pointer"
+            aria-label="닫기"
           >
-            <IoClose className="w-6 h-6" />
+            <IoClose className="w-5 h-5" />
           </button>
         </div>
 
         {/* 모달 본문 (스크롤) */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-white">
+        <div className="px-6 py-5 overflow-y-auto text-foreground">
           {message && (
             <div
-              className={`p-4 rounded-xl text-sm border flex items-center gap-2 ${
+              className={`p-3.5 mb-5 rounded-xl text-sm border flex items-center gap-2 ${
                 message.type === "success"
-                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                  : "bg-rose-500/10 border-rose-500/30 text-rose-400"
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                  : "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400"
               }`}
             >
               <span>{message.text}</span>
@@ -201,25 +208,25 @@ export default function MyPageModal({ isOpen, onClose }: MyPageModalProps) {
               <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* 기본 계정 정보 (읽기전용) */}
-              <div className="bg-white/5 p-4 rounded-xl border border-white/5 grid grid-cols-2 gap-4">
+              <div className="bg-card-hover/40 p-4 rounded-xl border border-border grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-semibold text-gray-400 uppercase mb-1">
-                    아이디 (계정)
+                  <label className="block text-[11px] font-semibold text-muted uppercase mb-1">
+                    아이디
                   </label>
-                  <div className="flex items-center gap-2 text-sm text-gray-200">
-                    <IoMail className="text-gray-400" />
+                  <div className="flex items-center gap-2 text-sm text-foreground">
+                    <IoPerson className="text-muted text-xs" />
                     <span>{profile?.email}</span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-gray-400 uppercase mb-1">
+                  <label className="block text-[11px] font-semibold text-muted uppercase mb-1">
                     계정 권한
                   </label>
                   <div className="flex items-center gap-2 text-sm">
-                    <IoShieldCheckmark className="text-blue-400" />
-                    <span className="font-semibold text-blue-300">
+                    <IoShieldCheckmark className="text-blue-500" />
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">
                       {profile?.role === "admin" ? "관리자 (Admin)" : profile?.role === "developer" ? "개발자 (Developer)" : "일반 사용자 (User)"}
                     </span>
                   </div>
@@ -227,71 +234,71 @@ export default function MyPageModal({ isOpen, onClose }: MyPageModalProps) {
               </div>
 
               {/* 인적 사항 */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider">
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold text-muted uppercase tracking-wider">
                   인적 사항
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    <label className="block text-xs font-medium text-muted mb-1.5">
                       사용자명 (이름) *
                     </label>
                     <div className="relative">
-                      <IoPerson className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
+                      <IoPerson className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm" />
                       <input
                         type="text"
                         required
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2.5 bg-input border border-input-border rounded-xl text-white outline-none focus:border-primary text-sm"
+                        className="w-full pl-9 pr-3 py-2 bg-input border border-input-border rounded-xl text-foreground outline-none focus:border-primary text-sm transition-all"
                         placeholder="이름"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    <label className="block text-xs font-medium text-muted mb-1.5">
                       부서
                     </label>
                     <div className="relative">
-                      <IoBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
+                      <IoBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm" />
                       <input
                         type="text"
                         value={department}
                         onChange={(e) => setDepartment(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2.5 bg-input border border-input-border rounded-xl text-white outline-none focus:border-primary text-sm"
+                        className="w-full pl-9 pr-3 py-2 bg-input border border-input-border rounded-xl text-foreground outline-none focus:border-primary text-sm transition-all"
                         placeholder="부서명"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    <label className="block text-xs font-medium text-muted mb-1.5">
                       직책
                     </label>
                     <div className="relative">
-                      <IoBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
+                      <IoBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm" />
                       <input
                         type="text"
                         value={position}
                         onChange={(e) => setPosition(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2.5 bg-input border border-input-border rounded-xl text-white outline-none focus:border-primary text-sm"
+                        className="w-full pl-9 pr-3 py-2 bg-input border border-input-border rounded-xl text-foreground outline-none focus:border-primary text-sm transition-all"
                         placeholder="직책"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                    <label className="block text-xs font-medium text-muted mb-1.5">
                       전화번호
                     </label>
                     <div className="relative">
-                      <IoPhonePortrait className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
+                      <IoPhonePortrait className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm" />
                       <input
                         type="text"
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2.5 bg-input border border-input-border rounded-xl text-white outline-none focus:border-primary text-sm"
+                        className="w-full pl-9 pr-3 py-2 bg-input border border-input-border rounded-xl text-foreground outline-none focus:border-primary text-sm transition-all"
                         placeholder="010-0000-0000"
                       />
                     </div>
@@ -299,54 +306,71 @@ export default function MyPageModal({ isOpen, onClose }: MyPageModalProps) {
                 </div>
               </div>
 
-              {/* 비밀번호 변경 영역 */}
-              <div className="pt-2 border-t border-white/10 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-amber-300">
-                    <input
-                      type="checkbox"
-                      checked={changePassword}
-                      onChange={(e) => setChangePassword(e.target.checked)}
-                      className="w-4 h-4 accent-amber-500 rounded"
-                    />
-                    <IoKey className="text-amber-400" />
-                    <span>비밀번호 변경하기</span>
-                  </label>
+              {/* 비밀번호 변경 영역 (아코디언 카드 스타일) */}
+              <div className="rounded-xl border border-border bg-card-hover/30 overflow-hidden transition-all">
+                <div
+                  onClick={() => setChangePassword(!changePassword)}
+                  className="flex items-center justify-between px-4 py-3 cursor-pointer group select-none hover:bg-card-hover/60 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    {/* 토글 스위치 */}
+                    <div
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out p-0.5 ${
+                        changePassword ? "bg-primary" : "bg-card border border-border group-hover:bg-card-hover"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
+                          changePassword ? "translate-x-4" : "translate-x-0"
+                        }`}
+                      />
+                    </div>
+                    <span
+                      className={`text-sm font-medium transition-colors ${
+                        changePassword ? "text-foreground font-semibold" : "text-muted group-hover:text-foreground"
+                      }`}
+                    >
+                      비밀번호 변경하기
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted">
+                    {changePassword ? "접기" : "비밀번호 변경 시 클릭"}
+                  </span>
                 </div>
 
                 {changePassword && (
-                  <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3 animate-fade-in">
-                    <p className="text-xs text-amber-200/80">
+                  <div className="px-4 pb-4 pt-2 border-t border-border/50 space-y-3 bg-card-hover/20 animate-fade-in">
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
                       비밀번호는 현재 비밀번호 확인 후 즉시 변경됩니다. (이메일 인증 불필요)
                     </p>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">현재 비밀번호 *</label>
+                      <label className="block text-xs text-muted mb-1">현재 비밀번호 *</label>
                       <input
                         type="password"
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-input border border-input-border rounded-lg text-white text-sm outline-none focus:border-primary"
+                        className="w-full px-3 py-2 bg-input border border-input-border rounded-lg text-foreground text-sm outline-none focus:border-primary"
                         placeholder="현재 비밀번호 입력"
                       />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">새 비밀번호 *</label>
+                        <label className="block text-xs text-muted mb-1">새 비밀번호 *</label>
                         <input
                           type="password"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full px-3 py-2 bg-input border border-input-border rounded-lg text-white text-sm outline-none focus:border-primary"
+                          className="w-full px-3 py-2 bg-input border border-input-border rounded-lg text-foreground text-sm outline-none focus:border-primary"
                           placeholder="새 비밀번호 입력"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">새 비밀번호 확인 *</label>
+                        <label className="block text-xs text-muted mb-1">새 비밀번호 확인 *</label>
                         <input
                           type="password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="w-full px-3 py-2 bg-input border border-input-border rounded-lg text-white text-sm outline-none focus:border-primary"
+                          className="w-full px-3 py-2 bg-input border border-input-border rounded-lg text-foreground text-sm outline-none focus:border-primary"
                           placeholder="새 비밀번호 확인"
                         />
                       </div>
@@ -356,27 +380,27 @@ export default function MyPageModal({ isOpen, onClose }: MyPageModalProps) {
               </div>
 
               {/* 하단 버튼 */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-border">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-medium transition-colors"
+                  className="px-4 py-2 rounded-xl bg-card hover:bg-card-hover text-muted hover:text-foreground border border-border text-sm font-medium transition-colors shadow-xs cursor-pointer"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-sm shadow-lg transition-all disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl text-sm shadow-sm transition-all disabled:opacity-50 cursor-pointer"
                 >
-                  <IoSave className="w-4 h-4" />
-                  <span>{saving ? "저장 중..." : "변경 사항 저장"}</span>
+                  {saving ? "저장 중..." : "변경 사항 저장"}
                 </button>
               </div>
             </form>
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
