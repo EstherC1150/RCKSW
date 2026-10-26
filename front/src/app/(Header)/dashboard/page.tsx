@@ -39,9 +39,9 @@ interface DashboardFileItem {
   created_at: string;
   updated_at: string;
   download_count: number;
+  file_path?: string | null;
   source_file_link?: string | null;
   vcmx_file_link?: string | null;
-  icon_file_link?: string | null;
   fbx_file_link?: string | null;
 }
 
@@ -361,8 +361,7 @@ export default function DashboardPage() {
                           id: item.id,
                           type: item.type,
                           fileLinks: {
-                            source: item.source_file_link || item.vcmx_file_link || undefined,
-                            icon: item.icon_file_link || undefined,
+                            source: item.file_path || item.source_file_link || item.vcmx_file_link || undefined,
                             fbx: item.fbx_file_link || undefined,
                           },
                         }}

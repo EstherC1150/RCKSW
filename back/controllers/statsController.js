@@ -77,9 +77,9 @@ const getDashboardStats = async (req, res) => {
         created_at: file.registration_date || file.created_at,
         updated_at: file.updated_at || file.created_at,
         download_count: file.total_download_count ?? file.download_count ?? 0,
-        source_file_link: file.source_file_link,
+        file_path: file.file_path,
+        source_file_link: file.file_path, // 하위 호환용
         vcmx_file_link: file.vcmx_file_link,
-        icon_file_link: file.icon_file_link,
         fbx_file_link: file.fbx_file_link,
       };
     };

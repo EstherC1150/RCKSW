@@ -195,7 +195,7 @@ module.exports = {
       id,
       file_name,
       vcmx_file_link,
-      source_file_link,
+      file_path,
       category_id,
       sub_category_id,
       type
@@ -313,8 +313,7 @@ module.exports = {
   // @main_features: 주요 기능
   // @recommended_environment: 권장 환경
   // @thumbnail_image: 썸네일 이미지 경로
-  // @source_file_link: 소스 파일 링크
-  // @icon_file_link: 아이콘 파일 링크
+  // @file_path: 메인 파일 경로 (설치파일/VCMX/모델)
   // @category_id: 카테고리 ID
   // @sub_category_id: 서브 카테고리 ID
   // @uploader: 업로더 ID
@@ -329,14 +328,14 @@ module.exports = {
 
     INSERT INTO files (
       file_name, version, description, main_features, recommended_environment,
-      thumbnail_image, source_file_link, icon_file_link, fbx_file_link, vcmx_file_link,
+      thumbnail_image, file_path, fbx_file_link, vcmx_file_link,
       category_id, sub_category_id, uploader, type, model_type, component_id,
       created_at, updated_at
     )
     OUTPUT INSERTED.id INTO @InsertedFiles
     VALUES (
       @file_name, @version, @description, @main_features, @recommended_environment,
-      @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @vcmx_file_link,
+      @thumbnail_image, @file_path, @fbx_file_link, @vcmx_file_link,
       @category_id, @sub_category_id, @uploader, @type, @model_type, @new_component_id,
       GETDATE(), GETDATE()
     );
@@ -456,8 +455,7 @@ module.exports = {
       f.main_features,
       f.recommended_environment,
       f.thumbnail_image,
-      f.source_file_link,
-      f.icon_file_link,
+      f.file_path,
       f.fbx_file_link,
       f.vcmx_file_link,
       f.category_id,
@@ -492,8 +490,7 @@ module.exports = {
       f.main_features,
       f.recommended_environment,
       f.component_id,
-      f.source_file_link,
-      f.icon_file_link,
+      f.file_path,
       f.fbx_file_link,
       f.vcmx_file_link,
       c.name as category_name
@@ -516,8 +513,7 @@ module.exports = {
       f.main_features,
       f.recommended_environment,
       f.thumbnail_image,
-      f.source_file_link,
-      f.icon_file_link,
+      f.file_path,
       f.fbx_file_link,
       f.vcmx_file_link,
       f.category_id,
@@ -550,8 +546,7 @@ module.exports = {
   // @main_features: 주요 기능
   // @recommended_environment: 권장 환경
   // @thumbnail_image: 썸네일 이미지 경로
-  // @source_file_link: FBX 파일 링크
-  // @icon_file_link: VCMX 파일 링크
+  // @file_path: 메인 파일 경로 (설치파일/VCMX/모델)
   // @category_id: 카테고리 ID
   // @uploader: 업로더 ID
   // @component_id: 컴포넌트 ID
@@ -561,14 +556,14 @@ module.exports = {
 
     INSERT INTO files (
       file_name, version, description, main_features, recommended_environment,
-      thumbnail_image, source_file_link, icon_file_link, fbx_file_link, vcmx_file_link,
+      thumbnail_image, file_path, fbx_file_link, vcmx_file_link,
       category_id, sub_category_id, uploader, type, model_type, component_id,
       created_at, updated_at
     )
     OUTPUT INSERTED.id INTO @InsertedFiles
     VALUES (
       @file_name, @version, @description, @main_features, @recommended_environment,
-      @thumbnail_image, @source_file_link, @icon_file_link, @fbx_file_link, @vcmx_file_link,
+      @thumbnail_image, @file_path, @fbx_file_link, @vcmx_file_link,
       @category_id, @sub_category_id, @uploader, @type, @model_type, @component_id,
       GETDATE(), GETDATE()
     );
@@ -661,7 +656,7 @@ module.exports = {
     SELECT 
       id,
       thumbnail_image,
-      source_file_link,
+      file_path,
       fbx_file_link,
       vcmx_file_link
     FROM files 
@@ -675,7 +670,7 @@ module.exports = {
     SELECT 
       id,
       thumbnail_image,
-      source_file_link,
+      file_path,
       fbx_file_link,
       vcmx_file_link
     FROM files 
@@ -718,14 +713,14 @@ module.exports = {
       id,
       file_name,
       vcmx_file_link,
-      source_file_link,
+      file_path,
       category_id,
       sub_category_id,
       type,
       is_active
     FROM files 
     WHERE (vcmx_file_link IS NOT NULL AND vcmx_file_link != '')
-       OR (source_file_link IS NOT NULL AND source_file_link LIKE '%.vcmx%')
+       OR (file_path IS NOT NULL AND file_path LIKE '%.vcmx%')
     ORDER BY category_id, sub_category_id, file_name
   `,
 
@@ -754,7 +749,7 @@ module.exports = {
       created_at,
       updated_at,
       download_count,
-      source_file_link,
+      file_path,
       fbx_file_link,
       vcmx_file_link,
       thumbnail_image,
@@ -791,7 +786,7 @@ module.exports = {
       created_at,
       updated_at,
       download_count,
-      source_file_link,
+      file_path,
       fbx_file_link,
       vcmx_file_link,
       thumbnail_image,
@@ -821,7 +816,7 @@ module.exports = {
         f.category_id,
         f.sub_category_id,
         f.vcmx_file_link,
-        f.source_file_link,
+        f.file_path,
         f.component_id,
         ROW_NUMBER() OVER (
           PARTITION BY f.component_id 
@@ -839,7 +834,7 @@ module.exports = {
       model_type,
       category_id,
       sub_category_id,
-      ISNULL(NULLIF(vcmx_file_link, ''), source_file_link) AS vcmx_file_link
+      ISNULL(NULLIF(vcmx_file_link, ''), file_path) AS vcmx_file_link
     FROM RankedFiles 
     WHERE rn = 1
     ORDER BY file_name ASC
@@ -858,8 +853,7 @@ module.exports = {
   updateFilePathsAndNullCategories: `
     UPDATE files 
     SET 
-      source_file_link = @source_file_link,
-      icon_file_link = @icon_file_link,
+      file_path = @file_path,
       fbx_file_link = @fbx_file_link,
       vcmx_file_link = @vcmx_file_link,
       category_id = NULL,
@@ -895,8 +889,7 @@ module.exports = {
       file_name,
       version,
       thumbnail_image,
-      source_file_link,
-      icon_file_link,
+      file_path,
       fbx_file_link,
       vcmx_file_link,
       created_at,
@@ -973,8 +966,7 @@ module.exports = {
     SELECT COUNT(*) as count 
     FROM files 
     WHERE thumbnail_image = @file_path
-       OR source_file_link = @file_path
-       OR icon_file_link = @file_path
+       OR file_path = @file_path
        OR fbx_file_link = @file_path
        OR vcmx_file_link = @file_path
   `,

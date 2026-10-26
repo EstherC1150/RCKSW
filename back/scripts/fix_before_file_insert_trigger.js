@@ -29,7 +29,7 @@ async function fixTrigger() {
               -- files 테이블에 삽입 (rcksw 환경의 컬럼명 적용)
               INSERT INTO files (
                   file_name, version, created_at, updated_at,
-                  download_count, is_active, source_file_link, icon_file_link,
+                  download_count, is_active, file_path,
                   fbx_file_link, vcmx_file_link,
                   thumbnail_image, description, main_features, recommended_environment,
                   uploader, category_id, sub_category_id, component_id, type, model_type
@@ -37,7 +37,7 @@ async function fixTrigger() {
               OUTPUT INSERTED.id
               SELECT
                   file_name, version, GETDATE(), GETDATE(),
-                  0, 1, source_file_link, icon_file_link,
+                  0, 1, file_path,
                   fbx_file_link, vcmx_file_link,
                   thumbnail_image, description, main_features, recommended_environment,
                   uploader, category_id, sub_category_id, @component_id, type, model_type
@@ -48,7 +48,7 @@ async function fixTrigger() {
           BEGIN
               INSERT INTO files (
                   file_name, version, created_at, updated_at,
-                  download_count, is_active, source_file_link, icon_file_link,
+                  download_count, is_active, file_path,
                   fbx_file_link, vcmx_file_link,
                   thumbnail_image, description, main_features, recommended_environment,
                   uploader, category_id, sub_category_id, component_id, type, model_type
@@ -56,7 +56,7 @@ async function fixTrigger() {
               OUTPUT INSERTED.id
               SELECT
                   file_name, version, GETDATE(), GETDATE(),
-                  0, 1, source_file_link, icon_file_link,
+                  0, 1, file_path,
                   fbx_file_link, vcmx_file_link,
                   thumbnail_image, description, main_features, recommended_environment,
                   uploader, category_id, sub_category_id, component_id, type, model_type

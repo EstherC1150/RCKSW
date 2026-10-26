@@ -440,7 +440,7 @@ exports.createComponent = async (req, res) => {
       recommended_environment: environment || "",
       thumbnail_image: thumbnailUrl,
       source_file_link: sourceUrl,
-      icon_file_link: iconUrl,
+      file_path: iconUrl,
       category_id: finalCategoryId,
       sub_category_id: finalSubCategoryId,
       uploader: userEmail,
@@ -658,7 +658,7 @@ const downloadFile = async (req, res) => {
       archive.pipe(res);
 
       // 1. 메인 소스 파일 추가
-      const sourceLink = file.source_file_link || file.vcmx_file_link;
+      const sourceLink = file.file_path || (file.file_path || file.source_file_link) || file.vcmx_file_link;
       if (sourceLink) {
         const sourcePath = resolveFilePath(sourceLink);
         if (sourcePath && fsSync.existsSync(sourcePath)) {
@@ -698,7 +698,7 @@ const downloadFile = async (req, res) => {
     let fileName;
 
     if (fileType === "source" || fileType === "package") {
-      const sourceLink = file.source_file_link || file.vcmx_file_link;
+      const sourceLink = file.file_path || (file.file_path || file.source_file_link) || file.vcmx_file_link;
       if (!sourceLink) {
         return res.status(404).json({ success: false, message: "소스 파일이 존재하지 않습니다." });
       }
@@ -718,7 +718,7 @@ const downloadFile = async (req, res) => {
       const fileExtension = path.extname(originalFileName);
       fileName = `${file.file_name}_${file.version}${fileExtension}`;
     } else if (fileType === "icon" || fileType === "thumbnail") {
-      const iconOrThumbLink = file.icon_file_link || file.thumbnail_image;
+      const iconOrThumbLink = file.file_path || file.thumbnail_image;
       if (!iconOrThumbLink) {
         return res.status(404).json({ success: false, message: "썸네일/아이콘 파일이 존재하지 않습니다." });
       }
@@ -947,7 +947,7 @@ const getFileDetail = async (req, res) => {
 
     // DB에 저장된 경로를 그대로 사용
     const iconPath = null;
-    const sourcePath = file.source_file_link || null;
+    const sourcePath = file.file_path || (file.file_path || file.source_file_link) || null;
     const fbxPath = file.fbx_file_link || null;
     const vcmxPath = file.vcmx_file_link || null;
 
@@ -1028,7 +1028,8 @@ const getFileDetail = async (req, res) => {
         componentId: relatedFile.component_id,
         categoryName: relatedFile.category_name,
         fileLinks: {
-          source: relatedFile.source_file_link || null,
+          source: relatedFile.file_path || relatedFile.source_file_link || null,
+          file_path: relatedFile.file_path || relatedFile.source_file_link || null,
           icon: null,
           fbx: relatedFile.fbx_file_link || null,
           vcmx: relatedFile.vcmx_file_link || null,
@@ -1312,7 +1313,7 @@ const updateComponentVersion = async (req, res) => {
       recommended_environment: environment || "",
       thumbnail_image: thumbnailUrl,
       source_file_link: sourceUrl,
-      icon_file_link: iconUrl,
+      file_path: iconUrl,
       fbx_file_link: fbxUrl,
       category_id: null,
       sub_category_id: null,
@@ -1451,11 +1452,11 @@ const updateComponentVersion = async (req, res) => {
     console.log("savedData.vcmx_file_link:", savedData.vcmx_file_link);
 
     // 아이콘 파일 저장 확인 (아이콘 파일이 있는 경우에만)
-    if (savedData.icon_file_link) {
+    if (null) {
       const savedIconPath = path.join(
         __dirname,
         "..",
-        savedData.icon_file_link
+        null
       );
       try {
         await fs.access(savedIconPath);
@@ -1464,7 +1465,7 @@ const updateComponentVersion = async (req, res) => {
         console.error("아이콘 파일 저장 실패:", {
           error: error.message,
           path: savedIconPath,
-          iconLink: savedData.icon_file_link,
+          iconLink: null,
         });
       }
     } else {
@@ -1621,10 +1622,10 @@ const deleteComponents = async (req, res) => {
     for (const fileInfo of filePaths) {
       const candidates = [
         fileInfo.thumbnail_image,
-        fileInfo.source_file_link,
+        (fileInfo.file_path || fileInfo.source_file_link),
         fileInfo.fbx_file_link,
         fileInfo.vcmx_file_link,
-        fileInfo.icon_file_link,
+        fileInfo.file_path,
       ].filter((filePath) => filePath && filePath.trim() !== "");
 
       candidates.forEach((p) => uniqueFilesToDelete.add(p));
@@ -1867,7 +1868,7 @@ const getAllFiles = async (req, res) => {
         created_at: file.created_at,
         updated_at: file.updated_at,
         download_count: file.download_count,
-        source_file_link: file.source_file_link,
+        source_file_link: (file.file_path || file.source_file_link),
         fbx_file_link: file.fbx_file_link,
         vcmx_file_link: file.vcmx_file_link,
         thumbnail_image: file.thumbnail_image,
@@ -1926,7 +1927,7 @@ const getAllLatestFiles = async (req, res) => {
         created_at: file.created_at,
         updated_at: file.updated_at,
         download_count: file.download_count,
-        source_file_link: file.source_file_link,
+        source_file_link: (file.file_path || file.source_file_link),
         fbx_file_link: file.fbx_file_link,
         vcmx_file_link: file.vcmx_file_link,
         thumbnail_image: file.thumbnail_image,
@@ -2260,10 +2261,10 @@ const deleteComponentVersion = async (req, res) => {
     // 파일 물리 삭제 대상 경로 수집
     const filesToDelete = [
       file.thumbnail_image,
-      file.source_file_link,
+      (file.file_path || file.source_file_link),
       file.fbx_file_link,
       file.vcmx_file_link,
-      file.icon_file_link,
+      file.file_path,
     ].filter((filePath) => filePath && filePath.trim() !== "");
 
     // 3. 마지막 버전인지 여부 판단

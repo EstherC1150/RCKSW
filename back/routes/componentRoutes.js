@@ -18,14 +18,19 @@ router.get("/all_update", componentController.getAllLatestFiles);
 // Visual Components 소프트웨어 외부 연동/동기화 전용 최신 버전 경량 조회 (인증 없음)
 router.get("/vc-sync", componentController.getVcSyncFiles);
 
-// VCMX 파일 일괄 다운로드 (구체적인 라우트를 먼저 배치)
-router.get("/download/bulk/vcmx", componentController.downloadAllVcmxFiles);
+// [표준 다운로드 API]
+// 1. 메인 파일 다운로드 (설치파일/VCMX/모델)
+router.get("/:fileId/download", (req, res, next) => {
+  req.params.fileType = "source";
+  return componentController.downloadFile(req, res, next);
+});
+// 2. 추가 파일 다운로드
+router.get("/additional/:id/download", componentController.downloadAdditionalFile);
 
-// 추가 파일 개별 다운로드 (구체적인 라우트를 먼저 배치)
+// [하위 호환 및 특수 다운로드 라우트]
+router.get("/download/bulk/vcmx", componentController.downloadAllVcmxFiles);
 router.get("/download/additional/:id", componentController.downloadAdditionalFile);
 router.get("/additional-file/:id/download", componentController.downloadAdditionalFile);
-
-// 버전별 파일 다운로드 (프론트엔드 라우트 호환)
 router.get("/version/:fileId/download", (req, res, next) => {
   req.params.fileType = "source";
   return componentController.downloadFile(req, res, next);
@@ -34,8 +39,6 @@ router.get("/version/:fileId/download-fbx", (req, res, next) => {
   req.params.fileType = "fbx";
   return componentController.downloadFile(req, res, next);
 });
-
-// 파일 다운로드
 router.get("/download/:fileId/:fileType", componentController.downloadFile);
 
 // Multer 에러 핸들링 미들웨어

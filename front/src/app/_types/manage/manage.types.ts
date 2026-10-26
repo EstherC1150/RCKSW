@@ -34,9 +34,9 @@ export type TLibrary = {
   created_at: string;
   updated_at: string;
   download_count: number;
-  source_file_link: string;
+  file_path?: string;
+  source_file_link?: string; // 하위 호환
   vcmx_file_link?: string;
-  icon_file_link?: string;
   fbx_file_link?: string;
   thumbnail_image: string;
   uploader: string;
