@@ -74,8 +74,12 @@ export const authenticatedFetch = async (
   }
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
+  const targetUrl =
+    url.startsWith("http://") || url.startsWith("https://")
+      ? url
+      : `${apiUrl}${url.startsWith("/") ? "" : "/"}${url}`;
 
-  let response = await fetch(url, {
+  let response = await fetch(targetUrl, {
     ...options,
     headers: {
       ...options.headers,
@@ -105,7 +109,7 @@ export const authenticatedFetch = async (
           store.updateTokens({ accessToken: newAccessToken });
 
           // 새 토큰으로 원래 요청 재시도
-          response = await fetch(url, {
+          response = await fetch(targetUrl, {
             ...options,
             headers: {
               ...options.headers,
@@ -158,6 +162,12 @@ export const authenticatedUpload = async (
     handleSessionExpired();
     throw new Error("로그인 세션이 만료되었습니다. 다시 로그인해 주세요.");
   }
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
+  const targetUrl =
+    url.startsWith("http://") || url.startsWith("https://")
+      ? url
+      : `${apiUrl}${url.startsWith("/") ? "" : "/"}${url}`;
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -216,7 +226,7 @@ export const authenticatedUpload = async (
       reject(new Error("업로드 시간이 초과되었습니다."));
     });
 
-    xhr.open(method, url);
+    xhr.open(method, targetUrl);
     xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
     xhr.send(formData);
   });

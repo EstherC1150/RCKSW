@@ -234,11 +234,12 @@ const ComponentList = ({
     try {
       setDownloadingKey(downloadKey);
 
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
       let downloadUrl = "";
       if (fileType === "source") {
-        downloadUrl = `/api/components/download/${versionId}/source`;
+        downloadUrl = `${apiUrl}/api/components/download/${versionId}/source`;
       } else if (fileType === "fbx") {
-        downloadUrl = `/api/components/download/${versionId}/fbx`;
+        downloadUrl = `${apiUrl}/api/components/download/${versionId}/fbx`;
       }
 
       const response = await authenticatedFetch(downloadUrl);
@@ -315,7 +316,8 @@ const ComponentList = ({
 
     try {
       setDownloadingKey(downloadKey);
-      const downloadUrl = `/api/components/download/additional/${fileId}`;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
+      const downloadUrl = `${apiUrl}/api/components/download/additional/${fileId}`;
       const response = await authenticatedFetch(downloadUrl);
 
       if (!response.ok) {
@@ -385,8 +387,9 @@ const ComponentList = ({
     try {
       setDeletingId(file.id);
 
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
       const response = await authenticatedFetch(
-        `/api/components/version/${file.id}`,
+        `${apiUrl}/api/components/version/${file.id}`,
         {
           method: "DELETE",
         }
