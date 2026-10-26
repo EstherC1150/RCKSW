@@ -2267,6 +2267,20 @@ const deleteComponentVersion = async (req, res) => {
       file.file_path,
     ].filter((filePath) => filePath && filePath.trim() !== "");
 
+    // 해당 버전의 추가 파일들도 물리 삭제 대상에 포함
+    try {
+      const addFilesRes = await mysql.query("getAdditionalFilesByFileId", {
+        file_id: targetFileId,
+      });
+      (addFilesRes.recordset || []).forEach((af) => {
+        if (af.file_path && af.file_path.trim() !== "") {
+          filesToDelete.push(af.file_path);
+        }
+      });
+    } catch (addFileErr) {
+      console.warn("추가 파일 삭제 대상 수집 실패:", addFileErr.message);
+    }
+
     // 3. 마지막 버전인지 여부 판단
     const isLastVersion = allFiles.length <= 1;
 
