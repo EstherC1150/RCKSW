@@ -116,24 +116,32 @@ const getSafeOriginalName = (file) => {
 // 파일 타입과 확장자에 따라 저장 경로(카테고리)를 결정하는 헬퍼 함수
 const getPathByCategory = (type, originalName, fieldName) => {
   const ext = path.extname(originalName).toLowerCase();
-  let category = 'etc';
+  const typeFolder = (type || 'etc').toLowerCase();
+  let category = 'file';
   
-  // fieldName에 따른 기본 카테고리 분류
-  if (fieldName === 'iconFile') {
-    category = 'icon';
-  } else if (fieldName === 'fbxFile') {
-    category = 'fbx';
-  } else if (fieldName === 'additionalFiles') {
+  if (fieldName === 'additionalFiles') {
+    // 모든 카테고리 추가 파일 -> additional
     category = 'additional';
+  } else if (fieldName === 'fbxFile') {
+    // FBX 파일 -> fbx
+    category = 'fbx';
   } else if (fieldName === 'sourceFile') {
-    // 소스 파일의 경우 확장자에 따라 세분화
-    if (ext === '.dll') category = 'dll';
-    else if (ext === '.vcmx' || ext === '.vcl') category = 'vcmx';
-    else if (ext === '.fbx') category = 'fbx';
-    else if (['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'].includes(ext)) category = 'icon';
+    // 필수 소스/설치/모델 파일 카테고리별 분류
+    if (typeFolder === 'vc_model') {
+      category = ext === '.fbx' ? 'fbx' : 'vcmx';
+    } else if (typeFolder === 'vc_plugin') {
+      category = 'install';
+    } else if (typeFolder === 'ns_plugin') {
+      category = 'install';
+    } else if (typeFolder === 'ns_model') {
+      category = 'model';
+    } else {
+      category = 'file';
+    }
+  } else {
+    category = 'file';
   }
   
-  const typeFolder = type || 'etc';
   const relativeDir = path.join('uploads', 'source', typeFolder, category);
   const absoluteDir = path.join(__dirname, '..', relativeDir);
   
@@ -317,20 +325,8 @@ exports.createComponent = async (req, res) => {
     const finalSubCategoryId = null;
 
 
-    // 아이콘 파일 저장
-    let iconUrl = null;
-    if (req.files.iconFile?.length) {
-      const uploadedFile = req.files.iconFile[0];
-      const { relativeDir, absoluteDir } = getPathByCategory(type, uploadedFile.originalname || uploadedFile.filename, 'iconFile');
-      
-      await fs.mkdir(absoluteDir, { recursive: true });
-
-      const sourcePath = uploadedFile.path;
-      const targetPath = path.join(absoluteDir, uploadedFile.filename);
-      await fs.rename(sourcePath, targetPath);
-
-      iconUrl = `/${relativeDir}/${uploadedFile.filename}`.replace(/\\/g, "/");
-    }
+    // 아이콘 파일은 더 이상 사용하지 않음 (null 고정)
+    const iconUrl = null;
 
     // 소스 파일 저장
     let sourceUrl = null;
@@ -949,8 +945,8 @@ const getFileDetail = async (req, res) => {
 
     const file = fileResult.recordset[0];
 
-    // DB에 저장된 경로를 그대로 사용 (이미 마이그레이션 및 새 로직으로 경로가 잘 저장되어 있음)
-    const iconPath = file.icon_file_link || null;
+    // DB에 저장된 경로를 그대로 사용
+    const iconPath = null;
     const sourcePath = file.source_file_link || null;
     const fbxPath = file.fbx_file_link || null;
     const vcmxPath = file.vcmx_file_link || null;
@@ -1021,7 +1017,7 @@ const getFileDetail = async (req, res) => {
         fileName: relatedFile.file_name,
         version: relatedFile.version,
         thumbnailImage: relatedFile.thumbnail_image 
-          ? `/uploads/thumbnails/${path.basename(relatedFile.thumbnail_image)}`
+          ? (relatedFile.thumbnail_image.startsWith('/') ? relatedFile.thumbnail_image : `/uploads/thumbnails/${path.basename(relatedFile.thumbnail_image)}`)
           : "/images/thumbnail.png",
         downloadCount: relatedFile.download_count,
         createdAt: relatedFile.created_at,
@@ -1032,9 +1028,9 @@ const getFileDetail = async (req, res) => {
         componentId: relatedFile.component_id,
         categoryName: relatedFile.category_name,
         fileLinks: {
-          source: relatedFile.source_file_link ? `/uploads/source/${path.basename(relatedFile.source_file_link)}` : null,
-          icon: relatedFile.icon_file_link || null,
-          fbx: relatedFile.fbx_file_link ? `/uploads/fbx/${path.basename(relatedFile.fbx_file_link)}` : null,
+          source: relatedFile.source_file_link || null,
+          icon: null,
+          fbx: relatedFile.fbx_file_link || null,
           vcmx: relatedFile.vcmx_file_link || null,
         },
         additionalFiles: addFilesByFileId[relatedFile.id] || [],
@@ -1169,42 +1165,15 @@ const updateComponentVersion = async (req, res) => {
     const categoryName = "deleted"; 
     const subCategoryName = "deleted";
 
-    // 아이콘 파일 처리 (선택사항)
-    let iconUrl;
-    if (req.body.useExistingIcon === "true" && req.body.existingIconPath) {
-      // 기존 아이콘 파일 사용
-      iconUrl = req.body.existingIconPath;
-    } else if (req.files.iconFile && req.files.iconFile[0]) {
-      // 새 아이콘 파일 업로드
-      const iconFile = req.files.iconFile[0];
-      const iconType = originalFile.type || "etc";
-      const { relativeDir, absoluteDir } = getPathByCategory(iconType, iconFile.originalname || iconFile.filename, 'iconFile');
-
-      try {
-        await fs.mkdir(absoluteDir, { recursive: true });
-        const srcPath = iconFile.path;
-        const targetPath = path.join(absoluteDir, iconFile.filename);
-
-        await fs.rename(srcPath, targetPath);
-        iconUrl = `/${relativeDir}/${iconFile.filename}`.replace(/\\/g, "/");
-      } catch (error) {
-        console.error("Icon 파일 처리 실패:", error);
-        throw new Error("Icon 파일 저장에 실패했습니다.");
-      }
-    } else {
-      // 아이콘 파일이 없는 경우 기존 파일 사용 또는 null
-      iconUrl = originalFile.icon_file_link || null;
-    }
+    // 아이콘 파일은 더 이상 사용하지 않음 (null 고정)
+    const iconUrl = null;
 
     // 소스 파일 처리
     let sourceUrl;
     let sourceFilePath; // 소스 파일 경로 저장용
     let isFbxFile = false;
     
-    if (req.body.useExistingSource === "true" && req.body.existingSourcePath) {
-      // 기존 소스 파일 사용
-      sourceUrl = req.body.existingSourcePath;
-    } else if (req.files.sourceFile && req.files.sourceFile[0]) {
+    if (req.files.sourceFile && req.files.sourceFile[0]) {
       // 새 소스 파일 업로드
       const sourceFile = req.files.sourceFile[0];
       const sourceType = originalFile.type || "etc";
@@ -1220,6 +1189,9 @@ const updateComponentVersion = async (req, res) => {
 
       const ext = path.extname(sourceFile.originalname || sourceFile.filename).toLowerCase();
       isFbxFile = ext === '.fbx';
+    } else if (req.body.useExistingSource === "true" || originalFile.source_file_link) {
+      // 기존 소스 파일 사용 (프론트에서 전달된 경로 또는 DB 원본 최신 경로 사용)
+      sourceUrl = req.body.existingSourcePath || originalFile.source_file_link;
     } else {
       // 기존에도 없고 새 파일도 없으면
       return res.status(400).json({
@@ -1229,10 +1201,8 @@ const updateComponentVersion = async (req, res) => {
     }
 
     // FBX 파일 처리 (선택사항)
-    let fbxUrl;
-    if (req.body.useExistingFbx === "true" && req.body.existingFbxPath) {
-      fbxUrl = req.body.existingFbxPath;
-    } else if (req.files.fbxFile && req.files.fbxFile[0]) {
+    let fbxUrl = null;
+    if (req.files.fbxFile && req.files.fbxFile[0]) {
       const fbxFile = req.files.fbxFile[0];
       const fbxType = originalFile.type || "etc";
       const { relativeDir, absoluteDir } = getPathByCategory(fbxType, fbxFile.originalname || fbxFile.filename, 'fbxFile');
@@ -1244,8 +1214,10 @@ const updateComponentVersion = async (req, res) => {
 
       fbxUrl = `/${relativeDir}/${fbxFile.filename}`.replace(/\\/g, "/");
       isFbxFile = true;
+    } else if (req.body.useExistingFbx === "true" || originalFile.fbx_file_link) {
+      fbxUrl = req.body.existingFbxPath || originalFile.fbx_file_link || null;
     } else {
-      fbxUrl = originalFile.fbx_file_link || null;
+      fbxUrl = null;
     }
 
     // 썸네일 처리 로직 개선 (신규 등록과 동일한 방식)
@@ -1404,24 +1376,33 @@ const updateComponentVersion = async (req, res) => {
       }
     }
 
-    if ((keptIds !== null || req.body.useExistingAdditionalFiles === "true") && originalFile.id) {
+    if (keptIds !== null || req.body.useExistingAdditionalFiles === "true") {
       try {
-        const prevAddFiles = await mysql.query("getAdditionalFilesByFileId", { file_id: originalFile.id });
-        if (prevAddFiles && prevAddFiles.recordset) {
-          let copiedCount = 0;
-          for (const paf of prevAddFiles.recordset) {
-            if (keptIds === null || keptIds.includes(paf.id)) {
-              await mysql.query("insertAdditionalFile", {
-                file_id: newId,
-                original_name: paf.original_name,
-                file_path: paf.file_path,
-                file_size: paf.file_size,
-              });
-              copiedCount++;
-            }
-          }
-          console.log(`기존 추가 파일(${copiedCount}개) 새 버전(${newId})으로 복사 완료`);
+        const allAddFilesResult = await mysql.query("getAdditionalFilesByComponentId", {
+          component_id: insertData.component_id,
+        });
+        const candidateFiles = allAddFilesResult.recordset || [];
+
+        let filesToCopy = [];
+        if (keptIds !== null) {
+          // keptIds에 포함된 파일들 선택 (ID 매칭)
+          filesToCopy = candidateFiles.filter((af) => keptIds.includes(af.id));
+        } else if (req.body.useExistingAdditionalFiles === "true" && originalFile.id) {
+          // 최신 버전에 속한 추가 파일들 선택
+          filesToCopy = candidateFiles.filter((af) => af.file_id === originalFile.id);
         }
+
+        let copiedCount = 0;
+        for (const paf of filesToCopy) {
+          await mysql.query("insertAdditionalFile", {
+            file_id: newId,
+            original_name: paf.original_name,
+            file_path: paf.file_path,
+            file_size: paf.file_size,
+          });
+          copiedCount++;
+        }
+        console.log(`기존 추가 파일(${copiedCount}개) 새 버전(${newId})으로 복사 완료`);
       } catch (copyErr) {
         console.warn("기존 추가 파일 복사 실패:", copyErr);
       }

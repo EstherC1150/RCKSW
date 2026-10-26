@@ -658,7 +658,40 @@ const ComponentList = ({
         componentType={componentData.type}
         onSuccess={handleVersionUpdateSuccess}
         initialData={(() => {
-          const latest = allVersions[0];
+          let latest = allVersions[0];
+          if (!latest && componentData) {
+            const combined = [
+              {
+                id: componentData.id,
+                fileName: componentData.fileName,
+                version: componentData.version,
+                thumbnailImage: componentData.thumbnailImage,
+                downloadCount: componentData.downloadCount,
+                createdAt: componentData.createdAt,
+                updatedAt: componentData.updatedAt,
+                description: componentData.description,
+                mainFeatures: componentData.mainFeatures,
+                recommendedEnvironment: componentData.recommendedEnvironment,
+                componentId: componentData.componentId,
+                categoryName: "",
+                fileLinks: componentData.fileLinks,
+                additionalFiles: componentData.additionalFiles || [],
+              },
+              ...(componentData.relatedFiles || []),
+            ];
+            const sorted = combined.sort((a, b) => {
+              const versionA = a.version.split(".").map(Number);
+              const versionB = b.version.split(".").map(Number);
+              for (let i = 0; i < Math.max(versionA.length, versionB.length); i++) {
+                const numA = versionA[i] || 0;
+                const numB = versionB[i] || 0;
+                if (numA !== numB) return numB - numA;
+              }
+              return 0;
+            });
+            latest = sorted[0];
+          }
+
           return {
             version: latest?.version || componentData.version,
             description: latest?.description || componentData.description,
@@ -670,7 +703,7 @@ const ComponentList = ({
             additionalFiles: latest?.additionalFiles || componentData.additionalFiles || [],
             fileLinks: {
               source: latest?.fileLinks?.source || componentData.fileLinks.source || undefined,
-              icon: latest?.fileLinks?.icon || componentData.fileLinks.icon || undefined,
+              icon: undefined,
               fbx: latest?.fileLinks?.fbx || componentData.fileLinks.fbx || undefined,
               vcmx: latest?.fileLinks?.vcmx || componentData.fileLinks.vcmx || undefined,
             },
