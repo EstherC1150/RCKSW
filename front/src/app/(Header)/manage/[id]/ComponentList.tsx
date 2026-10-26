@@ -236,9 +236,9 @@ const ComponentList = ({
 
       let downloadUrl = "";
       if (fileType === "source") {
-        downloadUrl = `/api/components/version/${versionId}/download`;
+        downloadUrl = `/api/components/download/${versionId}/source`;
       } else if (fileType === "fbx") {
-        downloadUrl = `/api/components/version/${versionId}/download-fbx`;
+        downloadUrl = `/api/components/download/${versionId}/fbx`;
       }
 
       const response = await authenticatedFetch(downloadUrl);
@@ -315,7 +315,7 @@ const ComponentList = ({
 
     try {
       setDownloadingKey(downloadKey);
-      const downloadUrl = `/api/components/additional-file/${fileId}/download`;
+      const downloadUrl = `/api/components/download/additional/${fileId}`;
       const response = await authenticatedFetch(downloadUrl);
 
       if (!response.ok) {
