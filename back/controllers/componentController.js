@@ -439,8 +439,8 @@ exports.createComponent = async (req, res) => {
       main_features: featuresString,
       recommended_environment: environment || "",
       thumbnail_image: thumbnailUrl,
+      file_path: sourceUrl,
       source_file_link: sourceUrl,
-      file_path: iconUrl,
       category_id: finalCategoryId,
       sub_category_id: finalSubCategoryId,
       uploader: userEmail,
@@ -1190,9 +1190,9 @@ const updateComponentVersion = async (req, res) => {
 
       const ext = path.extname(sourceFile.originalname || sourceFile.filename).toLowerCase();
       isFbxFile = ext === '.fbx';
-    } else if (req.body.useExistingSource === "true" || originalFile.source_file_link) {
+    } else if (req.body.useExistingSource === "true" || originalFile.file_path || originalFile.source_file_link) {
       // 기존 소스 파일 사용 (프론트에서 전달된 경로 또는 DB 원본 최신 경로 사용)
-      sourceUrl = req.body.existingSourcePath || originalFile.source_file_link;
+      sourceUrl = req.body.existingSourcePath || originalFile.file_path || originalFile.source_file_link;
     } else {
       // 기존에도 없고 새 파일도 없으면
       return res.status(400).json({
@@ -1312,8 +1312,8 @@ const updateComponentVersion = async (req, res) => {
       main_features: featuresString,
       recommended_environment: environment || "",
       thumbnail_image: thumbnailUrl,
+      file_path: sourceUrl,
       source_file_link: sourceUrl,
-      file_path: iconUrl,
       fbx_file_link: fbxUrl,
       category_id: null,
       sub_category_id: null,
